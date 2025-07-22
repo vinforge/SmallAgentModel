@@ -1,0 +1,88 @@
+{
+  "environment": "docker",
+  "version": "1.0.0",
+  "docker_mode": true,
+  
+  "directories": {
+    "data": "/app/data",
+    "memory_store": "/app/memory_store", 
+    "logs": "/app/logs",
+    "cache": "/app/cache",
+    "security": "/app/security",
+    "chroma_db": "/app/chroma_db",
+    "uploads": "/app/uploads",
+    "backups": "/app/backups"
+  },
+  
+  "services": {
+    "redis": {
+      "enabled": true,
+      "host": "redis",
+      "port": 6379,
+      "db": 0,
+      "url": "redis://redis:6379/0"
+    },
+    "chroma": {
+      "enabled": true,
+      "host": "chroma", 
+      "port": 8000,
+      "persist_directory": "/app/chroma_db"
+    }
+  },
+  
+  "streamlit": {
+    "main_app": {
+      "port": 8502,
+      "host": "0.0.0.0",
+      "headless": true,
+      "cors_enabled": false,
+      "xsrf_protection": false
+    },
+    "memory_center": {
+      "port": 8501,
+      "host": "0.0.0.0", 
+      "headless": true
+    },
+    "welcome_setup": {
+      "port": 8503,
+      "host": "0.0.0.0",
+      "headless": true
+    }
+  },
+  
+  "security": {
+    "encryption_enabled": true,
+    "auto_setup": true,
+    "docker_security_mode": true,
+    "keystore_path": "/app/security/keystore.json",
+    "setup_status_path": "/app/security/setup_status.json"
+  },
+  
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file_path": "/app/logs/sam_docker.log",
+    "max_file_size": "10MB",
+    "backup_count": 5
+  },
+  
+  "performance": {
+    "memory_limit": "2GB",
+    "cpu_limit": "2",
+    "worker_processes": 1,
+    "max_concurrent_requests": 100
+  },
+  
+  "features": {
+    "auto_backup": true,
+    "health_monitoring": true,
+    "metrics_collection": true,
+    "auto_updates": false
+  },
+  
+  "networking": {
+    "allowed_hosts": ["*"],
+    "cors_origins": ["*"],
+    "max_request_size": "100MB"
+  }
+}

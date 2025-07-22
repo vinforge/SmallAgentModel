@@ -1,0 +1,89 @@
+{
+  "name": "legal",
+  "description": "Legal and compliance-focused analysis for regulatory and contractual contexts",
+  "version": "2.0",
+  "target_users": ["legal_professionals", "compliance_officers", "contract_managers", "regulatory_analysts"],
+  "dimensions": {
+    "compliance_risk": {
+      "weight": 1.5,
+      "description": "Regulatory compliance risk and legal exposure",
+      "patterns": [
+        "regulatory compliance",
+        "legal requirement",
+        "statutory obligation",
+        "regulatory violation",
+        "compliance failure",
+        "legal exposure"
+      ],
+      "boost_keywords": ["compliance", "regulatory", "legal", "statutory", "mandatory"]
+    },
+    "liability": {
+      "weight": 1.4,
+      "description": "Legal liability exposure and responsibility",
+      "patterns": [
+        "liability",
+        "legal responsibility",
+        "negligence",
+        "damages",
+        "legal exposure",
+        "accountability"
+      ],
+      "boost_keywords": ["liability", "responsible", "accountable", "damages", "negligence"]
+    },
+    "precedent": {
+      "weight": 1.2,
+      "description": "Legal precedent relevance and case law applicability",
+      "patterns": [
+        "legal precedent",
+        "case law",
+        "judicial decision",
+        "court ruling",
+        "legal authority",
+        "binding precedent"
+      ],
+      "boost_keywords": ["precedent", "case law", "court", "judicial", "ruling"]
+    },
+    "contractual_impact": {
+      "weight": 1.3,
+      "description": "Contract implications and agreement modifications",
+      "patterns": [
+        "contractual obligation",
+        "agreement terms",
+        "contract modification",
+        "breach of contract",
+        "contractual rights",
+        "performance requirements"
+      ],
+      "boost_keywords": ["contract", "agreement", "obligation", "terms", "breach"]
+    },
+    "ethical_considerations": {
+      "weight": 1.1,
+      "description": "Ethical implications and professional responsibility",
+      "patterns": [
+        "ethical implications",
+        "professional responsibility",
+        "moral obligation",
+        "ethical standards",
+        "professional conduct",
+        "ethical guidelines"
+      ],
+      "boost_keywords": ["ethical", "moral", "professional", "responsibility", "conduct"]
+    }
+  },
+  "retrieval_weights": {
+    "semantic_similarity": 0.5,
+    "dimension_alignment": 0.5
+  },
+  "priority_boosts": {
+    "high_compliance_risk": 1.5,
+    "high_liability_high_precedent": 1.4,
+    "high_contractual_impact": 1.3
+  },
+  "explanation_templates": {
+    "compliance_risk": "Compliance risk ({score:.2f}) indicates regulatory exposure",
+    "liability": "Liability score ({score:.2f}) reflects legal responsibility exposure",
+    "precedent": "Precedent relevance ({score:.2f}) shows case law applicability",
+    "contractual_impact": "Contractual impact ({score:.2f}) indicates agreement implications",
+    "ethical_considerations": "Ethical considerations ({score:.2f}) reflect professional responsibility"
+  }
+}

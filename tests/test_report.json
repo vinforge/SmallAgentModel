@@ -1,0 +1,36 @@
+{
+  "total_tests": 53,
+  "total_failures": 0,
+  "total_errors": 0,
+  "total_skipped": 5,
+  "success_rate": 100.0,
+  "suite_results": [
+    {
+      "name": "CORE SERVICES UNIT TESTS",
+      "tests_run": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "success_rate": 100.0
+    },
+    {
+      "name": "INTEGRATION TESTS",
+      "tests_run": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 4,
+      "success_rate": 100.0
+    },
+    {
+      "name": "DOCUMENT PIPELINE TESTS",
+      "tests_run": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "success_rate": 100.0
+    }
+  ],
+  "total_execution_time": 5.769546031951904,
+  "timestamp": "2025-07-18 13:49:08",
+  "phase": "Phase 2 Refactoring"
+}

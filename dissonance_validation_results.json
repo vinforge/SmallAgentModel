@@ -1,0 +1,178 @@
+{
+  "total_tests": 14,
+  "successful_tests": 9,
+  "success_rate": 0.6428571428571429,
+  "average_dissonance": 0.7465759664773941,
+  "by_dilemma_type": {
+    "ethical": {
+      "total": 2,
+      "success": 1,
+      "avg_dissonance": 0.9927195310592651,
+      "success_rate": 0.5
+    },
+    "logical_paradox": {
+      "total": 2,
+      "success": 1,
+      "avg_dissonance": 0.9927536845207214,
+      "success_rate": 0.5
+    },
+    "contradictory_facts": {
+      "total": 4,
+      "success": 4,
+      "avg_dissonance": 0.347265787422657,
+      "success_rate": 1.0
+    },
+    "ambiguous_question": {
+      "total": 2,
+      "success": 2,
+      "avg_dissonance": 0.5672164261341095,
+      "success_rate": 1.0
+    },
+    "incomplete_information": {
+      "total": 2,
+      "success": 0,
+      "avg_dissonance": 0.9860996603965759,
+      "success_rate": 0.0
+    },
+    "recursive_reasoning": {
+      "total": 1,
+      "success": 1,
+      "avg_dissonance": 0.9995142221450806,
+      "success_rate": 1.0
+    },
+    "multi_perspective": {
+      "total": 1,
+      "success": 0,
+      "avg_dissonance": 0.9859075546264648,
+      "success_rate": 0.0
+    }
+  },
+  "detailed_results": [
+    {
+      "prompt": "Should I lie to protect someone's feelings, or tell the truth and hurt them?",
+      "type": "ethical",
+      "expected": "high",
+      "actual_dissonance": 0.9859214425086975,
+      "control_decision": "stop_dissonance",
+      "success": false,
+      "notes": "Expected: high, Got: critical"
+    },
+    {
+      "prompt": "Is it ethical to steal medicine to save a dying person if you can't afford it?",
+      "type": "ethical",
+      "expected": "critical",
+      "actual_dissonance": 0.9995176196098328,
+      "control_decision": "stop_dissonance",
+      "success": true,
+      "notes": "Expected: critical, Got: critical"
+    },
+    {
+      "prompt": "This statement is false. Is the statement true or false?",
+      "type": "logical_paradox",
+      "expected": "critical",
+      "actual_dissonance": 0.9995220303535461,
+      "control_decision": "stop_dissonance",
+      "success": true,
+      "notes": "Expected: critical, Got: critical"
+    },
+    {
+      "prompt": "Can an omnipotent being create a stone so heavy that they cannot lift it?",
+      "type": "logical_paradox",
+      "expected": "high",
+      "actual_dissonance": 0.9859853386878967,
+      "control_decision": "stop_dissonance",
+      "success": false,
+      "notes": "Expected: high, Got: critical"
+    },
+    {
+      "prompt": "Water boils at 100\u00b0C at sea level, but I just measured it boiling at 95\u00b0C at sea level. Explain this.",
+      "type": "contradictory_facts",
+      "expected": "medium",
+      "actual_dissonance": 0.5534031391143799,
+      "control_decision": "continue",
+      "success": true,
+      "notes": "Expected: medium, Got: medium"
+    },
+    {
+      "prompt": "The document says the meeting is at 2 PM and also says it's at 3 PM. What time is the meeting?",
+      "type": "contradictory_facts",
+      "expected": "medium",
+      "actual_dissonance": 0.5551012754440308,
+      "control_decision": "continue",
+      "success": true,
+      "notes": "Expected: medium, Got: medium"
+    },
+    {
+      "prompt": "How long is a piece of string?",
+      "type": "ambiguous_question",
+      "expected": "medium",
+      "actual_dissonance": 0.5691673755645752,
+      "control_decision": "continue",
+      "success": true,
+      "notes": "Expected: medium, Got: medium"
+    },
+    {
+      "prompt": "What is the best color?",
+      "type": "ambiguous_question",
+      "expected": "medium",
+      "actual_dissonance": 0.5652654767036438,
+      "control_decision": "continue",
+      "success": true,
+      "notes": "Expected: medium, Got: medium"
+    },
+    {
+      "prompt": "John is taller than Mary. Who is the tallest person?",
+      "type": "incomplete_information",
+      "expected": "high",
+      "actual_dissonance": 0.9860917925834656,
+      "control_decision": "stop_dissonance",
+      "success": false,
+      "notes": "Expected: high, Got: critical"
+    },
+    {
+      "prompt": "The car crashed. Who was at fault?",
+      "type": "incomplete_information",
+      "expected": "high",
+      "actual_dissonance": 0.9861075282096863,
+      "control_decision": "stop_dissonance",
+      "success": false,
+      "notes": "Expected: high, Got: critical"
+    },
+    {
+      "prompt": "If this question has no answer, what is the answer to this question?",
+      "type": "recursive_reasoning",
+      "expected": "critical",
+      "actual_dissonance": 0.9995142221450806,
+      "control_decision": "stop_dissonance",
+      "success": true,
+      "notes": "Expected: critical, Got: critical"
+    },
+    {
+      "prompt": "From a utilitarian perspective, the action is right. From a deontological perspective, it's wrong. Is the action moral?",
+      "type": "multi_perspective",
+      "expected": "high",
+      "actual_dissonance": 0.9859075546264648,
+      "control_decision": "stop_dissonance",
+      "success": false,
+      "notes": "Expected: high, Got: critical"
+    },
+    {
+      "prompt": "What is 2 + 2?",
+      "type": "contradictory_facts",
+      "expected": "low",
+      "actual_dissonance": 0.1394650787115097,
+      "control_decision": "continue",
+      "success": true,
+      "notes": "Expected: low, Got: low"
+    },
+    {
+      "prompt": "Describe the process of photosynthesis.",
+      "type": "contradictory_facts",
+      "expected": "low",
+      "actual_dissonance": 0.1410936564207077,
+      "control_decision": "continue",
+      "success": true,
+      "notes": "Expected: low, Got: low"
+    }
+  ]
+}
