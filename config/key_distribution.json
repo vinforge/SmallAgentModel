@@ -1,0 +1,42 @@
+{
+  "email_settings": {
+    "smtp_server": "smtp.office365.com",
+    "smtp_port": 587,
+    "sender_email": "vin@forge1825.net",
+    "sender_password": "YOUR_PASSWORD_HERE",
+    "sender_name": "SAM Pro Team"
+  },
+  "registration_settings": {
+    "require_organization": true,
+    "require_use_case": true,
+    "auto_approve": true,
+    "manual_review_keywords": [
+      "competitor",
+      "reverse",
+      "hack",
+      "crack",
+      "pirate"
+    ]
+  },
+  "key_settings": {
+    "keys_per_batch": 10,
+    "reserve_keys_count": 5,
+    "auto_generate_when_low": true
+  },
+  "email_templates": {
+    "subject": "🎉 Your SAM Pro Activation Key",
+    "welcome_template": "templates/sam_pro_welcome.html"
+  },
+  "security_settings": {
+    "rate_limit_registrations": true,
+    "max_registrations_per_ip_per_hour": 5,
+    "require_email_verification": false,
+    "log_all_attempts": true
+  },
+  "notification_settings": {
+    "notify_admin_on_registration": true,
+    "admin_email": "vin@forge1825.net",
+    "daily_summary_enabled": true,
+    "weekly_report_enabled": true
+  }
+}

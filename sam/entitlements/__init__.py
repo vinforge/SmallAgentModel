@@ -1,0 +1,1 @@
+# SAM Pro Entitlements Module

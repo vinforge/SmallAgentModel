@@ -1,0 +1,24 @@
+{
+  "sam_pro_keys": {
+    "e57d3efd-d579-4031-a021-7cc8aa41d437": {
+      "activated": true,
+      "activation_date": "2025-01-01T00:00:00",
+      "features": [
+        "tpv_active_reasoning",
+        "enhanced_slp_learning",
+        "memoir_lifelong_learning",
+        "dream_canvas",
+        "cognitive_distillation",
+        "cognitive_automation"
+      ]
+    }
+  },
+  "feature_flags": {
+    "tpv_active_reasoning": true,
+    "enhanced_slp_learning": true,
+    "memoir_lifelong_learning": true,
+    "dream_canvas": true,
+    "cognitive_distillation": true,
+    "cognitive_automation": true
+  }
+}

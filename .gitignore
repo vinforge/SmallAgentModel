@@ -1,0 +1,118 @@
+# SAM Community Edition - Git Ignore File
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# SAM Specific
+# Memory and data (user-specific)
+memory_store/mem_*.json
+memory_store/long_term_memory.json
+memory_store/chroma_db/
+memory_store/encrypted/
+
+# Large model files and databases
+models/embeddings/
+models/transformers/
+*.sqlite3
+*.db
+chroma_db/
+memory_store_backup/
+memory_store_backup_large/
+
+# Large files (>50MB)
+*.bin
+*.safetensors
+*.onnx
+*.pt
+*.pth
+
+# Model cache directories
+.cache/
+huggingface/
+sentence_transformers/
+
+# Conversation data (user-specific)
+conversation_threads/thread_*.json
+sessions/*.json
+
+# Logs and cache
+logs/*.log
+logs/*.json
+logs/*.db
+response_cache/
+cache/
+streamlit_data/
+
+# Security (user-specific)
+security/keystore.json
+security/keystore_backup_*.json
+security/setup_status.json
+
+# Uploads and outputs
+uploads/
+multimodal_output/
+synthesis_output/
+
+# Development and testing
+test_*.py
+debug_*.py
+trace_*.py
+prove_*.py
+final_*.py
+terminal_*.py
+*_backup.py
+task*.md
+
+# Archives and temporary
+archive/
+approved/
+rejected/
+quarantine/
+vetted/
+capsules/
+ab_tests/
+evaluation_results/
+validation_results/
+performance_baselines/
+performance_profiles/
+deployment_backups/
+deployment_results/
+
+# OS
+.DS_Store
+Thumbs.db

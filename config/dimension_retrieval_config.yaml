@@ -1,0 +1,232 @@
+# SAM Phase 3: Dimension-Aware Retrieval Configuration
+# Configuration for conceptual dimension-weighted retrieval system
+
+# Global retrieval settings
+retrieval:
+  # Enable/disable dimension-aware retrieval
+  enable_dimension_ranking: true
+  
+  # Default retrieval strategy
+  # Options: "vector_only", "dimension_only", "hybrid", "adaptive"
+  default_strategy: "hybrid"
+  
+  # Performance settings
+  max_candidates_multiplier: 4  # Retrieve N*max_results candidates for re-ranking
+  min_candidates: 20           # Minimum candidates to retrieve
+  max_processing_time_ms: 200  # Maximum processing time per query
+  
+  # Fallback settings
+  enable_fallback: true
+  fallback_strategy: "vector_only"
+
+# Profile-specific dimension weights
+profiles:
+  general:
+    description: "Balanced reasoning for everyday knowledge work"
+    target_users: ["knowledge workers", "students", "general public"]
+    weights:
+      semantic_similarity: 0.4
+      dimension_alignment: 0.3
+      recency_score: 0.2
+      confidence_score: 0.1
+    dimensions:
+      utility: 1.2
+      relevance: 1.3
+      clarity: 1.1
+      complexity: 1.0
+      credibility: 1.1
+  
+  researcher:
+    description: "Innovation and research-focused analysis"
+    target_users: ["researchers", "academics", "scientists", "R&D teams"]
+    weights:
+      semantic_similarity: 0.3
+      dimension_alignment: 0.4
+      recency_score: 0.2
+      confidence_score: 0.1
+    dimensions:
+      novelty: 1.5
+      technical_depth: 1.3
+      methodology: 1.2
+      impact: 1.4
+      reproducibility: 1.1
+  
+  business:
+    description: "Strategic and commercial analysis"
+    target_users: ["business analysts", "consultants", "managers", "entrepreneurs"]
+    weights:
+      semantic_similarity: 0.35
+      dimension_alignment: 0.35
+      recency_score: 0.2
+      confidence_score: 0.1
+    dimensions:
+      market_impact: 1.4
+      feasibility: 1.3
+      roi_potential: 1.5
+      risk: 1.2
+      scalability: 1.1
+  
+  legal:
+    description: "Compliance and regulatory analysis"
+    target_users: ["legal professionals", "compliance officers", "contract managers"]
+    weights:
+      semantic_similarity: 0.3
+      dimension_alignment: 0.4
+      recency_score: 0.15
+      confidence_score: 0.15
+    dimensions:
+      compliance_risk: 1.5
+      liability: 1.4
+      precedent: 1.2
+      contractual_impact: 1.3
+      ethical_considerations: 1.1
+
+# Natural language filter configuration
+natural_language_filters:
+  # Enable natural language filter parsing
+  enable_parsing: true
+  
+  # Confidence threshold for applying filters
+  confidence_threshold: 0.6
+  
+  # Filter strength (how much to penalize non-matching content)
+  filter_strength: 0.5  # 0.0 = no penalty, 1.0 = full penalty
+  
+  # Common filter mappings
+  filter_mappings:
+    # Quality filters
+    "high quality": {"credibility": "high", "utility": "high"}
+    "low quality": {"credibility": "low", "utility": "low"}
+    
+    # Risk filters
+    "safe content": {"danger": "low", "risk": "low"}
+    "risky content": {"danger": "high", "risk": "high"}
+    
+    # Complexity filters
+    "simple": {"complexity": "low"}
+    "complex": {"complexity": "high"}
+    "advanced": {"complexity": "high", "technical_depth": "high"}
+    
+    # Innovation filters
+    "innovative": {"novelty": "high", "innovation_potential": "high"}
+    "traditional": {"novelty": "low"}
+    
+    # Business filters
+    "profitable": {"roi_potential": "high", "market_impact": "high"}
+    "feasible": {"feasibility": "high"}
+    "strategic": {"market_impact": "high", "strategic_value": "high"}
+
+# Auto-profile detection settings
+auto_profile_detection:
+  # Enable automatic profile detection based on query content
+  enable: true
+  
+  # Minimum confidence required to switch profiles
+  confidence_threshold: 0.7
+  
+  # Profile detection patterns (regex patterns for each profile)
+  patterns:
+    researcher:
+      - "\\b(?:research|study|analysis|investigation|experiment)\\b"
+      - "\\b(?:novel|innovative|breakthrough|cutting-edge)\\b"
+      - "\\b(?:methodology|algorithm|technical|scientific)\\b"
+      - "\\b(?:peer-reviewed|publication|journal|academic)\\b"
+    
+    business:
+      - "\\b(?:market|business|commercial|revenue|profit)\\b"
+      - "\\b(?:ROI|investment|financial|cost|budget)\\b"
+      - "\\b(?:strategy|competitive|opportunity|growth)\\b"
+      - "\\b(?:feasible|viable|scalable|sustainable)\\b"
+    
+    legal:
+      - "\\b(?:legal|law|regulation|compliance|contract)\\b"
+      - "\\b(?:liability|risk|violation|breach|penalty)\\b"
+      - "\\b(?:court|judge|ruling|precedent|case)\\b"
+      - "\\b(?:ITAR|export|controlled|classified)\\b"
+
+# Dimension alignment calculation settings
+dimension_alignment:
+  # Method for calculating alignment between query and chunk dimensions
+  # Options: "min", "max", "average", "weighted_average"
+  alignment_method: "min"
+  
+  # Normalization method
+  # Options: "none", "total_weight", "max_weight"
+  normalization: "total_weight"
+  
+  # Confidence boost settings
+  confidence_boost:
+    enable: true
+    max_boost: 0.1  # Maximum boost from high confidence
+    threshold: 0.5  # Confidence threshold for boost calculation
+  
+  # Profile relevance bonus
+  profile_bonus:
+    enable: true
+    same_profile_bonus: 0.05  # Bonus for matching profiles
+    cross_profile_penalty: 0.0  # Penalty for different profiles
+
+# Caching settings for performance optimization
+caching:
+  # Enable dimension score caching
+  enable_dimension_cache: true
+  
+  # Cache size (number of query-chunk pairs to cache)
+  cache_size: 1000
+  
+  # Cache TTL in seconds
+  cache_ttl: 3600  # 1 hour
+  
+  # Enable query embedding caching
+  enable_query_cache: true
+  query_cache_size: 100
+
+# Logging and debugging
+logging:
+  # Log level for dimension-aware retrieval
+  # Options: "DEBUG", "INFO", "WARNING", "ERROR"
+  level: "INFO"
+  
+  # Enable detailed scoring logs
+  log_scoring_details: false
+  
+  # Enable performance timing logs
+  log_performance: true
+  
+  # Enable filter application logs
+  log_filters: false
+
+# Experimental features
+experimental:
+  # Enable query expansion based on dimension analysis
+  enable_query_expansion: false
+  
+  # Enable cross-document concept clustering
+  enable_concept_clustering: false
+  
+  # Enable adaptive weight learning
+  enable_weight_learning: false
+  
+  # Enable dimension trend analysis
+  enable_trend_analysis: false
+
+# Integration settings
+integration:
+  # Memory Control Center UI integration
+  ui_integration:
+    enable_dimension_filters: true
+    enable_profile_selector: true
+    enable_explanation_panel: true
+    enable_score_visualization: true
+  
+  # API integration settings
+  api_integration:
+    enable_dimension_endpoints: true
+    enable_profile_endpoints: true
+    enable_filter_endpoints: true
+    
+  # Backward compatibility
+  backward_compatibility:
+    enable_legacy_search: true
+    auto_convert_results: true
+    preserve_existing_apis: true

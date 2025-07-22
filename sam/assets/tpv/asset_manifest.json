@@ -1,0 +1,18 @@
+{
+  "assets": {
+    "tpv_model_weights.bin": {
+      "type": "mock",
+      "size": 1017,
+      "hash": "05cea69a991d84fff0ce2c550761c0dbb22430b8898263f54a27edc8c775dbf4",
+      "created_at": "2025-06-13T16:58:25Z"
+    },
+    "tpv_model_config.json": {
+      "type": "mock",
+      "size": 189,
+      "hash": "1ba4c45933720d3c8daf008f151380a5d9112686578cc4eaea43c7247d33e9d2",
+      "created_at": "2025-06-13T16:58:25Z"
+    }
+  },
+  "status": "mock_development",
+  "note": "Mock assets created for Phase 0 development and testing"
+}

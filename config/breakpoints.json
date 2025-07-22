@@ -1,0 +1,19 @@
+{
+  "breakpoints": [
+    {
+      "breakpoint_id": "d1912df3-5956-4a74-877a-8900d76cf932",
+      "name": "E2E Test Breakpoint",
+      "description": "End-to-end test breakpoint",
+      "module_name": "TestModule",
+      "event_type": "test_event",
+      "condition": "payload.get('debug_flag', False) == True",
+      "status": "active",
+      "created_by": "e2e_test",
+      "created_at": "2025-06-18T16:49:35.538788",
+      "hit_count": 0,
+      "max_hits": null,
+      "expires_at": null,
+      "enabled": true
+    }
+  ]
+}

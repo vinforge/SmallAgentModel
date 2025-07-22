@@ -1,0 +1,60 @@
+control_params:
+  completion_threshold: 0.92
+  max_tokens: 500
+  min_steps: 2
+  plateau_patience: 3
+  plateau_threshold: 0.005
+  # Phase 5B: Dissonance-aware control parameters
+  dissonance_threshold: 0.85      # Score above which the model is considered highly conflicted
+  dissonance_patience: 4          # Number of steps to tolerate high dissonance before halting
+  enable_dissonance_control: true # Whether to enable dissonance-based control
+deployment_params:
+  allow_user_override: true
+  collect_feedback: true
+  deployment_timestamp: 1749870278.14906
+  deployment_version: 4.0.0
+  enable_optimizations: true
+  enable_telemetry: true
+  log_interventions: true
+  production_deployment: true
+  show_performance_warning: true
+  tpv_enabled_by_default: false
+  use_model_quantization: false
+  use_onnx_runtime: false
+model_params:
+  architecture: qwen3-8b
+  discovered_at: '2025-06-13T16:57:30Z'
+  hidden_dimension: 4096
+  model_name: hf.co/unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF:Q4_K_M
+  vocab_size: 32000  # Required for dissonance monitoring
+runtime_params:
+  batch_size: 1
+  device: auto
+  dtype: float32
+tpv_params:
+  activation: gelu
+  dropout: 0.1
+  num_heads: 8
+
+# Phase 5B: Dissonance monitoring configuration
+dissonance_params:
+  enabled: true
+  calculation_mode: entropy  # Options: entropy, variance, kl_divergence, composite
+  fallback_mode: true
+  enable_profiling: true
+  device: auto
+  config:
+    entropy_epsilon: 1e-9
+    variance_threshold: 0.1
+    composite_weights:
+      entropy: 0.6
+      variance: 0.4
+
+# Trigger system configuration
+trigger_params:
+  complexity_threshold: 0.5  # Lowered from 0.7 for easier activation
+  confidence_threshold: 0.4  # Lowered from 0.6 for easier activation
+  enable_keyword_triggers: true
+  enable_complexity_analysis: true
+  enable_domain_detection: true
+  default_activation_rate: 0.5  # Increased from 0.3 for more frequent activation

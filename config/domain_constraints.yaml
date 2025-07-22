@@ -1,0 +1,222 @@
+# SAM Domain Constraints Configuration
+# PINN-inspired constraint management for policy enforcement and safety compliance
+
+constraints:
+  # Content Filtering Constraints
+  - name: "no_harmful_content"
+    type: "content_filter"
+    severity: "error"
+    description: "Block harmful or inappropriate content requests"
+    keywords:
+      - "violence"
+      - "hate"
+      - "illegal"
+      - "harmful"
+      - "dangerous"
+      - "weapon"
+      - "drug"
+      - "suicide"
+    enabled: true
+
+  - name: "no_personal_info_requests"
+    type: "content_filter"
+    severity: "warning"
+    description: "Warn about requests for personal information"
+    keywords:
+      - "social security"
+      - "credit card"
+      - "password"
+      - "personal data"
+      - "private information"
+    enabled: true
+
+  - name: "no_medical_advice"
+    type: "content_filter"
+    severity: "warning"
+    description: "Warn about medical advice requests"
+    keywords:
+      - "medical diagnosis"
+      - "treatment"
+      - "medication"
+      - "symptoms"
+      - "health advice"
+    enabled: true
+
+  # Skill Restriction Constraints
+  - name: "no_system_modification"
+    type: "skill_restriction"
+    severity: "critical"
+    description: "Block skills that can modify system files or settings"
+    blocked_skills:
+      - "SystemModificationSkill"
+      - "FileSystemSkill"
+      - "RegistryEditSkill"
+      - "AdminCommandSkill"
+    enabled: true
+
+  - name: "limit_web_access"
+    type: "skill_restriction"
+    severity: "warning"
+    description: "Limit web access to approved domains"
+    conditions:
+      domain_whitelist:
+        - "wikipedia.org"
+        - "github.com"
+        - "stackoverflow.com"
+        - "python.org"
+        - "openai.com"
+    enabled: false  # Disabled by default
+
+  - name: "safe_calculation_only"
+    type: "skill_restriction"
+    severity: "info"
+    description: "Allow only safe mathematical calculations"
+    allowed_skills:
+      - "CalculatorTool"
+      - "MathSolverSkill"
+      - "StatisticsSkill"
+    enabled: false  # Only enforce when needed
+
+  # Resource Limit Constraints
+  - name: "memory_retrieval_limit"
+    type: "resource_limit"
+    severity: "warning"
+    description: "Limit number of memory retrieval results"
+    max_value: 50
+    enabled: true
+
+  - name: "execution_time_limit"
+    type: "resource_limit"
+    severity: "error"
+    description: "Limit total execution time to prevent runaway processes"
+    max_value: 300  # 5 minutes
+    enabled: true
+
+  - name: "web_request_limit"
+    type: "resource_limit"
+    severity: "warning"
+    description: "Limit number of web requests per session"
+    max_value: 10
+    enabled: true
+
+  - name: "token_usage_limit"
+    type: "resource_limit"
+    severity: "warning"
+    description: "Limit token usage for response generation"
+    max_value: 2000
+    enabled: true
+
+  # Safety Policy Constraints
+  - name: "safe_web_browsing"
+    type: "safety_policy"
+    severity: "warning"
+    description: "Ensure web URLs are properly formatted and safe"
+    pattern: "^https?://[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(/.*)?$"
+    enabled: true
+
+  - name: "no_code_execution"
+    type: "safety_policy"
+    severity: "error"
+    description: "Block direct code execution requests"
+    keywords:
+      - "execute code"
+      - "run script"
+      - "eval("
+      - "exec("
+      - "subprocess"
+    enabled: true
+
+  - name: "data_privacy_protection"
+    type: "safety_policy"
+    severity: "error"
+    description: "Protect user data privacy"
+    keywords:
+      - "share data"
+      - "export data"
+      - "send information"
+      - "upload file"
+    enabled: true
+
+  # Temporal Limit Constraints
+  - name: "session_duration_limit"
+    type: "temporal_limit"
+    severity: "warning"
+    description: "Limit session duration"
+    max_value: 3600  # 1 hour
+    enabled: true
+
+  - name: "skill_execution_timeout"
+    type: "temporal_limit"
+    severity: "error"
+    description: "Timeout for individual skill execution"
+    max_value: 60  # 1 minute per skill
+    enabled: true
+
+  # Domain-Specific Constraints
+  - name: "educational_content_only"
+    type: "domain_specific"
+    severity: "info"
+    description: "Prefer educational and informational content"
+    keywords:
+      - "learn"
+      - "education"
+      - "tutorial"
+      - "explain"
+      - "how to"
+    enabled: false  # Domain-specific, enable as needed
+
+  - name: "business_appropriate"
+    type: "domain_specific"
+    severity: "warning"
+    description: "Ensure content is appropriate for business environment"
+    keywords:
+      - "professional"
+      - "business"
+      - "corporate"
+      - "workplace"
+    enabled: false  # Domain-specific, enable as needed
+
+  - name: "research_focused"
+    type: "domain_specific"
+    severity: "info"
+    description: "Focus on research and academic content"
+    keywords:
+      - "research"
+      - "academic"
+      - "study"
+      - "analysis"
+      - "scientific"
+    enabled: false  # Domain-specific, enable as needed
+
+# Global Settings
+settings:
+  strict_mode: false
+  default_severity: "warning"
+  max_violations_per_session: 10
+  violation_cooldown_minutes: 5
+  enable_violation_logging: true
+  enable_constraint_adaptation: true
+
+# Constraint Categories for Easy Management
+categories:
+  safety:
+    - "no_harmful_content"
+    - "no_code_execution"
+    - "data_privacy_protection"
+    - "safe_web_browsing"
+  
+  security:
+    - "no_system_modification"
+    - "no_personal_info_requests"
+    - "limit_web_access"
+  
+  performance:
+    - "memory_retrieval_limit"
+    - "execution_time_limit"
+    - "web_request_limit"
+    - "token_usage_limit"
+  
+  compliance:
+    - "no_medical_advice"
+    - "business_appropriate"
+    - "educational_content_only"
