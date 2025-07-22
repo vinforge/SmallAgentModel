@@ -92,7 +92,7 @@ def setup_master_password():
             break
 
         print("\n🔐 Setting up secure enclave...")
-        success = security_manager.setup_master_password(password)
+        success = security_manager.setup_security(password)
 
         if success:
             print("✅ Master password setup successful!")
@@ -199,7 +199,7 @@ def reset_encryption_setup(security_manager):
             break
 
         print("\n🔐 Setting up new secure enclave...")
-        success = security_manager.setup_master_password(password)
+        success = security_manager.setup_security(password)
 
         if success:
             print("✅ New master password setup successful!")

@@ -96,7 +96,7 @@ class SecurityMiddleware:
             return {'success': False, 'error': 'Setup already completed'}
         
         try:
-            success = self.security_manager.setup_master_password(password)
+            success = self.security_manager.setup_security(password)
             
             if success:
                 return {
