@@ -245,12 +245,48 @@ def create_document_rag_pipeline(memory_store=None, encrypted_store=None, **kwar
         **kwargs
     )
 
+# v2 RAG Components (new)
+try:
+    from .v2_rag_pipeline import (
+        V2RAGPipeline,
+        V2RAGConfig,
+        V2RAGResult,
+        get_v2_rag_pipeline,
+        query_v2_rag
+    )
+
+    from .rag_pipeline_router import (
+        RAGPipelineRouter,
+        PipelineSelection,
+        get_rag_pipeline_router,
+        route_rag_query
+    )
+
+    V2_COMPONENTS_AVAILABLE = True
+except ImportError:
+    V2_COMPONENTS_AVAILABLE = False
+
 # Export main classes for direct import
 __all__ = [
+    # v1 RAG Components
     'DocumentAwareRAGPipeline',
     'SemanticDocumentSearchEngine',
-    'DocumentContextAssembler', 
+    'DocumentContextAssembler',
     'DocumentAwareQueryRouter',
     'QueryStrategy',
     'create_document_rag_pipeline'
 ]
+
+# Add v2 components if available
+if V2_COMPONENTS_AVAILABLE:
+    __all__.extend([
+        'V2RAGPipeline',
+        'V2RAGConfig',
+        'V2RAGResult',
+        'get_v2_rag_pipeline',
+        'query_v2_rag',
+        'RAGPipelineRouter',
+        'PipelineSelection',
+        'get_rag_pipeline_router',
+        'route_rag_query'
+    ])

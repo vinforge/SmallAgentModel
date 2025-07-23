@@ -42,6 +42,28 @@ from .idpp_coordinator import (
     get_idpp_coordinator
 )
 
+# v2 Ingestion Pipeline Components
+from .v2_document_processor import (
+    V2DocumentProcessor,
+    V2ProcessingResult,
+    get_v2_document_processor,
+    process_document_v2
+)
+
+from .v2_ingestion_pipeline import (
+    V2IngestionPipeline,
+    V2IngestionConfig,
+    get_v2_ingestion_pipeline,
+    ingest_document_v2
+)
+
+from .document_chunker import (
+    V2DocumentChunker,
+    ChunkingStrategy,
+    ChunkResult,
+    get_v2_chunker
+)
+
 __all__ = [
     # Document Classification
     'DocumentClassifier',
@@ -74,7 +96,21 @@ __all__ = [
     # Main Coordinator
     'IDPPCoordinator',
     'ProcessedDocument',
-    'get_idpp_coordinator'
+    'get_idpp_coordinator',
+
+    # v2 Pipeline Components
+    'V2DocumentProcessor',
+    'V2ProcessingResult',
+    'get_v2_document_processor',
+    'process_document_v2',
+    'V2IngestionPipeline',
+    'V2IngestionConfig',
+    'get_v2_ingestion_pipeline',
+    'ingest_document_v2',
+    'V2DocumentChunker',
+    'ChunkingStrategy',
+    'ChunkResult',
+    'get_v2_chunker'
 ]
 
 # Version info

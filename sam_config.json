@@ -37,5 +37,23 @@
   "data_directory": "data",
   "logs_directory": "logs",
   "models_directory": "models",
-  "cache_directory": "cache"
+  "cache_directory": "cache",
+  "retrieval_pipeline": {
+    "version": "v1_chunking",
+    "v1_settings": {
+      "chunk_size": 1000,
+      "chunk_overlap": 200,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2"
+    },
+    "v2_settings": {
+      "embedder_model": "colbert-ir/colbertv2.0",
+      "fde_dim": 768,
+      "chunk_size": 512,
+      "chunk_overlap": 50,
+      "max_workers": 4,
+      "batch_size": 10,
+      "enable_deduplication": true,
+      "fallback_to_v1": true
+    }
+  }
 }
