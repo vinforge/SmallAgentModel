@@ -13,7 +13,17 @@ from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
 try:
-    from PyPDF2 import PdfReader
+    # Handle PyPDF2 version compatibility
+    try:
+        from PyPDF2 import PdfReader  # PyPDF2 3.0+
+        PDF_READER_CLASS = PdfReader
+    except ImportError:
+        try:
+            from PyPDF2 import PdfFileReader as PdfReader  # PyPDF2 2.x
+            PDF_READER_CLASS = PdfReader
+        except ImportError:
+            PDF_READER_CLASS = None
+
     from langchain.text_splitter import RecursiveCharacterTextSplitter
     from langchain.vectorstores import FAISS
     from langchain.schema import Document
@@ -29,6 +39,7 @@ try:
 except ImportError as e:
     logging.warning(f"PDF processing dependencies not available: {e}")
     OFFLINE_EMBEDDINGS_AVAILABLE = False
+    PDF_READER_CLASS = None
     # Fallback imports for basic functionality
     pass
 
@@ -106,13 +117,32 @@ class ProvenPDFProcessor:
             logger.info(f"📄 Processing PDF: {pdf_name}")
             
             # Step 1: Extract text from PDF
-            pdf_reader = PdfReader(pdf_path)
-            text = ""
-            
-            for page_num, page in enumerate(pdf_reader.pages):
-                page_text = page.extract_text()
-                text += page_text + "\n"
-                logger.debug(f"   Extracted page {page_num + 1}: {len(page_text)} characters")
+            if PDF_READER_CLASS is None:
+                return False, "PyPDF2 not available. Please install: pip install PyPDF2"
+
+            # Handle both PyPDF2 2.x and 3.x
+            try:
+                if hasattr(PDF_READER_CLASS, '__name__') and 'PdfFileReader' in PDF_READER_CLASS.__name__:
+                    # PyPDF2 2.x
+                    with open(pdf_path, 'rb') as file:
+                        pdf_reader = PDF_READER_CLASS(file)
+                        text = ""
+                        for page_num in range(pdf_reader.numPages):
+                            page = pdf_reader.getPage(page_num)
+                            page_text = page.extractText()
+                            text += page_text + "\n"
+                            logger.debug(f"   Extracted page {page_num + 1}: {len(page_text)} characters")
+                else:
+                    # PyPDF2 3.x
+                    pdf_reader = PDF_READER_CLASS(pdf_path)
+                    text = ""
+                    for page_num, page in enumerate(pdf_reader.pages):
+                        page_text = page.extract_text()
+                        text += page_text + "\n"
+                        logger.debug(f"   Extracted page {page_num + 1}: {len(page_text)} characters")
+            except Exception as pdf_error:
+                logger.error(f"PyPDF2 extraction failed: {pdf_error}")
+                return False, f"Failed to extract text from PDF: {str(pdf_error)}"
             
             if not text.strip():
                 return False, "No text content found in PDF"

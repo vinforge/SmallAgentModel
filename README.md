@@ -27,18 +27,21 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
 ## 🚀 **Quick Start**
 
 ### **Prerequisites**
-- Python 3.8 or higher
-- 4GB+ RAM recommended
-- Modern web browser
-- Internet connection (for initial model downloads)
-- **Optional**: [Ollama](https://ollama.ai) for enhanced AI responses
+- **Python 3.10+** (tested with Python 3.12)
+- **4GB+ RAM** recommended
+- **Modern web browser**
+- **Internet connection** (for initial model downloads)
+- **git** for cloning the repository
+- **[Ollama](https://ollama.ai)** installed and running for AI responses
 
 ### **Installation**
 
+#### **🪟 Windows / 🍎 macOS**
+
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/sam.git
-   cd sam
+   git clone https://github.com/vinforge/SmallAgentModel.git
+   cd SmallAgentModel
    ```
 
 2. **Install dependencies:**
@@ -63,10 +66,92 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
    python start_sam.py
    ```
 
-6. **Open your browser:**
-   - Go to `http://localhost:8502`
-   - Enter your Master Password
-   - Start chatting with SAM!
+#### **🐧 Linux (Recommended - Virtual Environment)**
+
+**⚠️ Modern Linux systems require virtual environments due to PEP 668 restrictions.**
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/vinforge/SmallAgentModel.git
+   cd SmallAgentModel
+   ```
+
+2. **Create and activate virtual environment:**
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+3. **Upgrade pip and install core dependencies:**
+   ```bash
+   pip install --upgrade pip
+   pip install streamlit==1.42.0 cryptography>=41.0.0,<43.0.0 numpy pandas requests "PyPDF2>=3.0.0,<4.0.0"
+   ```
+
+4. **Set up AI models:**
+   ```bash
+   python setup_models.py
+   ```
+
+5. **Set up encryption:**
+   ```bash
+   python setup_encryption.py
+   ```
+
+6. **Start SAM:**
+   ```bash
+   python start_sam.py
+   ```
+
+**💡 To restart SAM later:**
+```bash
+source .venv/bin/activate
+python start_sam.py
+```
+
+#### **🌐 Access SAM**
+- Navigate to `http://localhost:8502`
+- Enter your Master Password
+- Start chatting with SAM!
+
+---
+
+## 🔧 **Linux Troubleshooting**
+
+### **PEP 668 "Externally Managed Environment" Error**
+
+If you see this error:
+```
+error: externally-managed-environment
+```
+
+**Solution**: Use a virtual environment (required on modern Linux):
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install streamlit==1.42.0 cryptography numpy pandas requests
+```
+
+### **Missing python3-venv**
+
+If virtual environment creation fails:
+```bash
+sudo apt update
+sudo apt install python3-venv python3-dev build-essential
+```
+
+### **Permission Issues**
+
+Never use `sudo pip install` - always use virtual environments:
+```bash
+# ❌ Don't do this
+sudo pip install streamlit
+
+# ✅ Do this instead
+python3 -m venv .venv
+source .venv/bin/activate
+pip install streamlit
+```
 
 ---
 

@@ -553,12 +553,22 @@ class VettingAnalyzer:
             # Try using PyPDF2 if available
             try:
                 import PyPDF2
-                with open(file_path, 'rb') as f:
-                    reader = PyPDF2.PdfReader(f)
+                try:
+                    # PyPDF2 3.x
+                    reader = PyPDF2.PdfReader(str(file_path))
                     text = ""
                     for page in reader.pages[:5]:  # First 5 pages
                         text += page.extract_text()
                     return text
+                except AttributeError:
+                    # PyPDF2 2.x fallback
+                    with open(file_path, 'rb') as f:
+                        reader = PyPDF2.PdfFileReader(f)
+                        text = ""
+                        for i in range(min(5, reader.numPages)):  # First 5 pages
+                            page = reader.getPage(i)
+                            text += page.extractText()
+                        return text
             except ImportError:
                 pass
 

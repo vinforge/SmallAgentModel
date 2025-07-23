@@ -1,6 +1,6 @@
 #!/bin/bash
-# SAM Community Edition Beta - Launcher Script for Linux/macOS
-# This script starts SAM with proper error handling and logging
+# SAM Community Edition - Enhanced Launcher Script for Linux/macOS
+# This script handles virtual environments and modern Linux PEP 668 restrictions
 
 set -e  # Exit on any error
 
@@ -40,30 +40,51 @@ port_in_use() {
 
 # Main function
 main() {
-    print_status "Starting SAM Community Edition Beta..."
+    print_status "Starting SAM Community Edition..."
     echo "=================================="
-    
+
     # Check if we're in the right directory
     if [ ! -f "start_sam.py" ]; then
         print_error "start_sam.py not found. Please run this script from the SAM directory."
         exit 1
     fi
-    
-    # Check Python
-    if ! command_exists python3; then
-        if ! command_exists python; then
-            print_error "Python not found. Please install Python 3.8+ and try again."
+
+    # Handle virtual environment for modern Linux systems
+    if [ ! -d ".venv" ]; then
+        print_warning "No virtual environment found. Creating one for PEP 668 compliance..."
+        python3 -m venv .venv || {
+            print_error "Failed to create virtual environment. Please ensure python3-venv is installed:"
+            print_error "  sudo apt install python3-venv"
             exit 1
-        else
-            PYTHON_CMD="python"
-        fi
-    else
-        PYTHON_CMD="python3"
+        }
+        print_success "Virtual environment created"
     fi
+
+    # Activate virtual environment
+    print_status "Activating virtual environment..."
+    source .venv/bin/activate || {
+        print_error "Failed to activate virtual environment"
+        exit 1
+    }
+    print_success "Virtual environment activated"
     
+    # Check Python (use python from virtual environment)
+    PYTHON_CMD="python"  # Virtual environment should have python available
+
     # Check Python version
     PYTHON_VERSION=$($PYTHON_CMD -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-    print_status "Using Python $PYTHON_VERSION"
+    print_status "Using Python $PYTHON_VERSION (virtual environment)"
+
+    # Install/upgrade core dependencies
+    print_status "Installing/upgrading core dependencies..."
+    pip install --upgrade pip >/dev/null 2>&1 || print_warning "Could not upgrade pip"
+
+    # Install essential packages for SAM
+    pip install streamlit==1.42.0 cryptography>=41.0.0,<43.0.0 numpy pandas requests "PyPDF2>=3.0.0,<4.0.0" >/dev/null 2>&1 || {
+        print_warning "Some dependencies may need manual installation"
+        print_warning "Run: pip install streamlit==1.42.0 cryptography numpy pandas requests PyPDF2"
+    }
+    print_success "Dependencies ready"
     
     # Check if Ollama is installed
     if ! command_exists ollama; then

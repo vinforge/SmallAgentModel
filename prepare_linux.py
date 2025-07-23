@@ -17,9 +17,10 @@ import platform
 def print_header():
     """Print preparation header."""
     print("=" * 60)
-    print("🐧 SAM Linux Preparation")
+    print("🐧 SAM Linux Preparation (PEP 668 Compatible)")
     print("=" * 60)
-    print("Preparing your Linux system for SAM...")
+    print("Preparing your Linux system for SAM with virtual environment...")
+    print("This handles modern Linux PEP 668 restrictions properly.")
     print()
 
 def check_system():
@@ -32,23 +33,58 @@ def check_system():
     print(f"✅ Linux system: {platform.platform()}")
     return True
 
+def setup_virtual_environment():
+    """Set up virtual environment for PEP 668 compliance."""
+    print("\n🔧 Setting up virtual environment...")
+
+    import os
+    import subprocess
+
+    if os.path.exists(".venv"):
+        print("✅ Virtual environment already exists")
+        return True
+
+    try:
+        # Create virtual environment
+        print("📦 Creating virtual environment...")
+        result = subprocess.run([sys.executable, "-m", "venv", ".venv"],
+                              capture_output=True, text=True, timeout=60)
+
+        if result.returncode == 0:
+            print("✅ Virtual environment created successfully")
+            return True
+        else:
+            print(f"❌ Failed to create virtual environment: {result.stderr}")
+            print("💡 Try installing python3-venv:")
+            print("   sudo apt install python3-venv")
+            return False
+
+    except subprocess.TimeoutExpired:
+        print("❌ Virtual environment creation timed out")
+        return False
+    except Exception as e:
+        print(f"❌ Error creating virtual environment: {e}")
+        return False
+
 def install_essential_packages():
-    """Install the essential packages needed for SAM."""
+    """Install the essential packages needed for SAM in virtual environment."""
     print("\n📦 Installing essential packages for SAM...")
-    
+
     # Essential packages in order of importance (version-pinned)
-    essential_packages = ["streamlit==1.42.0", "numpy>=1.21.0,<2.0.0", "pandas>=1.3.0,<3.0.0", "requests>=2.25.0,<3.0.0"]
+    essential_packages = ["streamlit==1.42.0", "cryptography>=41.0.0,<43.0.0", "numpy", "pandas", "requests", "PyPDF2>=3.0.0,<4.0.0"]
     
     success_count = 0
     
     for package in essential_packages:
         print(f"\n🔄 Installing {package}...")
         
-        # Try multiple installation methods for each package
+        # Use virtual environment pip (no --user needed)
+        venv_python = ".venv/bin/python"
+        venv_pip = ".venv/bin/pip"
+
         methods = [
-            [sys.executable, "-m", "pip", "install", "--user", package],
-            ["pip3", "install", "--user", package],
-            [sys.executable, "-m", "pip", "install", package]
+            [venv_pip, "install", package],
+            [venv_python, "-m", "pip", "install", package]
         ]
         
         package_installed = False
@@ -146,11 +182,17 @@ def provide_next_steps(success):
 def main():
     """Main preparation function."""
     print_header()
-    
+
     # Check system
     if not check_system():
         return False
-    
+
+    # Set up virtual environment first
+    venv_success = setup_virtual_environment()
+    if not venv_success:
+        print("❌ Cannot proceed without virtual environment")
+        return False
+
     # Install essential packages
     install_success = install_essential_packages()
     

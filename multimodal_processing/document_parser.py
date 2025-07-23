@@ -187,18 +187,34 @@ class MultimodalDocumentParser:
     def _parse_pdf_with_pypdf2(self, file_path: Path) -> List[MultimodalContent]:
         """Parse PDF using PyPDF2 (basic text extraction)."""
         import PyPDF2
-        
+
         content_blocks = []
-        
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            
-            for page_num, page in enumerate(pdf_reader.pages, 1):
-                text = page.extract_text()
+
+        try:
+            # Handle PyPDF2 version compatibility
+            try:
+                # PyPDF2 3.x
+                pdf_reader = PyPDF2.PdfReader(str(file_path))
+                pages = pdf_reader.pages
+                extract_method = lambda page: page.extract_text()
+            except AttributeError:
+                # PyPDF2 2.x fallback
+                with open(file_path, 'rb') as file:
+                    pdf_reader = PyPDF2.PdfFileReader(file)
+                    pages = [pdf_reader.getPage(i) for i in range(pdf_reader.numPages)]
+                    extract_method = lambda page: page.extractText()
+
+            for page_num, page in enumerate(pages, 1):
+                text = extract_method(page)
                 if text and text.strip():
                     text_blocks = self._process_text_content(text, f"page_{page_num}")
                     content_blocks.extend(text_blocks)
-        
+
+        except Exception as e:
+            logger.error(f"PyPDF2 parsing failed: {e}")
+            # Return empty content blocks rather than failing completely
+            pass
+
         return content_blocks
     
     def _parse_docx(self, file_path: Path) -> List[MultimodalContent]:
