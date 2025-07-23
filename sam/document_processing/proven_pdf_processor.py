@@ -24,9 +24,15 @@ try:
         except ImportError:
             PDF_READER_CLASS = None
 
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
-    from langchain.vectorstores import FAISS
-    from langchain.schema import Document
+    # Try to import langchain components (optional)
+    try:
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        from langchain.vectorstores import FAISS
+        from langchain.schema import Document
+        LANGCHAIN_AVAILABLE = True
+    except ImportError:
+        LANGCHAIN_AVAILABLE = False
+        logging.warning("LangChain not available - using fallback text processing")
 
     # Use offline embeddings instead of OpenAI
     try:
@@ -39,11 +45,60 @@ try:
 except ImportError as e:
     logging.warning(f"PDF processing dependencies not available: {e}")
     OFFLINE_EMBEDDINGS_AVAILABLE = False
+    LANGCHAIN_AVAILABLE = False
     PDF_READER_CLASS = None
-    # Fallback imports for basic functionality
-    pass
 
 logger = logging.getLogger(__name__)
+
+
+class FallbackTextSplitter:
+    """Fallback text splitter when langchain is not available."""
+
+    def __init__(self, chunk_size=1000, chunk_overlap=200):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+
+    def split_text(self, text: str) -> List[str]:
+        """Split text into chunks."""
+        if not text:
+            return []
+
+        chunks = []
+        start = 0
+
+        while start < len(text):
+            end = start + self.chunk_size
+
+            # Try to break at sentence boundaries
+            if end < len(text):
+                # Look for sentence endings within the last 200 characters
+                search_start = max(start, end - 200)
+                sentence_end = -1
+
+                for i in range(end, search_start, -1):
+                    if text[i] in '.!?':
+                        sentence_end = i + 1
+                        break
+
+                if sentence_end > 0:
+                    end = sentence_end
+
+            chunk = text[start:end].strip()
+            if chunk:
+                chunks.append(chunk)
+
+            # Move start position with overlap
+            start = end - self.chunk_overlap if end < len(text) else end
+
+        return chunks
+
+
+class FallbackDocument:
+    """Fallback document class when langchain is not available."""
+
+    def __init__(self, page_content: str, metadata: dict = None):
+        self.page_content = page_content
+        self.metadata = metadata or {}
 
 class OfflineEmbeddings:
     """Offline embeddings using SentenceTransformers."""
@@ -150,13 +205,18 @@ class ProvenPDFProcessor:
             logger.info(f"   ✅ Extracted {len(text)} characters from {len(pdf_reader.pages)} pages")
             
             # Step 2: Split text into chunks
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=200,
-                length_function=len
-            )
-            
-            chunks = text_splitter.split_text(text=text)
+            if LANGCHAIN_AVAILABLE:
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=200,
+                    length_function=len
+                )
+                chunks = text_splitter.split_text(text=text)
+            else:
+                # Use fallback text splitter
+                text_splitter = FallbackTextSplitter(chunk_size=1000, chunk_overlap=200)
+                chunks = text_splitter.split_text(text)
+
             logger.info(f"   ✅ Split into {len(chunks)} chunks")
             
             # Step 3: Check for existing embeddings
@@ -172,13 +232,26 @@ class ProvenPDFProcessor:
                 # Create new embeddings
                 if not self.embeddings:
                     return False, "Embeddings not available"
-                
-                vector_store = FAISS.from_texts(chunks, embedding=self.embeddings)
-                
-                # Save embeddings for future use
-                with open(pickle_path, "wb") as f:
-                    pickle.dump(vector_store, f)
-                logger.info(f"   ✅ Created and saved new embeddings")
+
+                if LANGCHAIN_AVAILABLE:
+                    vector_store = FAISS.from_texts(chunks, embedding=self.embeddings)
+
+                    # Save embeddings for future use
+                    with open(pickle_path, "wb") as f:
+                        pickle.dump(vector_store, f)
+                    logger.info(f"   ✅ Created and saved new embeddings")
+                else:
+                    # Fallback: store chunks directly without FAISS
+                    vector_store = {
+                        'chunks': chunks,
+                        'embeddings_available': OFFLINE_EMBEDDINGS_AVAILABLE,
+                        'pdf_name': pdf_name
+                    }
+
+                    # Save chunks for future use
+                    with open(pickle_path, "wb") as f:
+                        pickle.dump(vector_store, f)
+                    logger.info(f"   ✅ Created and saved text chunks (no vector embeddings)")
             
             # Step 4: Store the vector store
             self.vector_stores[pdf_name] = vector_store
@@ -218,20 +291,48 @@ class ProvenPDFProcessor:
             logger.info(f"🔍 Querying PDF '{target_pdf}' with: {query[:50]}...")
             
             # Step 1: Similarity search
-            docs = vector_store.similarity_search(query=query, k=k)
-            
-            if not docs:
-                return False, "No relevant content found in the PDF", {}
-            
-            logger.info(f"   📄 Found {len(docs)} relevant chunks")
+            if LANGCHAIN_AVAILABLE and hasattr(vector_store, 'similarity_search'):
+                # Use FAISS similarity search
+                docs = vector_store.similarity_search(query=query, k=k)
+
+                if not docs:
+                    return False, "No relevant content found in the PDF", {}
+
+                logger.info(f"   📄 Found {len(docs)} relevant chunks")
+
+                # Extract content from langchain documents
+                relevant_chunks = [doc.page_content.strip() for doc in docs]
+
+            else:
+                # Fallback: simple text search in chunks
+                if isinstance(vector_store, dict) and 'chunks' in vector_store:
+                    chunks = vector_store['chunks']
+                    query_lower = query.lower()
+
+                    # Simple relevance scoring based on keyword matching
+                    scored_chunks = []
+                    for chunk in chunks:
+                        chunk_lower = chunk.lower()
+                        score = sum(1 for word in query_lower.split() if word in chunk_lower)
+                        if score > 0:
+                            scored_chunks.append((score, chunk))
+
+                    # Sort by relevance and take top k
+                    scored_chunks.sort(reverse=True, key=lambda x: x[0])
+                    relevant_chunks = [chunk for _, chunk in scored_chunks[:k]]
+
+                    if not relevant_chunks:
+                        return False, "No relevant content found in the PDF", {}
+
+                    logger.info(f"   📄 Found {len(relevant_chunks)} relevant chunks (keyword search)")
+                else:
+                    return False, "Invalid vector store format", {}
 
             # Step 2: Generate response using offline approach
-            # Instead of using OpenAI LLM, return the relevant chunks directly
             response_parts = []
             response_parts.append(f"Based on the PDF '{target_pdf}', here's what I found:\n")
 
-            for i, doc in enumerate(docs, 1):
-                chunk_text = doc.page_content.strip()
+            for i, chunk_text in enumerate(relevant_chunks, 1):
                 response_parts.append(f"\n**Relevant Section {i}:**\n{chunk_text}\n")
 
             response = "\n".join(response_parts)
@@ -239,9 +340,9 @@ class ProvenPDFProcessor:
             # Prepare metadata
             metadata = {
                 "pdf_name": target_pdf,
-                "chunks_used": len(docs),
-                "processing_method": "offline_proven_pdf",
-                "chunks_content": [doc.page_content[:200] + "..." for doc in docs]
+                "chunks_used": len(relevant_chunks),
+                "processing_method": "offline_proven_pdf" if LANGCHAIN_AVAILABLE else "fallback_text_search",
+                "chunks_content": [chunk[:200] + "..." for chunk in relevant_chunks]
             }
             
             logger.info(f"   ✅ Generated offline response: {len(response)} characters")

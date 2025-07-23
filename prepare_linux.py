@@ -72,6 +72,9 @@ def install_essential_packages():
 
     # Essential packages in order of importance (version-pinned)
     essential_packages = ["streamlit==1.42.0", "cryptography>=41.0.0,<43.0.0", "numpy", "pandas", "requests", "PyPDF2>=3.0.0,<4.0.0"]
+
+    # Optional packages for enhanced functionality
+    optional_packages = ["langchain>=0.1.0", "faiss-cpu>=1.7.4"]
     
     success_count = 0
     
@@ -114,10 +117,58 @@ def install_essential_packages():
         if not package_installed:
             print(f"❌ Failed to install {package}")
     
-    print(f"\n📊 Installation Results: {success_count}/{len(essential_packages)} packages installed")
-    
+    print(f"\n📊 Essential Installation Results: {success_count}/{len(essential_packages)} packages installed")
+
+    # Install optional packages for enhanced functionality
+    print(f"\n🔄 Installing optional packages for enhanced PDF processing...")
+    optional_success_count = 0
+
+    for package in optional_packages:
+        print(f"\n🔄 Installing {package} (optional)...")
+
+        venv_python = ".venv/bin/python"
+        venv_pip = ".venv/bin/pip"
+
+        methods = [
+            [venv_pip, "install", package],
+            [venv_python, "-m", "pip", "install", package]
+        ]
+
+        package_installed = False
+
+        for method in methods:
+            try:
+                result = subprocess.run(
+                    method,
+                    capture_output=True,
+                    text=True,
+                    timeout=180  # Longer timeout for optional packages
+                )
+
+                if result.returncode == 0:
+                    print(f"✅ {package} installed successfully")
+                    package_installed = True
+                    optional_success_count += 1
+                    break
+
+            except subprocess.TimeoutExpired:
+                print(f"⚠️  {package} installation timeout")
+            except FileNotFoundError:
+                continue  # Try next method
+            except Exception as e:
+                print(f"⚠️  {package} installation error: {e}")
+
+        if not package_installed:
+            print(f"⚠️  Failed to install {package} (optional - SAM will use fallback)")
+
+    print(f"\n📊 Optional Installation Results: {optional_success_count}/{len(optional_packages)} packages installed")
+
     if success_count >= 3:  # At least streamlit, numpy, pandas
         print("✅ Essential packages installed - SAM should start successfully")
+        if optional_success_count > 0:
+            print("✅ Enhanced PDF processing available")
+        else:
+            print("⚠️  Using fallback PDF processing (still functional)")
         return True
     else:
         print("⚠️  Some essential packages missing - SAM may have issues")

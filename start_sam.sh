@@ -84,6 +84,13 @@ main() {
         print_warning "Some dependencies may need manual installation"
         print_warning "Run: pip install streamlit==1.42.0 cryptography numpy pandas requests PyPDF2"
     }
+
+    # Install optional packages for enhanced PDF processing
+    print_status "Installing optional packages for enhanced functionality..."
+    pip install langchain faiss-cpu >/dev/null 2>&1 || {
+        print_warning "Optional packages failed - SAM will use fallback PDF processing"
+    }
+
     print_success "Dependencies ready"
     
     # Check if Ollama is installed

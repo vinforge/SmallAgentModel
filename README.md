@@ -88,17 +88,23 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
    pip install streamlit==1.42.0 cryptography>=41.0.0,<43.0.0 numpy pandas requests "PyPDF2>=3.0.0,<4.0.0"
    ```
 
-4. **Set up AI models:**
+4. **Install optional packages for enhanced PDF processing:**
+   ```bash
+   pip install langchain faiss-cpu
+   ```
+   *Note: If these fail, SAM will use fallback PDF processing (still functional)*
+
+5. **Set up AI models:**
    ```bash
    python setup_models.py
    ```
 
-5. **Set up encryption:**
+6. **Set up encryption:**
    ```bash
    python setup_encryption.py
    ```
 
-6. **Start SAM:**
+7. **Start SAM:**
    ```bash
    python start_sam.py
    ```
