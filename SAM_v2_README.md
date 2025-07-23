@@ -37,26 +37,54 @@ SAM v2 implements the MUVERA (Multi-Vector Retrieval Architecture) approach usin
 
 ## 📦 Installation
 
-### Required Dependencies
+### 🐧 Linux Installation (Recommended)
 
+**Automated Installation:**
 ```bash
-# Core dependencies
+# Clone the repository
+git clone https://github.com/vinforge/SmallAgentModel.git
+cd SmallAgentModel
+
+# Full installation with system dependencies
+./install_sam_v2_linux.sh
+
+# Or quick installation (minimal dependencies)
+./quick_install_v2.sh
+```
+
+**Manual Installation:**
+```bash
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install core v2 dependencies
 pip install colbert-ai>=0.2.19
 pip install chromadb>=0.4.0
 pip install numpy>=1.21.0
 pip install scipy>=1.7.0
 
-# Optional for enhanced features
-pip install python-docx  # For DOCX support
-pip install PyPDF2>=3.0.0  # For PDF processing
+# Install document processing
+pip install python-docx PyPDF2>=3.0.0
+
+# Install all requirements
+pip install -r requirements.txt
 ```
 
-### Quick Setup
+### 🪟 Windows/macOS Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/vinforge/SmallAgentModel.git
 cd SmallAgentModel
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate (Windows)
+.venv\Scripts\activate
+# Activate (macOS)
+source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
