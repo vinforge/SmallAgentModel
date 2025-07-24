@@ -1328,7 +1328,7 @@ def render_chat_document_upload():
                             # Check if this is a PDF file - use proven PDF processor
                             if uploaded_file.name.lower().endswith('.pdf'):
                                 # Use proven PDF processor for PDF files
-                                from sam.document_processing.proven_pdf_integration import handle_pdf_upload_for_sam
+                                from sam.document_processing.memory_bridge import enhanced_handle_pdf_upload_for_sam as handle_pdf_upload_for_sam
 
                                 # Save uploaded file temporarily
                                 import tempfile
