@@ -1,0 +1,14 @@
+Collecting python-docx
+  Downloading python_docx-1.2.0-py3-none-any.whl.metadata (2.0 kB)
+Collecting PyPDF2
+  Using cached pypdf2-3.0.1-py3-none-any.whl.metadata (6.8 kB)
+Collecting lxml>=3.1.0 (from python-docx)
+  Downloading lxml-6.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions>=4.9.0 in ./.venv/lib/python3.12/site-packages (from python-docx) (4.14.1)
+Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+Using cached pypdf2-3.0.1-py3-none-any.whl (232 kB)
+Downloading lxml-6.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (5.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.3/5.3 MB 47.7 MB/s eta 0:00:00
+Installing collected packages: PyPDF2, lxml, python-docx
+
+Successfully installed PyPDF2-3.0.1 lxml-6.0.0 python-docx-1.2.0

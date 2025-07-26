@@ -1,4 +1,7 @@
 #!/bin/bash
+export STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
+export STREAMLIT_SERVER_HEADLESS=true
+
 # SAM Community Edition - Enhanced Launcher Script for Linux/macOS
 # This script handles virtual environments and modern Linux PEP 668 restrictions
 
