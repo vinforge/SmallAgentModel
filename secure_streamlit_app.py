@@ -10773,7 +10773,7 @@ def render_document_library():
         from memory.memory_vectorstore import MemoryType
         document_memories = st.session_state.secure_memory_store.search_memories(
             query="",
-            memory_types=[MemoryType.DOCUMENT],
+            memory_type=MemoryType.DOCUMENT,
             max_results=1000
         )
         # PHASE 3: Handle different result types for document counting
@@ -10817,7 +10817,7 @@ def render_document_library():
             with st.spinner(f"🔍 Searching for '{doc_search}'..."):
                 search_results = st.session_state.secure_memory_store.search_memories(
                     query=doc_search,
-                    memory_types=[MemoryType.DOCUMENT],
+                    memory_type=MemoryType.DOCUMENT,
                     max_results=50
                 )
                 logger.info(f"Document search: '{doc_search}' returned {len(search_results)} results")
@@ -10826,7 +10826,7 @@ def render_document_library():
             with st.spinner("📄 Loading documents..."):
                 search_results = st.session_state.secure_memory_store.search_memories(
                     query="",
-                    memory_types=[MemoryType.DOCUMENT],
+                    memory_type=MemoryType.DOCUMENT,
                     max_results=100
                 )
                 logger.info(f"Document library loaded: {len(search_results)} total document chunks")
