@@ -228,8 +228,29 @@ class MemoryVectorStore:
             List of memory search results
         """
         try:
+            # Handle empty query - return all documents instead of empty list
             if not query.strip():
-                return []
+                # For empty queries, return all documents by using a very broad search
+                # Get all chunks directly without similarity filtering
+                all_results = []
+                for chunk_id, chunk in self.memory_chunks.items():
+                    # Handle memory_types filtering with proper type checking
+                    if memory_types:
+                        if isinstance(memory_types, list) and chunk.memory_type not in memory_types:
+                            continue
+                        elif not isinstance(memory_types, list) and chunk.memory_type != memory_types:
+                            continue
+
+                    result = MemorySearchResult(
+                        chunk=chunk,
+                        similarity=1.0,  # Max similarity for direct matches
+                        metadata={'search_type': 'all_documents'}
+                    )
+                    all_results.append(result)
+
+                # Sort by importance score and return
+                all_results.sort(key=lambda x: x.chunk.importance_score, reverse=True)
+                return all_results[:max_results]
             
             # Generate query embedding
             query_embedding = self._generate_embedding(query)
@@ -418,8 +439,30 @@ class MemoryVectorStore:
             List of RankedMemoryResult objects, sorted by hybrid score
         """
         try:
+            # Handle empty query - return all documents instead of empty list
             if not query.strip():
-                return []
+                # For empty queries, return all documents directly
+                all_results = []
+                for chunk_id, chunk in self.memory_chunks.items():
+                    # Handle memory_types filtering with proper type checking
+                    if memory_types:
+                        if isinstance(memory_types, list) and chunk.memory_type not in memory_types:
+                            continue
+                        elif not isinstance(memory_types, list) and chunk.memory_type != memory_types:
+                            continue
+
+                    result = RankedMemoryResult(
+                        chunk=chunk,
+                        similarity=1.0,
+                        relevance_score=chunk.importance_score,
+                        hybrid_score=chunk.importance_score,
+                        metadata={'search_type': 'all_documents'}
+                    )
+                    all_results.append(result)
+
+                # Sort by hybrid score and return
+                all_results.sort(key=lambda x: x.hybrid_score, reverse=True)
+                return all_results[:max_results]
 
             # Determine candidate count
             if initial_candidates is None and self.ranking_engine:
