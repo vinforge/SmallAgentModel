@@ -2111,14 +2111,56 @@ def render_chat_interface():
                                 filename = message.get('filename', 'the uploaded document')
                                 logger.info(f"📋 Generating summary for specific document: {filename}")
 
-                                # NEW FIX: Try direct PDF access first (most reliable)
-                                if filename.endswith('.pdf') and os.path.exists(filename):
-                                    logger.info(f"🔧 Using direct PDF access for {filename}")
+                                # NEW FIX: Try multiple methods to access the PDF document
+                                pdf_found = False
+                                pdf_path = None
+
+                                # Method 1: Check current directory (case insensitive)
+                                if filename.lower().endswith('.pdf'):
+                                    possible_paths = [
+                                        filename,  # Exact filename
+                                        filename.lower(),  # Lowercase version
+                                        filename.upper(),  # Uppercase version
+                                    ]
+
+                                    for path in possible_paths:
+                                        if os.path.exists(path):
+                                            pdf_path = path
+                                            pdf_found = True
+                                            logger.info(f"🔧 Found PDF at: {path}")
+                                            break
+
+                                # Method 2: Search common upload directories
+                                if not pdf_found:
+                                    search_dirs = [
+                                        "uploads",
+                                        "data/documents",
+                                        "temp",
+                                        "storage",
+                                        "sam/storage"
+                                    ]
+
+                                    for search_dir in search_dirs:
+                                        if os.path.exists(search_dir):
+                                            for root, dirs, files in os.walk(search_dir):
+                                                for file in files:
+                                                    if file.lower() == filename.lower():
+                                                        pdf_path = os.path.join(root, file)
+                                                        pdf_found = True
+                                                        logger.info(f"🔧 Found PDF in {search_dir}: {pdf_path}")
+                                                        break
+                                                if pdf_found:
+                                                    break
+                                            if pdf_found:
+                                                break
+
+                                if pdf_found and pdf_path:
+                                    logger.info(f"🔧 Using direct PDF access for {pdf_path}")
 
                                     try:
                                         import PyPDF2
 
-                                        with open(filename, 'rb') as file:
+                                        with open(pdf_path, 'rb') as file:
                                             pdf_reader = PyPDF2.PdfReader(file)
 
                                             # Extract text from first 10 pages for summary
@@ -2133,7 +2175,7 @@ def render_chat_interface():
                                                 # Create summary using extracted text
                                                 summary_response = f"""📋 **Document Summary: {filename}**
 
-**Document Type**: {filename.replace('.pdf', '').replace('_', ' ').title()}
+**Document Type**: {filename.replace('.PDF', '').replace('.pdf', '').replace('_', ' ').title()}
 
 **Content Overview**:
 Based on the extracted content, this document appears to be a technical manual or guide.
@@ -2145,6 +2187,7 @@ Based on the extracted content, this document appears to be a technical manual o
 - Total Pages: {len(pdf_reader.pages)}
 - Content Extracted: {len(text):,} characters
 - Processing Method: Direct PDF text extraction
+- File Location: {pdf_path}
 - Status: ✅ Successfully processed
 
 This summary was generated from the uploaded document content."""
@@ -2157,19 +2200,23 @@ This summary was generated from the uploaded document content."""
 
                                     except Exception as pdf_error:
                                         logger.warning(f"❌ Direct PDF access failed: {pdf_error}")
-                                        # Fall back to proven PDF integration
-                                        from sam.document_processing.proven_pdf_integration import query_pdf_for_sam
-                                        success, pdf_response, pdf_metadata = query_pdf_for_sam(
-                                            f"Provide a comprehensive summary of {filename}",
-                                            session_id="default"
-                                        )
+                                        pdf_found = False  # Fall through to other methods
 
-                                        if success and pdf_response:
-                                            logger.info(f"✅ Fallback PDF integration worked for {filename}")
-                                            response = pdf_response
-                                        else:
-                                            logger.warning(f"❌ All PDF methods failed, using general approach")
-                                            response = generate_response_with_conversation_buffer(summary_prompt, force_local=True)
+                                if not pdf_found:
+                                    # Fall back to proven PDF integration
+                                    logger.info(f"📄 PDF not found locally, trying proven PDF integration for {filename}")
+                                    from sam.document_processing.proven_pdf_integration import query_pdf_for_sam
+                                    success, pdf_response, pdf_metadata = query_pdf_for_sam(
+                                        f"Provide a comprehensive summary of {filename}",
+                                        session_id="default"
+                                    )
+
+                                    if success and pdf_response:
+                                        logger.info(f"✅ Fallback PDF integration worked for {filename}")
+                                        response = pdf_response
+                                    else:
+                                        logger.warning(f"❌ All PDF methods failed, using general approach")
+                                        response = generate_response_with_conversation_buffer(summary_prompt, force_local=True)
 
                                 else:
                                     # Original approach for non-PDF files or when file not found
