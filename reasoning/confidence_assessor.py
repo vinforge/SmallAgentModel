@@ -145,8 +145,21 @@ class ConfidenceAssessor:
             # Create assessment result with special handling for news queries
             query_type = self._classify_query_type(query)
 
+            # Check if this is a document-related query (more lenient confidence)
+            document_keywords = [
+                'summarize', 'summary', 'analyze', 'analysis', 'document', 'pdf', 'file',
+                'upload', 'content', 'text', 'report', 'paper', 'article', 'synthesis',
+                'comprehensive', 'overview', 'review', 'extract', 'key points', 'main points'
+            ]
+
+            is_document_query = any(keyword in query.lower() for keyword in document_keywords)
+
+            # For document queries, be more lenient with confidence thresholds
+            if is_document_query:
+                status = "CONFIDENT" if confidence_level in [ConfidenceLevel.MEDIUM, ConfidenceLevel.HIGH, ConfidenceLevel.VERY_HIGH] else "NOT_CONFIDENT"
+                logger.info(f"📄 Document query detected - using lenient confidence threshold")
             # For news queries, be more conservative about confidence
-            if query_type == 'news':
+            elif query_type == 'news':
                 status = "CONFIDENT" if confidence_level == ConfidenceLevel.VERY_HIGH else "NOT_CONFIDENT"
             else:
                 status = "CONFIDENT" if confidence_level in [ConfidenceLevel.HIGH, ConfidenceLevel.VERY_HIGH] else "NOT_CONFIDENT"

@@ -2106,8 +2106,25 @@ def render_chat_interface():
                             })
 
                             # Generate actual response using SAM's capabilities
+                            # Force document-specific context for summarization
                             try:
-                                response = generate_response_with_conversation_buffer(summary_prompt, force_local=True)
+                                # First try to get document-specific context
+                                filename = message.get('filename', 'the uploaded document')
+                                logger.info(f"📋 Generating summary for specific document: {filename}")
+
+                                # Search specifically for this document
+                                from sam.document_processing.proven_pdf_integration import query_pdf_for_sam
+                                success, pdf_response, pdf_metadata = query_pdf_for_sam(
+                                    f"Provide a comprehensive summary of {filename}",
+                                    session_id="default"
+                                )
+
+                                if success and pdf_response:
+                                    logger.info(f"✅ Document-specific summary generated for {filename}")
+                                    response = pdf_response
+                                else:
+                                    logger.warning(f"❌ Document-specific summary failed, using general approach")
+                                    response = generate_response_with_conversation_buffer(summary_prompt, force_local=True)
 
                                 # Add SAM's response to chat history
                                 st.session_state.chat_history.append({
@@ -2290,6 +2307,39 @@ def render_chat_interface():
                             "answer anyway"
                         ])
 
+                        # PRIORITY CHECK: Detect math queries BEFORE web search escalation
+                        # BUT exclude document-related queries to prevent false positives
+                        is_math_query = False
+                        try:
+                            from services.search_router import SmartQueryRouter
+                            router = SmartQueryRouter()
+
+                            # First check if this is a document-related query (exclude from math routing)
+                            document_keywords = [
+                                'summarize', 'summary', 'analyze', 'analysis', 'document', 'pdf', 'file',
+                                'upload', 'content', 'text', 'report', 'paper', 'article', 'synthesis',
+                                'comprehensive', 'overview', 'review', 'extract', 'key points', 'main points'
+                            ]
+
+                            is_document_query = any(keyword in prompt.lower() for keyword in document_keywords)
+
+                            # Only check for math if this is NOT a document query
+                            if not is_document_query:
+                                # Check for pure mathematical expressions
+                                if router.is_pure_math_expression(prompt):
+                                    is_math_query = True
+                                    logger.info(f"🧮 Math query detected, skipping web search escalation: {prompt}")
+                                else:
+                                    # Check for other mathematical signals
+                                    math_signals = router.detect_math_signals(prompt)
+                                    if math_signals and any(score > 0.7 for score in math_signals.values()):
+                                        is_math_query = True
+                                        logger.info(f"🧮 Math signals detected, skipping web search escalation: {prompt}")
+                            else:
+                                logger.info(f"📄 Document query detected, allowing normal routing: {prompt[:50]}...")
+                        except Exception as e:
+                            logger.warning(f"Math detection failed: {e}")
+
                         # Check if user is explicitly requesting web search (preserving 100% of functionality)
                         force_web_search = any(phrase in prompt.lower() for phrase in [
                             "search up", "search for", "search about", "look up", "look for",
@@ -2297,6 +2347,11 @@ def render_chat_interface():
                             "search the web", "web search", "online search", "internet search",
                             "current information", "latest information", "recent information"
                         ])
+
+                        # Override web search if this is a math query
+                        if is_math_query:
+                            force_web_search = False
+                            logger.info(f"🧮 Overriding web search for math query: {prompt}")
 
                         # Check if this exact query recently triggered an escalation
                         recent_escalation = False
@@ -9113,12 +9168,24 @@ def generate_draft_response(prompt: str, force_local: bool = False) -> str:
                 logger.info(f"🔍 Confidence assessment: {assessment.status} ({assessment.confidence_score:.2f}) for query: {prompt[:50]}...")
 
                 # Phase 8.3: Check if web search escalation should be offered (preserving 100% of functionality)
-                if assessment.status == "NOT_CONFIDENT":
+                # BUT exclude document queries from web search escalation
+                document_keywords = [
+                    'summarize', 'summary', 'analyze', 'analysis', 'document', 'pdf', 'file',
+                    'upload', 'content', 'text', 'report', 'paper', 'article', 'synthesis',
+                    'comprehensive', 'overview', 'review', 'extract', 'key points', 'main points'
+                ]
+
+                is_document_query = any(keyword in prompt.lower() for keyword in document_keywords)
+
+                if assessment.status == "NOT_CONFIDENT" and not is_document_query:
                     logger.info(f"🌐 Web search escalation triggered due to low confidence")
                     escalation_message, escalation_id = create_web_search_escalation_message(assessment, prompt)
                     logger.info(f"🌐 Created escalation message with ID: {escalation_id}")
                     logger.info(f"🌐 Returning escalation tuple: ({type(escalation_message)}, {type(escalation_id)})")
                     return escalation_message, escalation_id
+                elif assessment.status == "NOT_CONFIDENT" and is_document_query:
+                    logger.info(f"📄 Document query with low confidence - proceeding without web search escalation")
+                    # Continue with document processing instead of web search
 
             except Exception as e:
                 logger.warning(f"Confidence assessment failed: {e}")
@@ -9892,7 +9959,62 @@ def generate_response_with_conversation_buffer(prompt: str, force_local: bool = 
     - CRITICAL: Document-Aware RAG Pipeline for document-first query processing
     """
     try:
-        # PROVEN PDF PROCESSOR: Check for PDF queries FIRST (HIGHEST PRIORITY)
+        # PRIORITY 1: MATH CALCULATION CHECK (HIGHEST PRIORITY)
+        # Check for mathematical expressions BEFORE document processing
+        # BUT exclude document-related queries to prevent false positives
+        try:
+            from services.search_router import SmartQueryRouter
+            from services.smart_query_handler import SmartQueryHandler
+
+            router = SmartQueryRouter()
+
+            # First check if this is a document-related query (exclude from math routing)
+            document_keywords = [
+                'summarize', 'summary', 'analyze', 'analysis', 'document', 'pdf', 'file',
+                'upload', 'content', 'text', 'report', 'paper', 'article', 'synthesis',
+                'comprehensive', 'overview', 'review', 'extract', 'key points', 'main points'
+            ]
+
+            is_document_query = any(keyword in prompt.lower() for keyword in document_keywords)
+
+            # Only proceed with math detection if this is NOT a document query
+            if not is_document_query:
+                # Check for pure mathematical expressions first
+                if router.is_pure_math_expression(prompt):
+                    logger.info(f"🧮 PURE MATH DETECTED: '{prompt}' - routing to calculator")
+
+                    handler = SmartQueryHandler()
+                    response = handler.process_query(prompt)
+
+                    if response.success:
+                        logger.info(f"✅ Math calculation successful: {response.route_type}")
+                        return response.content
+                    else:
+                        logger.warning(f"❌ Math calculation failed: {response.metadata}")
+                        # Continue to fallback processing
+
+                # Check for other mathematical signals
+                math_signals = router.detect_math_signals(prompt)
+                if math_signals and any(score > 0.7 for score in math_signals.values()):
+                    logger.info(f"🧮 Math signals detected: '{prompt}' - routing to smart handler")
+
+                    handler = SmartQueryHandler()
+                    response = handler.process_query(prompt)
+
+                    if response.success:
+                        logger.info(f"✅ Math query successful: {response.route_type}")
+                        return response.content
+                    else:
+                        logger.warning(f"❌ Math query failed: {response.metadata}")
+                        # Continue to fallback processing
+            else:
+                logger.info(f"📄 Document query detected, skipping math routing: {prompt[:50]}...")
+
+        except Exception as e:
+            logger.warning(f"Math routing failed: {e}")
+            # Continue to fallback processing
+
+        # PRIORITY 2: PROVEN PDF PROCESSOR: Check for PDF queries
         # This uses the proven PDF chatbot approach for reliable document recall
         try:
             from sam.document_processing.proven_pdf_integration import (
