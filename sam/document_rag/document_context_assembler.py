@@ -139,17 +139,32 @@ class DocumentContextAssembler:
     
     def _format_chunk_section(self, chunk: DocumentChunk, citation_ref: str) -> str:
         """Format a single chunk into a context section."""
+        # FIXED: Get document name from metadata if chunk.document_name is empty/unknown
+        document_name = chunk.document_name
+
+        # If document name is empty, unknown, or generic, try to get from metadata
+        if not document_name or document_name.lower() in ['unknown', '', 'unknown document']:
+            if hasattr(chunk, 'metadata') and chunk.metadata:
+                # Try various metadata fields for the filename
+                document_name = (
+                    chunk.metadata.get('extra_filename') or
+                    chunk.metadata.get('filename') or
+                    chunk.metadata.get('source_type') or
+                    chunk.metadata.get('file_name') or
+                    'Unknown Document'
+                )
+
         # Create source line with metadata
-        source_line = f"[Source: {citation_ref} - '{chunk.document_name}'"
-        
+        source_line = f"[Source: {citation_ref} - '{document_name}'"
+
         if chunk.block_number is not None:
             source_line += f", Block: {chunk.block_number}"
-        
+
         source_line += f", Relevance: {chunk.similarity_score:.2f}"
-        
+
         if chunk.content_type:
             source_line += f", Type: {chunk.content_type}"
-        
+
         source_line += "]\n"
         
         # Clean and format content

@@ -3049,6 +3049,7 @@ def render_integrated_memory_control_center():
             "💻 Command Interface",
             "📁 Bulk Ingestion",
             "🔑 API Key Manager",
+            "🧠🎨 Dream Canvas",
             "🏆 Memory Ranking",
             "📊 Memory Analytics",
             "🧠⚡ SLP Analytics",
@@ -3109,6 +3110,8 @@ def render_integrated_memory_control_center():
             render_bulk_ingestion()
         elif memory_page == "🔑 API Key Manager":
             render_api_key_manager()
+        elif memory_page == "🧠🎨 Dream Canvas":
+            render_dream_canvas_integrated()
         elif memory_page == "🏆 Memory Ranking":
             render_memory_ranking_integrated()
         elif memory_page == "📊 Memory Analytics":
@@ -10159,12 +10162,20 @@ def generate_response_with_conversation_buffer(prompt: str, force_local: bool = 
 
         try:
             from sam.document_rag import create_document_rag_pipeline
-            from memory.memory_vectorstore import get_memory_store
-            from security.encrypted_chroma_store import get_encrypted_store
+            from memory.memory_vectorstore import get_memory_store, VectorStoreType
 
-            # Initialize Document-Aware RAG Pipeline with actual memory stores
-            memory_store = get_memory_store() if hasattr(get_memory_store, '__call__') else None
-            encrypted_store = get_encrypted_store() if hasattr(get_encrypted_store, '__call__') else None
+            # CRITICAL FIX: Use the actual memory stores where documents are stored
+            # Documents are stored in both secure and regular stores for compatibility
+
+            # Get the secure memory store (where encrypted documents are stored)
+            encrypted_store = st.session_state.get('secure_memory_store', None)
+
+            # Get/create the regular memory store (where documents are also synced)
+            memory_store = get_memory_store(
+                store_type=VectorStoreType.CHROMA,
+                storage_directory="memory_store",
+                embedding_dimension=384
+            )
 
             # Create the pipeline
             document_rag_pipeline = create_document_rag_pipeline(
@@ -12217,31 +12228,56 @@ def test_table_analysis_router(test_query: str) -> dict:
 
 def is_calculation_only_query(prompt: str) -> bool:
     """Check if query is purely mathematical and doesn't need web search."""
+    import re
+
+    # ENHANCED: More comprehensive calculation detection
     calculation_keywords = [
-        'calculate', 'compute', 'solve', 'equation', 'factorial'
+        'calculate', 'compute', 'solve', 'equation', 'factorial',
+        'what is', 'what\'s', 'how much is', 'equals', 'equal to'
     ]
 
     # Check for mathematical operators (must be present for pure math)
     math_operators = ['+', '-', '*', '/', '=', '^', '**', '%']
     has_math_operators = any(op in prompt for op in math_operators)
 
-    # Check for pure calculation keywords (very specific)
+    # ENHANCED: Check for pure mathematical expressions (numbers + operators)
+    # Pattern: optional text + numbers + operators + numbers
+    math_pattern = r'(\d+(?:\.\d+)?)\s*[\+\-\*\/]\s*(\d+(?:\.\d+)?)'
+    has_math_expression = bool(re.search(math_pattern, prompt))
+
+    # Check for calculation keywords or question words
     has_calc_keywords = any(keyword in prompt.lower() for keyword in calculation_keywords)
 
-    # Exclude any queries that need current/web information
+    # ENHANCED: Check for simple question patterns like "what is X+Y?"
+    simple_math_patterns = [
+        r'what\s+is\s+\d+\s*[\+\-\*\/]\s*\d+',
+        r'what\'s\s+\d+\s*[\+\-\*\/]\s*\d+',
+        r'how\s+much\s+is\s+\d+\s*[\+\-\*\/]\s*\d+',
+        r'^\s*\d+\s*[\+\-\*\/]\s*\d+\s*[\?\=]?\s*$'  # Pure math like "45+89?" or "45+89="
+    ]
+
+    has_simple_math_pattern = any(re.search(pattern, prompt.lower()) for pattern in simple_math_patterns)
+
+    # Exclude any queries that need current/web information (but be more specific)
     web_search_exclusions = [
         'latest', 'recent', 'current', 'today', 'news', 'political', 'politics',
         'stock', 'price', 'market', 'trading', 'investment', 'shares',
         'microsoft', 'apple', 'google', 'tesla', 'amazon', 'nasdaq',
         'dow jones', 'sp500', 's&p', 'crypto', 'bitcoin', 'ethereum',
         'what is happening', 'what happened', 'update', 'breaking',
-        'search', 'find', 'look up', 'research', 'information about'
+        'search for', 'find information', 'look up information', 'research about'
     ]
 
     has_web_search_terms = any(term in prompt.lower() for term in web_search_exclusions)
 
-    # Only return True for pure math queries with operators and NO web search terms
-    return has_math_operators and not has_web_search_terms
+    # ENHANCED: Return True if it's a math query (operators OR patterns) and NO web search terms
+    is_math_query = (has_math_operators or has_math_expression or has_simple_math_pattern) and not has_web_search_terms
+
+    # Additional check: if it has calculation keywords or simple math patterns, it's likely math
+    if (has_calc_keywords or has_simple_math_pattern) and has_math_operators and not has_web_search_terms:
+        is_math_query = True
+
+    return is_math_query
 
 def generate_tool_enhanced_response(prompt: str, force_local: bool = False) -> str:
     """Generate response using intelligent tool selection and planning (preserving 100% of functionality)."""
@@ -13128,6 +13164,79 @@ def simulate_self_reflect_for_demo(response_text: str, query: str):
     except Exception as e:
         logger.debug(f"SELF-REFLECT simulation error: {e}")
 
+
+def render_dream_canvas_integrated():
+    """Render Dream Canvas integrated into the main SAM interface."""
+    try:
+        st.header("🧠🎨 Dream Canvas")
+        st.markdown("*Cognitive synthesis and memory landscape visualization*")
+
+        # Check if Dream Canvas is available
+        try:
+            from ui.memory_app import is_dream_canvas_available
+            if not is_dream_canvas_available():
+                st.warning("🔒 Dream Canvas requires SAM Pro activation")
+                st.info("💡 Activate SAM Pro to unlock advanced cognitive synthesis features")
+                return
+        except ImportError:
+            pass  # Continue if entitlement system not available
+
+        # Import Dream Canvas components
+        try:
+            from ui.dream_canvas import render_dream_canvas
+
+            # Add integration notice
+            st.info("🌟 **Dream Canvas Integration**: This feature is now integrated into the main SAM interface for seamless access!")
+
+            # Render the Dream Canvas
+            render_dream_canvas()
+
+        except ImportError as e:
+            st.error(f"❌ Dream Canvas components not available: {e}")
+            st.info("💡 **Alternative**: You can access Dream Canvas through the Memory Control Center")
+
+            # Provide fallback instructions
+            st.markdown("### 🔧 Alternative Access Methods:")
+            st.markdown("1. **Memory Control Center**: `python -m streamlit run ui/memory_app.py --server.port 8503`")
+            st.markdown("2. **Launcher**: `python start_sam_secure.py --mode memory`")
+
+        except Exception as e:
+            st.error(f"❌ Error loading Dream Canvas: {e}")
+            logger.error(f"Dream Canvas integration error: {e}")
+
+            # Provide basic memory synthesis as fallback
+            st.markdown("### 🧠 Basic Memory Synthesis (Fallback)")
+
+            if st.button("🔄 Run Basic Synthesis", help="Generate insights from memory without full Dream Canvas"):
+                try:
+                    from memory.synthesis.synthesis_engine import SynthesisEngine
+                    from memory.memory_vectorstore import get_memory_store
+
+                    with st.spinner("🌙 Running basic synthesis..."):
+                        memory_store = get_memory_store()
+                        synthesis_engine = SynthesisEngine()
+
+                        result = synthesis_engine.run_synthesis(memory_store, visualize=False)
+
+                        if result.insights_generated > 0:
+                            st.success(f"✨ Generated {result.insights_generated} insights!")
+
+                            # Display insights
+                            for i, insight in enumerate(result.insights, 1):
+                                with st.expander(f"💡 Insight {i}: {insight.title}"):
+                                    st.markdown(f"**Theme**: {insight.theme}")
+                                    st.markdown(f"**Content**: {insight.content}")
+                                    st.markdown(f"**So What**: {insight.so_what}")
+                                    st.markdown(f"**Confidence**: {insight.confidence_score:.2f}")
+                        else:
+                            st.warning("⚠️ No insights generated. Try adding more conversations or documents.")
+
+                except Exception as synthesis_error:
+                    st.error(f"❌ Basic synthesis failed: {synthesis_error}")
+
+    except Exception as e:
+        st.error(f"❌ Dream Canvas integration failed: {e}")
+        logger.error(f"Dream Canvas integration error: {e}")
 
 
 if __name__ == "__main__":

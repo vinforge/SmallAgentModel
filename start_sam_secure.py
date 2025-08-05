@@ -251,29 +251,108 @@ def launch_secure_web_ui():
         print(f"❌ Failed to launch Secure Web UI: {e}")
 
 def launch_memory_ui():
-    """Launch memory control center (now integrated into secure interface)."""
-    print("\n🧠 Memory Control Center Access...")
-    print("\n✅ **UPDATED ARCHITECTURE:**")
-    print("   The Memory Control Center is now integrated into the secure interface.")
-    print("   🔗 Access it at: http://localhost:8502")
-    print("   📱 Use the 'Memory Center' tab in the secure interface")
-    print("   🔐 Authentication is handled automatically")
-    print("\n🚀 Launching Secure Interface with Memory Center...")
+    """Launch standalone Memory Control Center with Dream Canvas access."""
+    print("\n🧠 Memory Control Center with Dream Canvas...")
+    print("\n✨ **STANDALONE MEMORY CENTER:**")
+    print("   🎨 Includes full Dream Canvas functionality")
+    print("   🔗 Access it at: http://localhost:8503")
+    print("   🧠 Advanced memory visualization and synthesis")
+    print("   🌙 Cognitive landscape generation")
+    print("   🔬 Research integration and insights")
+    print("\n🚀 Launching Memory Control Center...")
 
     try:
-        # Launch secure streamlit app which includes memory center
+        # Launch standalone memory control center with Dream Canvas
         subprocess.run([
+            sys.executable, "-m", "streamlit", "run",
+            "ui/memory_app.py",
+            "--server.port=8503",
+            "--server.address=localhost",
+            "--browser.gatherUsageStats=false"
+        ])
+
+    except KeyboardInterrupt:
+        print("\n👋 Memory Control Center stopped by user")
+    except Exception as e:
+        print(f"❌ Failed to launch Memory Control Center: {e}")
+
+def launch_both_interfaces():
+    """Launch both Secure SAM Interface and Memory Control Center."""
+    print("\n🚀 Launching Both SAM Interfaces...")
+    print("This will start:")
+    print("  🔒 Secure SAM Interface (port 8502) - Main SAM functionality")
+    print("  🧠 Memory Control Center (port 8503) - Dream Canvas & Memory Management")
+    print("\n✨ **DUAL INTERFACE MODE:**")
+    print("   🔗 Main SAM: http://localhost:8502")
+    print("   🎨 Memory Center: http://localhost:8503")
+    print("   🌙 Dream Canvas available in Memory Center")
+
+    processes = []
+
+    try:
+        # Launch Secure Streamlit Interface
+        print("\n🔒 Starting Secure SAM Interface...")
+        streamlit_process = subprocess.Popen([
             sys.executable, "-m", "streamlit", "run",
             "secure_streamlit_app.py",
             "--server.port=8502",
             "--server.address=localhost",
             "--browser.gatherUsageStats=false"
         ])
+        processes.append(("Secure SAM", streamlit_process))
+        time.sleep(3)  # Give it time to start
 
-    except KeyboardInterrupt:
-        print("\n👋 SAM Secure Interface stopped by user")
+        # Launch Memory Control Center
+        print("🧠 Starting Memory Control Center...")
+        memory_process = subprocess.Popen([
+            sys.executable, "-m", "streamlit", "run",
+            "ui/memory_app.py",
+            "--server.port=8503",
+            "--server.address=localhost",
+            "--browser.gatherUsageStats=false"
+        ])
+        processes.append(("Memory Center", memory_process))
+        time.sleep(2)
+
+        print("\n✅ Both interfaces started successfully!")
+        print("\n🌐 Available interfaces:")
+        print("  • 🔒 Secure SAM Interface: http://localhost:8502")
+        print("  • 🧠 Memory Control Center: http://localhost:8503")
+        print("  • 🎨 Dream Canvas: Available in Memory Center dropdown")
+        print("\n💡 **Usage Tips:**")
+        print("  • Use Secure SAM for main conversations and document uploads")
+        print("  • Use Memory Center for advanced memory management and Dream Canvas")
+        print("  • Both interfaces share the same memory store")
+        print("\n⚠️  Press Ctrl+C to stop both services")
+
+        # Wait for processes
+        try:
+            while True:
+                time.sleep(1)
+                # Check if any process has died
+                for name, process in processes:
+                    if process.poll() is not None:
+                        print(f"\n⚠️ {name} process has stopped")
+                        return
+        except KeyboardInterrupt:
+            print("\n👋 Stopping both interfaces...")
+            for name, process in processes:
+                print(f"   Stopping {name}...")
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+            print("✅ Both interfaces stopped")
+
     except Exception as e:
-        print(f"❌ Failed to launch SAM Secure Interface: {e}")
+        print(f"❌ Failed to launch interfaces: {e}")
+        # Clean up any started processes
+        for name, process in processes:
+            try:
+                process.terminate()
+            except:
+                pass
 
 def launch_full_suite():
     """Launch full SAM suite with security."""
@@ -363,8 +442,8 @@ def launch_full_suite():
 def main():
     """Main launcher function."""
     parser = argparse.ArgumentParser(description="SAM Secure Enclave Launcher")
-    parser.add_argument("--mode", choices=["web", "streamlit", "memory", "full", "migrate"], 
-                       default="full", help="Launch mode")
+    parser.add_argument("--mode", choices=["web", "streamlit", "memory", "both", "full", "migrate"],
+                       default="full", help="Launch mode: web=Web UI only, streamlit=Secure SAM only, memory=Memory Center only, both=Both interfaces, full=Complete suite, migrate=Data migration")
     parser.add_argument("--skip-checks", action="store_true", help="Skip dependency checks")
     parser.add_argument("--force-migration", action="store_true", help="Force data migration")
     
@@ -428,6 +507,8 @@ def main():
         launch_secure_streamlit()
     elif args.mode == "memory":
         launch_memory_ui()
+    elif args.mode == "both":
+        launch_both_interfaces()
     elif args.mode == "full":
         launch_full_suite()
     else:

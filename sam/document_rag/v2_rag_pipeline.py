@@ -357,6 +357,7 @@ class V2RAGPipeline:
         
         if self.context_assembler:
             # Context assembler doesn't have cache, but we could add it
+            pass
 
 def get_v2_rag_pipeline(config: Optional[V2RAGConfig] = None) -> V2RAGPipeline:
     """

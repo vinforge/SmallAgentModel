@@ -144,34 +144,34 @@ def render_dream_canvas():
         # Generate cognitive map (preserved existing functionality)
         if st.button("🎨 Generate Dream Canvas", type="primary", help="Create interactive memory landscape visualization"):
             with st.spinner("🧠 Synthesizing cognitive landscape..."):
-            try:
-                # Get memory data
-                memory_stats = memory_store.get_memory_stats()
-                st.info(f"📊 Processing {memory_stats['total_memories']} memories...")
-                
-                # Generate cognitive map
-                cognitive_map = generate_cognitive_map(
-                    memory_store=memory_store,
-                    method=cluster_method,
-                    time_range=time_range,
-                    n_components=n_components,
-                    min_cluster_size=min_cluster_size,
-                    perplexity=perplexity,
-                    n_neighbors=n_neighbors
-                )
-                
-                # Store in session state
-                st.session_state.cognitive_map = cognitive_map
-                st.session_state.visualization_mode = visualization_mode
-                st.session_state.show_connections = show_connections
-                st.session_state.show_labels = show_labels
-                
-                st.success("✅ Cognitive landscape generated!")
-                
-            except Exception as e:
-                st.error(f"❌ Error generating cognitive map: {e}")
-                logger.error(f"Dream Canvas generation error: {e}")
-                return
+                try:
+                    # Get memory data
+                    memory_stats = memory_store.get_memory_stats()
+                    st.info(f"📊 Processing {memory_stats['total_memories']} memories...")
+
+                    # Generate cognitive map
+                    cognitive_map = generate_cognitive_map(
+                        memory_store=memory_store,
+                        method=cluster_method,
+                        time_range=time_range,
+                        n_components=n_components,
+                        min_cluster_size=min_cluster_size,
+                        perplexity=perplexity,
+                        n_neighbors=n_neighbors
+                    )
+
+                    # Store in session state
+                    st.session_state.cognitive_map = cognitive_map
+                    st.session_state.visualization_mode = visualization_mode
+                    st.session_state.show_connections = show_connections
+                    st.session_state.show_labels = show_labels
+
+                    st.success("✅ Cognitive landscape generated!")
+
+                except Exception as e:
+                    st.error(f"❌ Error generating cognitive map: {e}")
+                    logger.error(f"Dream Canvas generation error: {e}")
+                    return
 
     with col2:
         # Run Synthesis button - prominently placed next to Dream Canvas
@@ -686,22 +686,123 @@ def render_cognitive_insights(cognitive_map: CognitiveMap):
                                  if len(set(i.get('synthesis_metadata', {}).get('source_types', []))) > 1)
                 st.metric("🔗 Cross-Domain", cross_domain)
 
-    # Top clusters (preserved existing functionality)
+    # Top clusters with expandable detailed information
     st.markdown("#### 🏆 Most Coherent Clusters")
     top_clusters = sorted(cognitive_map.clusters, key=lambda x: x.coherence_score, reverse=True)[:3]
 
     for i, cluster in enumerate(top_clusters, 1):
-        cluster_text = f"**{i}. {cluster.name}** - {cluster.size} memories (coherence: {cluster.coherence_score:.2f})"
+        # Create cluster title with basic info
+        cluster_title = f"{i}. {cluster.name} - {cluster.size} memories (coherence: {cluster.coherence_score:.2f})"
 
-        # NEW: Add insight indicator if this cluster has generated insights
+        # Add insight indicator if this cluster has generated insights
+        insight_indicator = ""
+        cluster_insights = []
         if hasattr(st.session_state, 'synthesis_results') and st.session_state.synthesis_results:
             insights = st.session_state.synthesis_results.get('insights', [])
             cluster_insights = [ins for ins in insights if ins.get('cluster_id') == cluster.name or ins.get('cluster_id') == cluster.id]
 
             if cluster_insights:
-                cluster_text += f" ✨ ({len(cluster_insights)} insights)"
+                insight_indicator = f" ✨ ({len(cluster_insights)} insights)"
 
-        st.markdown(cluster_text)
+        # Create expandable section for each cluster
+        with st.expander(f"🔍 {cluster_title}{insight_indicator}", expanded=False):
+            # Display detailed cluster information
+            render_cluster_detailed_info(cluster, cluster_insights)
+
+def render_cluster_detailed_info(cluster, cluster_insights):
+    """Render detailed information for a cluster in the Most Coherent Clusters section."""
+    try:
+        from memory.synthesis.cluster_registry import get_cluster_stats
+
+        # Get cluster statistics from registry
+        cluster_stats = get_cluster_stats(cluster.name)
+
+        # Display cluster overview
+        st.markdown("**📊 Cluster Overview:**")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Memories", cluster.size)
+
+        with col2:
+            st.metric("Coherence", f"{cluster.coherence_score:.2f}")
+
+        with col3:
+            if cluster_insights:
+                st.metric("Insights", len(cluster_insights))
+            else:
+                st.metric("Insights", "0")
+
+        # Display detailed cluster information if available from registry
+        if cluster_stats['exists']:
+            st.markdown("---")
+            st.markdown("**🔍 Detailed Information:**")
+
+            # Memory and source information
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Memory Details:**")
+                st.write(f"• **Total memories:** {cluster_stats['memory_count']}")
+                st.write(f"• **Average importance:** {cluster_stats['avg_importance']:.2f}")
+
+            with col2:
+                st.markdown("**Source Information:**")
+                st.write(f"• **Unique sources:** {cluster_stats['source_count']}")
+                if cluster_stats['sources']:
+                    st.write("• **Key sources:**")
+                    for source in cluster_stats['sources'][:3]:
+                        source_name = source.split('/')[-1] if '/' in source else source
+                        st.write(f"  - {source_name}")
+
+            # Themes and topics
+            if cluster_stats['dominant_themes']:
+                st.markdown("**🏷️ Dominant Themes:**")
+                themes_text = ", ".join(cluster_stats['dominant_themes'][:5])
+                st.write(f"• {themes_text}")
+        else:
+            # Fallback to basic cluster information
+            st.markdown("---")
+            st.markdown("**🔍 Basic Information:**")
+            st.write(f"• **Cluster ID:** {cluster.name}")
+            st.write(f"• **Memory count:** {cluster.size}")
+            st.write(f"• **Coherence score:** {cluster.coherence_score:.2f}")
+            if hasattr(cluster, 'color'):
+                st.write(f"• **Visualization color:** {cluster.color}")
+
+        # Display insights if available
+        if cluster_insights:
+            st.markdown("---")
+            st.markdown("**✨ Generated Insights:**")
+            for j, insight in enumerate(cluster_insights[:3]):  # Show up to 3 insights per cluster
+                with st.expander(f"💡 Insight {j+1}", expanded=j==0):
+                    # Clean the insight text (remove <think> tags)
+                    clean_text = insight.get('synthesized_text', '')
+                    if '<think>' in clean_text and '</think>' in clean_text:
+                        parts = clean_text.split('</think>')
+                        if len(parts) > 1:
+                            clean_text = parts[-1].strip()
+                        else:
+                            clean_text = clean_text.replace('<think>', '').replace('</think>', '').strip()
+
+                    st.markdown(f"**Insight:** {clean_text}")
+
+                    # Show insight metadata
+                    if insight.get('confidence_score'):
+                        st.write(f"**Confidence:** {insight['confidence_score']:.2f}")
+                    if insight.get('novelty_score'):
+                        st.write(f"**Novelty:** {insight['novelty_score']:.2f}")
+
+            if len(cluster_insights) > 3:
+                st.info(f"📋 Showing 3 of {len(cluster_insights)} insights for this cluster")
+
+    except Exception as e:
+        st.error(f"❌ Error loading cluster details: {e}")
+        # Fallback display
+        st.markdown("**Basic Cluster Information:**")
+        st.write(f"• **Name:** {cluster.name}")
+        st.write(f"• **Size:** {cluster.size} memories")
+        st.write(f"• **Coherence:** {cluster.coherence_score:.2f}")
 
 def render_dream_canvas_placeholder():
     """Render placeholder when no cognitive map is available."""
@@ -774,87 +875,87 @@ def render_synthesis_controls():
         # Manual synthesis controls
         col1, col2, col3 = st.columns(3)
 
-    with col1:
-        if st.button("🔄 Run Synthesis", type="primary", help="Generate new insights from memory clusters"):
-            with st.spinner("🌙 SAM entering dream state..."):
-                try:
-                    # Import synthesis engine
-                    from memory.synthesis.synthesis_engine import SynthesisEngine
-                    from memory.memory_vectorstore import get_memory_store
+        with col1:
+            if st.button("🔄 Run Synthesis", type="primary", help="Generate new insights from memory clusters"):
+                with st.spinner("🌙 SAM entering dream state..."):
+                    try:
+                        # Import synthesis engine
+                        from memory.synthesis.synthesis_engine import SynthesisEngine
+                        from memory.memory_vectorstore import get_memory_store
 
-                    # Run synthesis
-                    memory_store = get_memory_store()
-                    synthesis_engine = SynthesisEngine()
+                        # Run synthesis
+                        memory_store = get_memory_store()
+                        synthesis_engine = SynthesisEngine()
 
-                    result = synthesis_engine.run_synthesis(memory_store, visualize=True)
+                        result = synthesis_engine.run_synthesis(memory_store, visualize=True)
 
-                    # Store results in session state
-                    synthesis_results = {
-                        'insights': [insight.__dict__ for insight in result.insights],
-                        'clusters_found': result.clusters_found,
-                        'insights_generated': result.insights_generated,
-                        'run_id': result.run_id,
-                        'timestamp': result.timestamp,
-                        'synthesis_log': result.synthesis_log
-                    }
+                        # Store results in session state
+                        synthesis_results = {
+                            'insights': [insight.__dict__ for insight in result.insights],
+                            'clusters_found': result.clusters_found,
+                            'insights_generated': result.insights_generated,
+                            'run_id': result.run_id,
+                            'timestamp': result.timestamp,
+                            'synthesis_log': result.synthesis_log
+                        }
 
-                    st.session_state.synthesis_results = synthesis_results
+                        st.session_state.synthesis_results = synthesis_results
 
-                    # Update synthesis history
-                    update_synthesis_history(synthesis_results)
+                        # Update synthesis history
+                        update_synthesis_history(synthesis_results)
 
-                    # Provide detailed feedback based on results
-                    if result.insights_generated > 0:
-                        st.success(f"✨ Synthesis complete! Generated {result.insights_generated} insights from {result.clusters_found} clusters.")
-                    elif result.clusters_found > 0:
-                        st.warning(f"⚠️ Found {result.clusters_found} clusters but generated 0 insights. This may indicate:")
-                        st.info("• Insight quality threshold is too high\n• LLM responses need improvement\n• Memory clusters lack sufficient content")
-                        st.info("💡 Try running synthesis again or check the logs for more details.")
-                    else:
-                        st.warning("⚠️ No memory clusters found for synthesis. Try adding more conversations or documents to SAM's memory.")
-
-                    st.rerun()
-
-                except Exception as e:
-                    logger.error(f"Synthesis failed: {e}")
-                    st.error(f"❌ Synthesis failed: {e}")
-
-    with col2:
-        if st.button("📊 Load Recent", help="Load the most recent synthesis results"):
-            try:
-                # Load most recent synthesis results
-                synthesis_dir = Path("synthesis_output")
-                if synthesis_dir.exists():
-                    synthesis_files = list(synthesis_dir.glob("synthesis_run_log_*.json"))
-                    if synthesis_files:
-                        latest_file = max(synthesis_files, key=lambda x: x.stat().st_mtime)
-
-                        with open(latest_file, 'r') as f:
-                            data = json.load(f)
-
-                        # Convert insights to the expected format
-                        if 'insights' in data:
-                            st.session_state.synthesis_results = data
-                            st.success(f"📊 Loaded synthesis results from {latest_file.name}")
-                            st.rerun()
+                        # Provide detailed feedback based on results
+                        if result.insights_generated > 0:
+                            st.success(f"✨ Synthesis complete! Generated {result.insights_generated} insights from {result.clusters_found} clusters.")
+                        elif result.clusters_found > 0:
+                            st.warning(f"⚠️ Found {result.clusters_found} clusters but generated 0 insights. This may indicate:")
+                            st.info("• Insight quality threshold is too high\n• LLM responses need improvement\n• Memory clusters lack sufficient content")
+                            st.info("💡 Try running synthesis again or check the logs for more details.")
                         else:
-                            st.warning("No insights found in synthesis file")
+                            st.warning("⚠️ No memory clusters found for synthesis. Try adding more conversations or documents to SAM's memory.")
+
+                        st.rerun()
+
+                    except Exception as e:
+                        logger.error(f"Synthesis failed: {e}")
+                        st.error(f"❌ Synthesis failed: {e}")
+
+        with col2:
+            if st.button("📊 Load Recent", help="Load the most recent synthesis results"):
+                try:
+                    # Load most recent synthesis results
+                    synthesis_dir = Path("synthesis_output")
+                    if synthesis_dir.exists():
+                        synthesis_files = list(synthesis_dir.glob("synthesis_run_log_*.json"))
+                        if synthesis_files:
+                            latest_file = max(synthesis_files, key=lambda x: x.stat().st_mtime)
+
+                            with open(latest_file, 'r') as f:
+                                data = json.load(f)
+
+                            # Convert insights to the expected format
+                            if 'insights' in data:
+                                st.session_state.synthesis_results = data
+                                st.success(f"📊 Loaded synthesis results from {latest_file.name}")
+                                st.rerun()
+                            else:
+                                st.warning("No insights found in synthesis file")
+                        else:
+                            st.warning("No synthesis results found")
                     else:
-                        st.warning("No synthesis results found")
-                else:
-                    st.warning("Synthesis output directory not found")
-            except Exception as e:
-                logger.error(f"Failed to load synthesis results: {e}")
-                st.error(f"❌ Failed to load synthesis results: {e}")
+                        st.warning("Synthesis output directory not found")
+                except Exception as e:
+                    logger.error(f"Failed to load synthesis results: {e}")
+                    st.error(f"❌ Failed to load synthesis results: {e}")
 
-    with col3:
-        if st.button("📚 View History", help="Browse synthesis history and load previous runs"):
-            st.session_state.show_synthesis_history = True
-            st.rerun()
+        with col3:
+            if st.button("📚 View History", help="Browse synthesis history and load previous runs"):
+                st.session_state.show_synthesis_history = True
+                st.rerun()
 
-        # Show synthesis history if requested
-        if st.session_state.get('show_synthesis_history', False):
-            render_synthesis_history()
+            # Show synthesis history if requested
+            if st.session_state.get('show_synthesis_history', False):
+                render_synthesis_history()
 
     except Exception as e:
         st.error(f"❌ Synthesis controls error: {e}")
@@ -871,60 +972,60 @@ def render_auto_synthesis_controls():
 
         col1, col2, col3 = st.columns([2, 2, 1])
 
-    with col1:
-        # Auto-synthesis toggle (using checkbox for compatibility)
-        auto_synthesis_enabled = st.session_state.get('auto_synthesis_enabled', False)
-        new_auto_synthesis = st.checkbox(
-            "🤖 Auto-Synthesis",
-            value=auto_synthesis_enabled,
-            help="Automatically run synthesis when new insights are detected"
-        )
+        with col1:
+            # Auto-synthesis toggle (using checkbox for compatibility)
+            auto_synthesis_enabled = st.session_state.get('auto_synthesis_enabled', False)
+            new_auto_synthesis = st.checkbox(
+                "🤖 Auto-Synthesis",
+                value=auto_synthesis_enabled,
+                help="Automatically run synthesis when new insights are detected"
+            )
 
-        if new_auto_synthesis != auto_synthesis_enabled:
-            st.session_state.auto_synthesis_enabled = new_auto_synthesis
-            if new_auto_synthesis:
-                st.success("✅ Auto-synthesis enabled")
+            if new_auto_synthesis != auto_synthesis_enabled:
+                st.session_state.auto_synthesis_enabled = new_auto_synthesis
+                if new_auto_synthesis:
+                    st.success("✅ Auto-synthesis enabled")
+                else:
+                    st.info("⏸️ Auto-synthesis disabled")
+                st.rerun()
+
+        with col2:
+            if st.session_state.get('auto_synthesis_enabled', False):
+                # Auto-synthesis frequency
+                frequency_options = {
+                    "Every 10 minutes": 600,
+                    "Every 30 minutes": 1800,
+                    "Every hour": 3600,
+                    "Every 6 hours": 21600,
+                    "Daily": 86400
+                }
+
+                current_frequency = st.session_state.get('auto_synthesis_frequency', 3600)
+                frequency_label = next((k for k, v in frequency_options.items() if v == current_frequency), "Every hour")
+
+                selected_frequency = st.selectbox(
+                    "Frequency",
+                    options=list(frequency_options.keys()),
+                    index=list(frequency_options.keys()).index(frequency_label),
+                    help="How often to run auto-synthesis"
+                )
+
+                st.session_state.auto_synthesis_frequency = frequency_options[selected_frequency]
             else:
-                st.info("⏸️ Auto-synthesis disabled")
-            st.rerun()
+                st.markdown("*Enable auto-synthesis to configure frequency*")
 
-    with col2:
-        if st.session_state.get('auto_synthesis_enabled', False):
-            # Auto-synthesis frequency
-            frequency_options = {
-                "Every 10 minutes": 600,
-                "Every 30 minutes": 1800,
-                "Every hour": 3600,
-                "Every 6 hours": 21600,
-                "Daily": 86400
-            }
+        with col3:
+            if st.session_state.get('auto_synthesis_enabled', False):
+                # Auto-research toggle
+                auto_research_enabled = st.session_state.get('auto_research_enabled', False)
+                new_auto_research = st.checkbox(
+                    "🔬 Auto-Research",
+                    value=auto_research_enabled,
+                    help="Automatically research promising insights"
+                )
 
-            current_frequency = st.session_state.get('auto_synthesis_frequency', 3600)
-            frequency_label = next((k for k, v in frequency_options.items() if v == current_frequency), "Every hour")
-
-            selected_frequency = st.selectbox(
-                "Frequency",
-                options=list(frequency_options.keys()),
-                index=list(frequency_options.keys()).index(frequency_label),
-                help="How often to run auto-synthesis"
-            )
-
-            st.session_state.auto_synthesis_frequency = frequency_options[selected_frequency]
-        else:
-            st.markdown("*Enable auto-synthesis to configure frequency*")
-
-    with col3:
-        if st.session_state.get('auto_synthesis_enabled', False):
-            # Auto-research toggle
-            auto_research_enabled = st.session_state.get('auto_research_enabled', False)
-            new_auto_research = st.checkbox(
-                "🔬 Auto-Research",
-                value=auto_research_enabled,
-                help="Automatically research promising insights"
-            )
-
-            if new_auto_research != auto_research_enabled:
-                st.session_state.auto_research_enabled = new_auto_research
+                if new_auto_research != auto_research_enabled:
+                    st.session_state.auto_research_enabled = new_auto_research
 
     except Exception as e:
         st.error(f"❌ Auto-synthesis controls error: {e}")

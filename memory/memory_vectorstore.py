@@ -243,8 +243,8 @@ class MemoryVectorStore:
 
                     result = MemorySearchResult(
                         chunk=chunk,
-                        similarity=1.0,  # Max similarity for direct matches
-                        metadata={'search_type': 'all_documents'}
+                        similarity_score=1.0,  # Max similarity for direct matches
+                        rank=len(all_results)  # Sequential ranking
                     )
                     all_results.append(result)
 
@@ -452,11 +452,15 @@ class MemoryVectorStore:
                             continue
 
                     result = RankedMemoryResult(
-                        chunk=chunk,
-                        similarity=1.0,
-                        relevance_score=chunk.importance_score,
-                        hybrid_score=chunk.importance_score,
-                        metadata={'search_type': 'all_documents'}
+                        chunk_id=chunk.chunk_id,
+                        content=chunk.content,
+                        metadata=chunk.metadata,
+                        semantic_score=1.0,
+                        recency_score=1.0,
+                        confidence_score=1.0,
+                        priority_score=chunk.importance_score,
+                        final_score=chunk.importance_score,
+                        original_distance=0.0
                     )
                     all_results.append(result)
 

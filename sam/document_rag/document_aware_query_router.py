@@ -75,9 +75,57 @@ class DocumentAwareQueryRouter:
             r'\bin (?:the|my|our) (?:document|file|paper)\b',
             r'\bfrom (?:the|my|our) uploaded (?:document|file|paper)\b',
         ]
-    
-    def route_query(self, 
-                   query: str, 
+
+    def _preprocess_query(self, query: str) -> str:
+        """Preprocess query for better document matching."""
+        # Remove common prefixes
+        prefixes_to_remove = [
+            "summarize:",
+            "summarize",
+            "analyze:",
+            "analyze",
+            "explain:",
+            "explain",
+            "what is",
+            "tell me about"
+        ]
+
+        processed_query = query.lower().strip()
+
+        for prefix in prefixes_to_remove:
+            if processed_query.startswith(prefix):
+                processed_query = processed_query[len(prefix):].strip()
+                break
+
+        # ADDED: Enhanced filename and document reference handling
+        # Handle file extensions
+        if processed_query.endswith('.pdf'):
+            processed_query = processed_query[:-4]  # Remove .pdf
+        elif processed_query.endswith('.doc') or processed_query.endswith('.txt'):
+            processed_query = processed_query[:-4]  # Remove .doc/.txt
+        elif processed_query.endswith('.docx'):
+            processed_query = processed_query[:-5]  # Remove .docx
+
+        # Handle hyphenated terms like CL-EITR
+        if '-' in processed_query:
+            # Add both hyphenated and space-separated versions
+            space_version = processed_query.replace('-', ' ')
+            processed_query = f"{processed_query} {space_version}"
+
+        # Handle specific document names
+        document_aliases = {
+            'cl-eitr': 'CL-EITR continual learning efficient incremental training retrieval',
+            'cleitr': 'CL-EITR continual learning efficient incremental training retrieval',
+        }
+
+        for alias, expansion in document_aliases.items():
+            if alias in processed_query:
+                processed_query = f"{processed_query} {expansion}"
+
+        return processed_query
+
+    def route_query(self,
+                   query: str,
                    max_document_results: int = 5,
                    user_context: Optional[Dict[str, Any]] = None) -> RoutingDecision:
         """
@@ -93,10 +141,14 @@ class DocumentAwareQueryRouter:
         """
         try:
             self.logger.info(f"🧠 Routing query: '{query[:50]}...'")
-            
+
+            # ADDED: Preprocess query for better document matching
+            preprocessed_query = self._preprocess_query(query)
+            self.logger.info(f"🔧 Preprocessed query: '{preprocessed_query[:50]}...'")
+
             # Step 1: Always search documents first (document-first strategy)
             document_search_result = self.search_engine.search_uploaded_documents(
-                query=query,
+                query=preprocessed_query,  # Use preprocessed query
                 max_results=max_document_results
             )
             

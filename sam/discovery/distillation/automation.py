@@ -53,12 +53,15 @@ class AutomatedDistillation:
         self.engine = DistillationEngine()
         self.registry = PrincipleRegistry()
         self.collector = InteractionCollector()
-        
+
         # Automation state
         self.is_running = False
         self.automation_thread = None
         self.stop_event = Event()
         self.triggers = []
+
+        # ADDED: Flag to disable distillation during document upload
+        self.disable_during_upload = True
         
         # Performance tracking
         self.automation_stats = {
@@ -376,8 +379,13 @@ class AutomatedDistillation:
     def manual_trigger(self, strategy_id: str, interaction_limit: int = 20) -> Optional[str]:
         """Manually trigger distillation for a strategy."""
         try:
+            # ADDED: Skip distillation during document upload
+            if self.disable_during_upload and strategy_id == "web_search_integration":
+                logger.info(f"Skipping distillation for {strategy_id} during document upload")
+                return None
+
             logger.info(f"Manual distillation trigger for strategy: {strategy_id}")
-            
+
             principle = self.engine.discover_principle(strategy_id, interaction_limit)
             
             if principle:

@@ -174,10 +174,12 @@ class SemanticDocumentSearchEngine:
             if not self.memory_store:
                 return chunks
             
-            # Use existing search_memories method
+            # Use existing search_memories method - FIXED: Filter by DOCUMENT memory type only
+            from memory.memory_vectorstore import MemoryType
             search_results = self.memory_store.search_memories(
                 query=query,
                 max_results=max_results,
+                memory_types=[MemoryType.DOCUMENT],  # CRITICAL FIX: Only search documents
                 min_similarity=min_similarity
             )
             
@@ -199,23 +201,75 @@ class SemanticDocumentSearchEngine:
     def _search_encrypted_store(self, query: str, max_results: int, min_similarity: float) -> List[DocumentChunk]:
         """Search the encrypted store for document chunks."""
         chunks = []
-        
+
         try:
             if not self.encrypted_store:
+                self.logger.debug("No encrypted store available")
                 return chunks
-            
-            # Generate query embedding (would need embedding model)
-            # For now, return empty - this would be implemented with proper embedding
-            self.logger.debug("Encrypted store search not yet implemented")
+
+            # IMPLEMENTED: Encrypted store search using secure memory vectorstore
+            from memory.memory_vectorstore import MemoryType
+
+            # Use the encrypted store's search_memories method
+            # FIXED: SecureMemoryVectorStore has different method signature
+            search_results = self.encrypted_store.search_memories(
+                query=query,
+                max_results=max_results,
+                memory_type=MemoryType.DOCUMENT  # Only search documents
+                # Note: min_similarity not supported by SecureMemoryVectorStore
+            )
+
+            self.logger.debug(f"Encrypted store search found {len(search_results)} results")
+
+            # Convert search results to DocumentChunk objects
+            # FIXED: SecureMemoryVectorStore returns MemorySearchResult objects (same as regular store)
+            for result in search_results:
+                if hasattr(result, 'chunk') and result.chunk:
+                    # Handle regular MemorySearchResult objects
+                    chunk = result.chunk
+
+                    # FIXED: Extract document information with better metadata handling
+                    document_name = getattr(chunk, 'source', 'Unknown Document')
+                    metadata = getattr(chunk, 'metadata', {})
+
+                    # If document name is empty, unknown, or generic, try to get from metadata
+                    if not document_name or document_name.lower() in ['unknown', '', 'unknown document']:
+                        document_name = (
+                            metadata.get('extra_filename') or
+                            metadata.get('filename') or
+                            metadata.get('source_type') or
+                            metadata.get('file_name') or
+                            'Unknown Document'
+                        )
+
+                    # Create DocumentChunk
+                    doc_chunk = DocumentChunk(
+                        content=chunk.content,
+                        document_name=document_name,
+                        chunk_index=getattr(chunk, 'chunk_id', 0),
+                        similarity_score=getattr(result, 'similarity_score', 0.8),
+                        metadata=getattr(chunk, 'metadata', {})
+                    )
+
+                    # Filter by similarity threshold
+                    if doc_chunk.similarity_score >= min_similarity:
+                        chunks.append(doc_chunk)
+                        self.logger.debug(f"Added encrypted document chunk: {document_name} (similarity: {doc_chunk.similarity_score:.3f})")
+
+            self.logger.info(f"Encrypted store search returned {len(chunks)} chunks above similarity threshold {min_similarity}")
             return chunks
-            
+
         except Exception as e:
             self.logger.warning(f"Encrypted store search failed: {e}")
+            import traceback
+            self.logger.debug(f"Encrypted store search error details: {traceback.format_exc()}")
             return chunks
     
     def _is_document_chunk(self, content: str) -> bool:
         """Check if content is from an uploaded document."""
-        return content.startswith("Document:") and "Content Type:" in content
+        # FIXED: Accept all chunks from DOCUMENT memory type - the memory type filtering is sufficient
+        # The content format varies, so we don't need to check specific patterns
+        return True  # If it passed the memory_type filter, it's a document chunk
     
     def _parse_document_chunk(self, search_result, similarity_score: float) -> Optional[DocumentChunk]:
         """Parse a search result into a DocumentChunk."""
@@ -223,12 +277,26 @@ class SemanticDocumentSearchEngine:
             # Handle both MemorySearchResult and direct content
             content = search_result.chunk.content if hasattr(search_result, 'chunk') else search_result.content
             
-            # Extract document path
-            doc_match = re.search(r'Document:\s*([^(]+)', content)
-            document_path = doc_match.group(1).strip() if doc_match else "Unknown"
-            
-            # Extract document name from path
-            document_name = Path(document_path).name if document_path != "Unknown" else "Unknown"
+            # FIXED: Extract document name from metadata first, then fallback to content parsing
+            document_name = "Unknown"
+            document_path = "Unknown"  # Initialize to avoid scope issues
+
+            # Try to get document name from chunk metadata
+            if hasattr(search_result, 'chunk') and hasattr(search_result.chunk, 'metadata'):
+                metadata = search_result.chunk.metadata or {}
+                document_name = (
+                    metadata.get('extra_filename') or
+                    metadata.get('filename') or
+                    metadata.get('source_type') or
+                    metadata.get('file_name') or
+                    "Unknown"
+                )
+
+            # Fallback: Extract document path from content if metadata doesn't have it
+            if document_name == "Unknown":
+                doc_match = re.search(r'Document:\s*([^(]+)', content)
+                document_path = doc_match.group(1).strip() if doc_match else "Unknown"
+                document_name = Path(document_path).name if document_path != "Unknown" else "Unknown"
             
             # Extract block number
             block_match = re.search(r'\(Block\s*(\d+)\)', content)

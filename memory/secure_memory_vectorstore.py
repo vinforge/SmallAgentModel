@@ -170,8 +170,20 @@ class SecureMemoryVectorStore:
                     else:
                         metadata = {}
 
-                    if isinstance(metadata, dict) and metadata.get('memory_type') == memory_type.value:
-                        filtered_results.append(result)
+                    # FIXED: Handle both enum and string memory types
+                    if isinstance(metadata, dict):
+                        stored_memory_type = metadata.get('memory_type')
+
+                        # Handle different memory_type formats
+                        if hasattr(memory_type, 'value'):
+                            # memory_type is an enum
+                            target_value = memory_type.value
+                        else:
+                            # memory_type is already a string
+                            target_value = str(memory_type)
+
+                        if stored_memory_type == target_value:
+                            filtered_results.append(result)
                 except Exception as e:
                     logger.warning(f"Error filtering result by memory type: {e}")
                     continue
