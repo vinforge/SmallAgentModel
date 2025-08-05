@@ -11,6 +11,18 @@
         "cognitive_distillation",
         "cognitive_automation"
       ]
+    },
+    "098dacd4-47bd-42a3-9e18-555eb839f1ce": {
+      "activated": true,
+      "activation_date": "2025-01-01T00:00:00",
+      "features": [
+        "tpv_active_reasoning",
+        "enhanced_slp_learning",
+        "memoir_lifelong_learning",
+        "dream_canvas",
+        "cognitive_distillation",
+        "cognitive_automation"
+      ]
     }
   },
   "feature_flags": {

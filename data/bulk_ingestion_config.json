@@ -1,27 +1,6 @@
 {
   "version": "1.0",
-  "sources": [
-    {
-      "id": "source_1",
-      "name": "Research Papers",
-      "path": "/Users/vinsoncornejo/Downloads/ToLearn",
-      "file_types": [
-        "pdf",
-        "txt",
-        "md",
-        "docx",
-        "py",
-        "js",
-        "json"
-      ],
-      "enabled": true,
-      "added_date": "2025-06-14T20:48:56.193693",
-      "last_scanned": null,
-      "status": "ready",
-      "files_processed": 0,
-      "last_scan_results": {}
-    }
-  ],
+  "sources": [],
   "settings": {
     "auto_scan_enabled": false,
     "scan_interval_minutes": 60,
@@ -37,5 +16,5 @@
     "max_file_size_mb": 100,
     "enable_notifications": true
   },
-  "last_updated": "2025-06-14T20:48:56.193701"
+  "last_updated": "2025-01-05T00:00:00.000000"
 }
