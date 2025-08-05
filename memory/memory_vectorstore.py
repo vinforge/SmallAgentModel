@@ -202,7 +202,9 @@ class MemoryVectorStore:
             # Save to disk
             self._save_memory_chunk(memory_chunk)
             
-            logger.info(f"Added memory: {chunk_id} ({memory_type.value})")
+            # Handle both enum and string memory types
+            memory_type_str = memory_type.value if hasattr(memory_type, 'value') else str(memory_type)
+            logger.info(f"Added memory: {chunk_id} ({memory_type_str})")
             return chunk_id
             
         except Exception as e:
@@ -984,7 +986,8 @@ class MemoryVectorStore:
             
             # Calculate type distribution
             for chunk in self.memory_chunks.values():
-                mem_type = chunk.memory_type.value
+                # Handle both enum and string memory types
+                mem_type = chunk.memory_type.value if hasattr(chunk.memory_type, 'value') else str(chunk.memory_type)
                 stats['memory_types'][mem_type] = stats['memory_types'].get(mem_type, 0) + 1
             
             # Calculate storage size
@@ -1523,7 +1526,8 @@ class MemoryVectorStore:
 
             # Convert chunk to dict and handle enum serialization
             chunk_dict = asdict(chunk)
-            chunk_dict['memory_type'] = chunk.memory_type.value  # Convert enum to string
+            # Convert enum to string, handle both enum and string types
+            chunk_dict['memory_type'] = chunk.memory_type.value if hasattr(chunk.memory_type, 'value') else str(chunk.memory_type)
 
             # Convert numpy array to list for JSON serialization
             if chunk_dict.get('embedding') is not None:

@@ -185,6 +185,27 @@ def render_dream_canvas():
                     # Run synthesis
                     memory_store = get_memory_store()
 
+                    # Pre-check: Verify we have memories to synthesize
+                    memory_stats = memory_store.get_memory_stats()
+                    total_memories = memory_stats.get('total_memories', 0)
+
+                    if total_memories == 0:
+                        st.warning("⚠️ No memories found in SAM's knowledge base.")
+                        st.info("""
+                        **To use Dream Canvas synthesis, you need to add some memories first:**
+
+                        📚 **Add Documents**: Go to Memory Center → Document Upload to add PDFs, text files, etc.
+
+                        💬 **Have Conversations**: Chat with SAM to create conversation memories
+
+                        📁 **Bulk Ingestion**: Use Memory Center → Bulk Ingestion to process multiple files
+
+                        🔄 **Import Data**: Use any of SAM's data ingestion features
+                        """)
+                        return
+
+                    st.info(f"📊 Processing {total_memories} memories for synthesis...")
+
                     # Use custom configuration if available
                     if hasattr(st.session_state, 'synthesis_config'):
                         from memory.synthesis.synthesis_engine import SynthesisConfig
@@ -885,6 +906,16 @@ def render_synthesis_controls():
 
                         # Run synthesis
                         memory_store = get_memory_store()
+
+                        # Pre-check: Verify we have memories to synthesize
+                        memory_stats = memory_store.get_memory_stats()
+                        total_memories = memory_stats.get('total_memories', 0)
+
+                        if total_memories == 0:
+                            st.warning("⚠️ No memories found in SAM's knowledge base.")
+                            st.info("💡 Add some documents or have conversations with SAM first, then try synthesis again.")
+                            return
+
                         synthesis_engine = SynthesisEngine()
 
                         result = synthesis_engine.run_synthesis(memory_store, visualize=True)
@@ -970,62 +1001,57 @@ def render_auto_synthesis_controls():
     try:
         st.markdown("#### ⚙️ Auto-Synthesis Settings")
 
-        col1, col2, col3 = st.columns([2, 2, 1])
+        # Use a simpler layout to avoid column nesting issues
+        # Auto-synthesis toggle (using checkbox for compatibility)
+        auto_synthesis_enabled = st.session_state.get('auto_synthesis_enabled', False)
+        new_auto_synthesis = st.checkbox(
+            "🤖 Auto-Synthesis",
+            value=auto_synthesis_enabled,
+            help="Automatically run synthesis when new insights are detected"
+        )
 
-        with col1:
-            # Auto-synthesis toggle (using checkbox for compatibility)
-            auto_synthesis_enabled = st.session_state.get('auto_synthesis_enabled', False)
-            new_auto_synthesis = st.checkbox(
-                "🤖 Auto-Synthesis",
-                value=auto_synthesis_enabled,
-                help="Automatically run synthesis when new insights are detected"
+        if new_auto_synthesis != auto_synthesis_enabled:
+            st.session_state.auto_synthesis_enabled = new_auto_synthesis
+            if new_auto_synthesis:
+                st.success("✅ Auto-synthesis enabled")
+            else:
+                st.info("⏸️ Auto-synthesis disabled")
+            st.rerun()
+
+        if st.session_state.get('auto_synthesis_enabled', False):
+            # Auto-synthesis frequency
+            frequency_options = {
+                "Every 10 minutes": 600,
+                "Every 30 minutes": 1800,
+                "Every hour": 3600,
+                "Every 6 hours": 21600,
+                "Daily": 86400
+            }
+
+            current_frequency = st.session_state.get('auto_synthesis_frequency', 3600)
+            frequency_label = next((k for k, v in frequency_options.items() if v == current_frequency), "Every hour")
+
+            selected_frequency = st.selectbox(
+                "Frequency",
+                options=list(frequency_options.keys()),
+                index=list(frequency_options.keys()).index(frequency_label),
+                help="How often to run auto-synthesis"
             )
 
-            if new_auto_synthesis != auto_synthesis_enabled:
-                st.session_state.auto_synthesis_enabled = new_auto_synthesis
-                if new_auto_synthesis:
-                    st.success("✅ Auto-synthesis enabled")
-                else:
-                    st.info("⏸️ Auto-synthesis disabled")
-                st.rerun()
+            st.session_state.auto_synthesis_frequency = frequency_options[selected_frequency]
 
-        with col2:
-            if st.session_state.get('auto_synthesis_enabled', False):
-                # Auto-synthesis frequency
-                frequency_options = {
-                    "Every 10 minutes": 600,
-                    "Every 30 minutes": 1800,
-                    "Every hour": 3600,
-                    "Every 6 hours": 21600,
-                    "Daily": 86400
-                }
+            # Auto-research toggle
+            auto_research_enabled = st.session_state.get('auto_research_enabled', False)
+            new_auto_research = st.checkbox(
+                "🔬 Auto-Research",
+                value=auto_research_enabled,
+                help="Automatically research promising insights"
+            )
 
-                current_frequency = st.session_state.get('auto_synthesis_frequency', 3600)
-                frequency_label = next((k for k, v in frequency_options.items() if v == current_frequency), "Every hour")
-
-                selected_frequency = st.selectbox(
-                    "Frequency",
-                    options=list(frequency_options.keys()),
-                    index=list(frequency_options.keys()).index(frequency_label),
-                    help="How often to run auto-synthesis"
-                )
-
-                st.session_state.auto_synthesis_frequency = frequency_options[selected_frequency]
-            else:
-                st.markdown("*Enable auto-synthesis to configure frequency*")
-
-        with col3:
-            if st.session_state.get('auto_synthesis_enabled', False):
-                # Auto-research toggle
-                auto_research_enabled = st.session_state.get('auto_research_enabled', False)
-                new_auto_research = st.checkbox(
-                    "🔬 Auto-Research",
-                    value=auto_research_enabled,
-                    help="Automatically research promising insights"
-                )
-
-                if new_auto_research != auto_research_enabled:
-                    st.session_state.auto_research_enabled = new_auto_research
+            if new_auto_research != auto_research_enabled:
+                st.session_state.auto_research_enabled = new_auto_research
+        else:
+            st.markdown("*Enable auto-synthesis to configure frequency and auto-research*")
 
     except Exception as e:
         st.error(f"❌ Auto-synthesis controls error: {e}")
