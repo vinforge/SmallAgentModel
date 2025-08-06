@@ -116,3 +116,49 @@ deployment_results/
 # OS
 .DS_Store
 Thumbs.db
+
+# GitHub preparation cleanup
+prepare_for_github.py
+cleanup_report.json
+validate_github_ready.py
+github_validation_report.json
+
+# Additional development artifacts
+test_*.py
+verify_*.py
+check_*.py
+diagnose_*.py
+fix_*.py
+integrate_*.py
+debug_*.py
+temp_*.py
+simple_*.py
+
+# Security files (CRITICAL - never commit these)
+*.key
+*.pem
+*.p12
+*.pfx
+*.env
+*.env.local
+*.env.development
+*.env.test
+*.env.production
+keystore.json
+setup_status.json
+sam_pro_key.txt
+
+# IDE and editor backup files
+*.bak
+*.backup
+*~
+.#*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

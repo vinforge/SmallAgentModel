@@ -32,6 +32,16 @@ class SynthesizedInsight:
     synthesis_metadata: Dict[str, Any]
     generated_at: str
 
+    @property
+    def quality_score(self) -> float:
+        """Calculate overall quality score from component scores."""
+        return (self.confidence_score * 0.4 + self.novelty_score * 0.3 + self.utility_score * 0.3)
+
+    @property
+    def insight_text(self) -> str:
+        """Alias for synthesized_text for backward compatibility."""
+        return self.synthesized_text
+
 class InsightGenerator:
     """
     Generates synthesized insights using LLM processing of concept clusters.
@@ -126,7 +136,7 @@ class InsightGenerator:
                 prompt=prompt_text,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                stop_sequences=["**", "---", "\n\n\n"]  # Stop at formatting markers
+                stop_sequences=["**", "---", "\n\n\n", "<think>", "</think>"]  # Stop at formatting markers and thinking tags
             )
             logger.info(f"LLM response received: {type(response)} (length: {len(str(response)) if response else 0})")
 

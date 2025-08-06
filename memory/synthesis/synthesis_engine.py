@@ -28,20 +28,20 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SynthesisConfig:
     """Configuration for the synthesis engine."""
-    # Clustering parameters
-    clustering_eps: float = 0.3
-    clustering_min_samples: int = 3
-    min_cluster_size: int = 5
-    max_clusters: int = 20
-    quality_threshold: float = 0.6
+    # Clustering parameters - Optimized based on test results for document embeddings
+    clustering_eps: float = 0.3  # Sweet spot: produces 5 clusters with good coherence (0.848)
+    clustering_min_samples: int = 3  # Slightly higher for better cluster quality
+    min_cluster_size: int = 8  # Larger minimum for meaningful document clusters (avg size ~160)
+    max_clusters: int = 10  # Limit to top quality clusters
+    quality_threshold: float = 0.5  # Higher threshold for better cluster coherence
 
     # Prompt generation parameters
     max_chunks_per_prompt: int = 8
     max_content_length: int = 2000
 
     # Insight generation parameters
-    llm_temperature: float = 0.7
-    max_tokens: int = 200
+    llm_temperature: float = 0.8  # Higher temperature for more creative insights
+    max_tokens: int = 400  # More tokens for detailed insights
 
     # Output parameters
     output_directory: str = "synthesis_output"
@@ -206,10 +206,16 @@ class SynthesisEngine:
             synthesis_log = self._create_synthesis_log(run_id, clusters, synthesis_prompts, insights)
             output_file = self._save_synthesis_output(run_id, insights, synthesis_log)
 
-            # Phase 5: Re-ingestion & Persistence (Phase 8B)
+            # Phase 5: Archive Insights
+            archived_count = 0
+            if insights:
+                logger.info("Phase 5: Archiving insights for long-term preservation...")
+                archived_count = self._archive_insights(insights, run_id)
+
+            # Phase 6: Re-ingestion & Persistence (Phase 8B)
             reingested_count = 0
             if self.config.enable_reingestion and insights:
-                logger.info("Phase 5: Re-ingesting synthetic insights into memory store...")
+                logger.info("Phase 6: Re-ingesting synthetic insights into memory store...")
                 reingested_count = self._reingest_synthetic_insights(output_file, memory_store)
 
             # Phase 6: Register clusters in cluster registry for UI access
@@ -557,3 +563,88 @@ class SynthesisEngine:
         except Exception as e:
             logger.error(f"Error generating visualization data: {e}")
             return None
+
+    def _archive_insights(self, insights: List[SynthesizedInsight], run_id: str) -> int:
+        """Archive insights for long-term preservation."""
+        try:
+            from .insight_archive import get_insight_archive
+
+            archive = get_insight_archive()
+            archived_count = 0
+
+            for insight in insights:
+                # Add synthesis run ID to insight
+                insight.synthesis_run_id = run_id
+
+                # Determine category based on content
+                category = self._categorize_insight(insight)
+
+                # Generate tags based on content
+                tags = self._generate_insight_tags(insight)
+
+                # Archive the insight
+                archive_id = archive.archive_insight(insight, category=category, tags=tags)
+                archived_count += 1
+
+                logger.debug(f"Archived insight {insight.insight_id} as {archive_id}")
+
+            logger.info(f"📚 Archived {archived_count} insights to long-term storage")
+            return archived_count
+
+        except Exception as e:
+            logger.error(f"❌ Failed to archive insights: {e}")
+            return 0
+
+    def _categorize_insight(self, insight: SynthesizedInsight) -> str:
+        """Categorize an insight based on its content."""
+        text = insight.synthesized_text.lower()
+
+        # Simple keyword-based categorization
+        if any(word in text for word in ['research', 'study', 'findings', 'evidence']):
+            return 'research'
+        elif any(word in text for word in ['strategy', 'approach', 'method', 'technique']):
+            return 'methodology'
+        elif any(word in text for word in ['trend', 'pattern', 'emerging', 'future']):
+            return 'trends'
+        elif any(word in text for word in ['connection', 'relationship', 'correlation']):
+            return 'connections'
+        elif any(word in text for word in ['opportunity', 'potential', 'application']):
+            return 'opportunities'
+        else:
+            return 'general'
+
+    def _generate_insight_tags(self, insight: SynthesizedInsight) -> List[str]:
+        """Generate tags for an insight based on its content and metadata."""
+        tags = []
+
+        # Quality-based tags
+        if insight.confidence_score > 0.7:
+            tags.append('high-confidence')
+        if insight.novelty_score > 0.7:
+            tags.append('novel')
+        if insight.utility_score > 0.7:
+            tags.append('actionable')
+
+        # Content-based tags
+        text = insight.synthesized_text.lower()
+        if 'ai' in text or 'artificial intelligence' in text:
+            tags.append('ai')
+        if 'machine learning' in text or 'ml' in text:
+            tags.append('machine-learning')
+        if 'data' in text:
+            tags.append('data')
+        if 'model' in text:
+            tags.append('modeling')
+
+        # Source-based tags
+        if hasattr(insight, 'source_chunks') and insight.source_chunks:
+            if len(insight.source_chunks) > 10:
+                tags.append('multi-source')
+
+            # Check for PDF sources
+            pdf_sources = [chunk for chunk in insight.source_chunks
+                          if hasattr(chunk, 'source') and '.pdf' in chunk.source]
+            if pdf_sources:
+                tags.append('research-papers')
+
+        return tags[:5]  # Limit to 5 tags

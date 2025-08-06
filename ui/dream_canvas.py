@@ -60,7 +60,7 @@ def render_dream_canvas():
     with col1:
         visualization_mode = st.selectbox(
             "🎨 Visualization Mode",
-            ["Cognitive Landscape", "Memory Clusters", "Temporal Flow", "Concept Networks"],
+            ["Cognitive Landscape", "Document Landscape", "Memory Clusters", "Temporal Flow", "Concept Networks"],
             help="Select the type of cognitive visualization"
         )
     
@@ -70,6 +70,41 @@ def render_dream_canvas():
             ["UMAP + HDBSCAN", "t-SNE + K-Means", "PCA + Gaussian Mixture"],
             help="Choose the dimensionality reduction and clustering approach"
         )
+
+        # Add info button for clustering method descriptions
+        if st.button("ℹ️ Method Info", help="Learn about clustering methods"):
+            st.session_state.show_clustering_info = True
+
+    # Show clustering method descriptions if requested
+    if hasattr(st.session_state, 'show_clustering_info') and st.session_state.show_clustering_info:
+        with st.expander("🔬 Clustering Method Descriptions", expanded=True):
+            st.markdown("""
+            ### 🧠 Understanding Clustering Methods
+
+            **🎯 UMAP + HDBSCAN** *(Recommended)*
+            - **UMAP**: Uniform Manifold Approximation and Projection - preserves both local and global structure
+            - **HDBSCAN**: Hierarchical Density-Based Clustering - finds clusters of varying densities
+            - **Best for**: Large document collections, preserves semantic relationships
+            - **Strengths**: Excellent at revealing document topic clusters, handles noise well
+
+            **📊 t-SNE + K-Means**
+            - **t-SNE**: t-Distributed Stochastic Neighbor Embedding - emphasizes local similarities
+            - **K-Means**: Partitions data into spherical clusters
+            - **Best for**: Clear visual separation, when you know approximate number of topics
+            - **Strengths**: Creates distinct, well-separated clusters
+
+            **📈 PCA + Gaussian Mixture**
+            - **PCA**: Principal Component Analysis - linear dimensionality reduction
+            - **Gaussian Mixture**: Assumes data comes from mixture of Gaussian distributions
+            - **Best for**: Linear relationships, overlapping topic boundaries
+            - **Strengths**: Fast, interpretable dimensions, handles overlapping concepts
+
+            💡 **Tip**: Start with UMAP + HDBSCAN for document clustering, then try others for different perspectives!
+            """)
+
+            if st.button("✅ Got it!", key="close_clustering_info"):
+                st.session_state.show_clustering_info = False
+                st.rerun()
     
     with col3:
         time_range = st.selectbox(
@@ -83,13 +118,38 @@ def render_dream_canvas():
         col1, col2, col3 = st.columns(3)
         with col1:
             n_components = st.slider("Dimensions", 2, 3, 2, help="2D or 3D visualization")
-            min_cluster_size = st.slider("Min Cluster Size", 3, 20, 5, help="Minimum memories per cluster")
+            min_cluster_size = st.slider("Min Cluster Size", 2, 15, 3, help="Minimum memories per cluster (lower = more clusters)")
+            max_clusters = st.slider("Max Clusters", 10, 100, 50, help="Maximum clusters to display (higher = more detail)")
         with col2:
             perplexity = st.slider("Perplexity", 5, 50, 30, help="t-SNE perplexity parameter")
             n_neighbors = st.slider("Neighbors", 5, 50, 15, help="UMAP n_neighbors parameter")
+            clustering_eps = st.slider("Clustering Eps", 0.3, 1.2, 0.8, 0.1, help="DBSCAN eps parameter (higher = fewer, larger clusters)")
         with col3:
             show_connections = st.checkbox("Show Connections", True, help="Display memory connections")
             show_labels = st.checkbox("Show Labels", True, help="Display cluster labels")
+            quality_threshold = st.slider("Quality Threshold", 0.05, 0.5, 0.1, 0.05, help="Minimum cluster quality (lower = more clusters)")
+
+        # Add preset buttons for common scenarios
+        st.markdown("**🎯 Quick Presets:**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("📚 Document Rich", help="Many small document clusters"):
+                st.session_state.preset_eps = 0.6
+                st.session_state.preset_min_size = 3
+                st.session_state.preset_max_clusters = 50
+                st.session_state.preset_quality = 0.05
+        with col2:
+            if st.button("🎯 Balanced", help="Moderate number of meaningful clusters"):
+                st.session_state.preset_eps = 0.4
+                st.session_state.preset_min_size = 5
+                st.session_state.preset_max_clusters = 25
+                st.session_state.preset_quality = 0.2
+        with col3:
+            if st.button("🏔️ High Level", help="Few large topic clusters"):
+                st.session_state.preset_eps = 0.3
+                st.session_state.preset_min_size = 10
+                st.session_state.preset_max_clusters = 10
+                st.session_state.preset_quality = 0.4
 
     # Advanced Synthesis Controls - Additional options (less prominent)
     with st.expander("⚙️ Advanced Synthesis Controls", expanded=False):
@@ -138,7 +198,7 @@ def render_dream_canvas():
     st.markdown("---")
     st.markdown("### 🚀 Main Actions")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         # Generate cognitive map (preserved existing functionality)
@@ -147,9 +207,19 @@ def render_dream_canvas():
                 try:
                     # Get memory data
                     memory_stats = memory_store.get_memory_stats()
-                    st.info(f"📊 Processing {memory_stats['total_memories']} memories...")
+                    total_memories = memory_stats['total_memories']
 
-                    # Generate cognitive map
+                    # Create progress tracking
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    status_text.text(f"📊 Loading {total_memories} memories...")
+                    progress_bar.progress(0.1)
+
+                    # Generate cognitive map with progress tracking
+                    status_text.text("🔬 Performing clustering analysis...")
+                    progress_bar.progress(0.3)
+
                     cognitive_map = generate_cognitive_map(
                         memory_store=memory_store,
                         method=cluster_method,
@@ -157,8 +227,14 @@ def render_dream_canvas():
                         n_components=n_components,
                         min_cluster_size=min_cluster_size,
                         perplexity=perplexity,
-                        n_neighbors=n_neighbors
+                        n_neighbors=n_neighbors,
+                        clustering_eps=clustering_eps,
+                        max_clusters=max_clusters,
+                        quality_threshold=quality_threshold
                     )
+
+                    status_text.text("🎨 Finalizing visualization...")
+                    progress_bar.progress(0.9)
 
                     # Store in session state
                     st.session_state.cognitive_map = cognitive_map
@@ -166,7 +242,15 @@ def render_dream_canvas():
                     st.session_state.show_connections = show_connections
                     st.session_state.show_labels = show_labels
 
-                    st.success("✅ Cognitive landscape generated!")
+                    progress_bar.progress(1.0)
+                    status_text.text("✅ Processing complete!")
+
+                    # Show final success message with details
+                    st.success(f"✅ Generated landscape with {len(cognitive_map.clusters)} clusters from {total_memories} memories!")
+
+                    # Clear progress indicators
+                    progress_bar.empty()
+                    status_text.empty()
 
                 except Exception as e:
                     st.error(f"❌ Error generating cognitive map: {e}")
@@ -235,10 +319,25 @@ def render_dream_canvas():
                     # Update synthesis history
                     update_synthesis_history(synthesis_results)
 
+                    # Regenerate cognitive map with real clustering data to ensure consistency
+                    try:
+                        logger.info("Regenerating cognitive map after synthesis...")
+                        updated_cognitive_map = generate_cognitive_map(
+                            memory_store=memory_store,
+                            method="UMAP + HDBSCAN",  # Use default method
+                            time_range="All Time",
+                            n_components=2,
+                            min_cluster_size=3
+                        )
+                        st.session_state.cognitive_map = updated_cognitive_map
+                        logger.info("Cognitive map updated with synthesis results")
+                    except Exception as map_error:
+                        logger.warning(f"Failed to update cognitive map: {map_error}")
+
                     # Provide detailed feedback based on results
                     if result.insights_generated > 0:
                         st.success(f"✨ Synthesis complete! Generated **{result.insights_generated} insights** from **{result.clusters_found} clusters**.")
-                        st.info("💡 Use 'View Synthesis Results' below to explore the generated insights.")
+                        st.info("💡 View insights in the 'Most Coherent Clusters' section below.")
                     elif result.clusters_found > 0:
                         st.warning(f"⚠️ Found **{result.clusters_found} clusters** but generated **0 insights**. This may indicate:")
                         st.info("• Insight quality threshold is too high\n• LLM responses need improvement\n• Memory clusters lack sufficient content")
@@ -250,6 +349,24 @@ def render_dream_canvas():
                     logger.error(f"Synthesis failed: {e}")
                     st.error(f"❌ Synthesis failed: {e}")
                     st.info("🔧 Try using the advanced synthesis controls below for more options.")
+
+    with col3:
+        # Insight Archive button - shows emergent insights in clusters
+        st.markdown("**🔍 Insights**")
+        archive_active = hasattr(st.session_state, 'show_insight_archive') and st.session_state.show_insight_archive
+
+        if archive_active:
+            # Show active state with option to hide
+            if st.button("📚 Hide Insights", type="secondary", help="Hide emergent insights from cluster details", use_container_width=True):
+                st.session_state.show_insight_archive = False
+                st.rerun()
+            st.caption("✨ Insights visible in clusters")
+        else:
+            # Show inactive state with option to show
+            if st.button("📚 Show Insights", type="secondary", help="View emergent insights within cluster details", use_container_width=True):
+                st.session_state.show_insight_archive = True
+                st.rerun()
+            st.caption("💡 Click to reveal insights")
     
     # Check if we have focused synthesis visualization data
     if hasattr(st.session_state, 'dream_canvas_data') and st.session_state.dream_canvas_data:
@@ -289,42 +406,106 @@ def generate_cognitive_map(
     method: str,
     time_range: str,
     n_components: int = 2,
-    min_cluster_size: int = 5,
+    min_cluster_size: int = 3,
     perplexity: int = 30,
-    n_neighbors: int = 15
+    n_neighbors: int = 15,
+    clustering_eps: float = 0.8,
+    max_clusters: int = 50,
+    quality_threshold: float = 0.1
 ) -> CognitiveMap:
-    """Generate a cognitive map from memory data."""
-    
-    # For now, generate mock data since we need to implement the actual memory processing
-    # In a real implementation, this would:
-    # 1. Query memories from the store based on time_range
-    # 2. Extract embeddings/features from memories
-    # 3. Apply dimensionality reduction (UMAP/t-SNE/PCA)
-    # 4. Perform clustering (HDBSCAN/K-Means/Gaussian Mixture)
-    # 5. Generate connections between related memories
-    
+    """Generate a cognitive map from real memory data using clustering and dimensionality reduction."""
+
     logger.info(f"Generating cognitive map with method: {method}, time_range: {time_range}")
-    
-    # Mock cluster generation
+
+    try:
+        # Import required modules
+        from memory.synthesis.clustering_service import ClusteringService
+        import numpy as np
+
+        # Get all memories from the store
+        all_memories = memory_store.get_all_memories()
+        logger.info(f"Retrieved {len(all_memories)} memories for cognitive map generation")
+
+        if len(all_memories) < 3:
+            logger.warning("Insufficient memories for cognitive map generation, using fallback")
+            return _generate_fallback_cognitive_map(method, time_range, n_components)
+
+        # Use user-configurable clustering parameters for rich document clustering
+        clustering_service = ClusteringService(
+            eps=clustering_eps,  # User-configurable eps parameter
+            min_samples=2,  # Lower for more granular clusters
+            min_cluster_size=min_cluster_size,  # User-configurable minimum size
+            max_clusters=max_clusters,  # User-configurable maximum clusters
+            quality_threshold=quality_threshold  # User-configurable quality threshold
+        )
+
+        logger.info(f"Using clustering parameters: eps={clustering_eps}, min_size={min_cluster_size}, max_clusters={max_clusters}, quality={quality_threshold}")
+
+        # Get concept clusters - try multiple approaches for rich clustering
+        concept_clusters = clustering_service.find_concept_clusters(memory_store)
+        logger.info(f"Found {len(concept_clusters)} concept clusters for visualization")
+
+        # If DBSCAN produces too few clusters, try K-Means for forced clustering
+        if len(concept_clusters) < 5 and max_clusters >= 10:
+            logger.info("DBSCAN produced few clusters, trying K-Means for richer clustering...")
+            concept_clusters = _try_kmeans_clustering(memory_store, min(max_clusters, 20), min_cluster_size, quality_threshold)
+            logger.info(f"K-Means produced {len(concept_clusters)} clusters")
+
+        if len(concept_clusters) == 0:
+            logger.warning("No clusters found, using fallback cognitive map")
+            return _generate_fallback_cognitive_map(method, time_range, n_components)
+
+        # Apply dimensionality reduction for visualization
+        clusters, connections = _apply_dimensionality_reduction(
+            concept_clusters, method, n_components, perplexity, n_neighbors
+        )
+
+        # Create cognitive map
+        cognitive_map = CognitiveMap(
+            clusters=clusters,
+            connections=connections,
+            metadata={
+                'method': method,
+                'time_range': time_range,
+                'n_components': n_components,
+                'generated_at': datetime.now().isoformat(),
+                'total_memories': sum(len(c.memories) for c in clusters),
+                'real_clustering': True,
+                'concept_clusters_found': len(concept_clusters)
+            }
+        )
+
+        logger.info(f"Generated cognitive map with {len(clusters)} clusters and {len(connections)} connections")
+        return cognitive_map
+
+    except Exception as e:
+        logger.error(f"Error generating cognitive map: {e}")
+        logger.info("Falling back to template cognitive map")
+        return _generate_fallback_cognitive_map(method, time_range, n_components)
+
+def _generate_fallback_cognitive_map(method: str, time_range: str, n_components: int) -> CognitiveMap:
+    """Generate a fallback cognitive map with template data when real clustering fails."""
+
+    # Template cluster generation
     clusters = []
     colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
-    
+
     cluster_names = [
-        "Personal Experiences", "Technical Knowledge", "Creative Ideas", 
+        "Personal Experiences", "Technical Knowledge", "Creative Ideas",
         "Problem Solving", "Relationships", "Learning", "Goals & Plans", "Reflections"
     ]
-    
+
     for i, name in enumerate(cluster_names[:6]):  # Limit to 6 clusters for demo
         # Generate random cluster center
         center = (
             random.uniform(-10, 10),
             random.uniform(-10, 10)
         )
-        
+
         # Generate mock memories for this cluster
         memories = []
         cluster_size = random.randint(5, 25)
-        
+
         for j in range(cluster_size):
             memory = {
                 'id': f'mem_{i}_{j}',
@@ -337,7 +518,7 @@ def generate_cognitive_map(
                 }
             }
             memories.append(memory)
-        
+
         cluster = MemoryCluster(
             id=f'cluster_{i}',
             name=name,
@@ -348,7 +529,7 @@ def generate_cognitive_map(
             coherence_score=random.uniform(0.6, 0.95)
         )
         clusters.append(cluster)
-    
+
     # Generate mock connections
     connections = []
     for i in range(len(clusters)):
@@ -361,7 +542,7 @@ def generate_cognitive_map(
                     'type': 'semantic_similarity'
                 }
                 connections.append(connection)
-    
+
     # Create cognitive map
     cognitive_map = CognitiveMap(
         clusters=clusters,
@@ -371,11 +552,705 @@ def generate_cognitive_map(
             'time_range': time_range,
             'n_components': n_components,
             'generated_at': datetime.now().isoformat(),
-            'total_memories': sum(len(c.memories) for c in clusters)
+            'total_memories': sum(len(c.memories) for c in clusters),
+            'fallback_mode': True
         }
     )
-    
+
     return cognitive_map
+
+def _apply_dimensionality_reduction(concept_clusters, method: str, n_components: int, perplexity: int, n_neighbors: int):
+    """Apply dimensionality reduction to concept clusters for visualization."""
+
+    try:
+        import numpy as np
+        from sklearn.manifold import TSNE
+        from sklearn.decomposition import PCA
+
+        # Extract embeddings from concept clusters
+        all_embeddings = []
+        cluster_mapping = []
+
+        for cluster_idx, concept_cluster in enumerate(concept_clusters):
+            for chunk in concept_cluster.chunks:
+                if hasattr(chunk, 'embedding') and chunk.embedding is not None:
+                    all_embeddings.append(chunk.embedding)
+                    cluster_mapping.append(cluster_idx)
+
+        if len(all_embeddings) == 0:
+            logger.warning("No embeddings found in concept clusters")
+            return [], []
+
+        embeddings_array = np.array(all_embeddings)
+        logger.info(f"Applying {method} dimensionality reduction to {len(embeddings_array)} embeddings")
+
+        # Apply dimensionality reduction with better parameters for visualization
+        if method == "UMAP + HDBSCAN":
+            try:
+                import umap
+                # Optimized UMAP parameters for better cluster separation
+                reducer = umap.UMAP(
+                    n_components=n_components,
+                    n_neighbors=min(n_neighbors, len(embeddings_array)//2),
+                    min_dist=0.3,  # Increase minimum distance for better separation
+                    spread=2.0,    # Increase spread for better distribution
+                    random_state=42
+                )
+                reduced_embeddings = reducer.fit_transform(embeddings_array)
+            except ImportError:
+                logger.warning("UMAP not available, falling back to t-SNE")
+                reducer = TSNE(
+                    n_components=n_components,
+                    perplexity=min(perplexity, len(embeddings_array)-1),
+                    learning_rate=200,  # Better learning rate
+                    random_state=42
+                )
+                reduced_embeddings = reducer.fit_transform(embeddings_array)
+        elif method == "t-SNE + K-Means":
+            reducer = TSNE(
+                n_components=n_components,
+                perplexity=min(perplexity, len(embeddings_array)-1),
+                learning_rate=200,
+                early_exaggeration=12,  # Better early exaggeration
+                random_state=42
+            )
+            reduced_embeddings = reducer.fit_transform(embeddings_array)
+        else:  # PCA + Gaussian Mixture
+            reducer = PCA(n_components=n_components, random_state=42)
+            reduced_embeddings = reducer.fit_transform(embeddings_array)
+
+        # Normalize coordinates to improve visualization
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        reduced_embeddings = scaler.fit_transform(reduced_embeddings)
+
+        # Convert concept clusters to visualization clusters
+        clusters = []
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
+
+        for i, concept_cluster in enumerate(concept_clusters):
+            # Find embeddings belonging to this cluster
+            cluster_indices = [j for j, cluster_idx in enumerate(cluster_mapping) if cluster_idx == i]
+
+            if len(cluster_indices) == 0:
+                continue
+
+            cluster_embeddings = reduced_embeddings[cluster_indices]
+
+            # Calculate cluster center with better positioning
+            center = np.mean(cluster_embeddings, axis=0)
+
+            # Add slight separation to prevent overlap
+            if len(clusters) > 0:
+                # Check distance to existing clusters and adjust if too close
+                min_separation = 0.5  # Minimum distance between cluster centers
+                for existing_cluster in clusters:
+                    existing_center = np.array(existing_cluster.center)
+                    distance = np.linalg.norm(center - existing_center)
+                    if distance < min_separation:
+                        # Push cluster away from existing one
+                        direction = center - existing_center
+                        if np.linalg.norm(direction) > 0:
+                            direction = direction / np.linalg.norm(direction)
+                            center = existing_center + direction * min_separation
+
+            # Convert memory chunks to simple memory format
+            memories = []
+            for chunk in concept_cluster.chunks:
+                memory = {
+                    'id': chunk.chunk_id,
+                    'content': chunk.content[:100] + "..." if len(chunk.content) > 100 else chunk.content,
+                    'timestamp': chunk.timestamp,
+                    'embedding': chunk.embedding,
+                    'metadata': {
+                        'importance': chunk.importance_score,
+                        'source': chunk.source
+                    }
+                }
+                memories.append(memory)
+
+            # Create visualization cluster
+            cluster = MemoryCluster(
+                id=concept_cluster.cluster_id,
+                name=f"Cluster {i+1}" if not concept_cluster.dominant_themes else concept_cluster.dominant_themes[0],
+                memories=memories,
+                center=tuple(center),
+                color=colors[i % len(colors)],
+                size=concept_cluster.size,
+                coherence_score=concept_cluster.coherence_score
+            )
+            clusters.append(cluster)
+
+        # Apply cluster separation enhancement
+        clusters = _enhance_cluster_separation(clusters)
+
+        # Generate connections based on cluster similarity
+        connections = []
+        for i in range(len(clusters)):
+            for j in range(i+1, len(clusters)):
+                # Calculate distance between cluster centers
+                center1 = np.array(clusters[i].center)
+                center2 = np.array(clusters[j].center)
+                distance = np.linalg.norm(center1 - center2)
+
+                # Create connection if clusters are semantically related but visually separated
+                max_distance = 3.0  # Fixed threshold for better control
+                if distance < max_distance:
+                    strength = 1.0 - (distance / max_distance)  # Closer = stronger
+                    connection = {
+                        'source': clusters[i].id,
+                        'target': clusters[j].id,
+                        'strength': strength,
+                        'type': 'semantic_similarity'
+                    }
+                    connections.append(connection)
+
+        logger.info(f"Created {len(clusters)} visualization clusters with {len(connections)} connections")
+        return clusters, connections
+
+    except Exception as e:
+        logger.error(f"Error in dimensionality reduction: {e}")
+        return [], []
+
+def _extract_pdf_files_from_cluster(cluster):
+    """Extract PDF file information from cluster memories."""
+    import re
+    from collections import defaultdict
+
+    pdf_files = defaultdict(lambda: {'chunk_count': 0, 'file_path': None})
+
+    try:
+        # Extract PDF info from cluster memories
+        for memory in cluster.memories:
+            source = memory.get('metadata', {}).get('source', '') or memory.get('source', '')
+
+            if source:
+                # Extract filename from various source formats
+                filename = _extract_clean_filename(source)
+
+                if filename and filename.lower().endswith('.pdf'):
+                    pdf_files[filename]['chunk_count'] += 1
+
+                    # Try to find the actual file path
+                    if not pdf_files[filename]['file_path']:
+                        file_path = _find_pdf_file_path(source, filename)
+                        pdf_files[filename]['file_path'] = file_path
+
+        # Convert to list format sorted by chunk count
+        result = []
+        for filename, info in pdf_files.items():
+            result.append({
+                'filename': filename,
+                'chunk_count': info['chunk_count'],
+                'file_path': info['file_path']
+            })
+
+        # Sort by chunk count (most chunks first)
+        result.sort(key=lambda x: x['chunk_count'], reverse=True)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error extracting PDF files from cluster: {e}")
+        return []
+
+def _extract_clean_filename(source: str) -> str:
+    """Extract clean filename from various source formats."""
+    import re
+
+    try:
+        # Handle "document:web_ui/uploads/20250606_154557_filename.pdf:block_1"
+        match = re.search(r'uploads/\d{8}_\d{6}_([^:]+)', source)
+        if match:
+            return match.group(1)
+
+        # Handle "document:filename.pdf" or "document:filename.pdf:block_1"
+        if source.startswith('document:'):
+            filename_part = source[9:]  # Remove "document:" prefix
+            filename = filename_part.split(':')[0]  # Remove ":block_X" suffix
+            if not filename.startswith('web_ui/'):
+                return filename
+
+        # Handle direct filenames
+        filename = source.split('/')[-1].split(':')[0]
+        if '.' in filename:
+            return filename
+
+        return None
+
+    except Exception:
+        return None
+
+def _find_pdf_file_path(source: str, filename: str) -> str:
+    """Find the actual file path for a PDF."""
+    try:
+        # Common upload directories
+        upload_dirs = [
+            Path("web_ui/uploads"),
+            Path("uploads"),
+            Path("documents"),
+            Path("data/documents")
+        ]
+
+        # Try to extract path from source
+        if 'uploads/' in source:
+            # Extract full path from source
+            import re
+            match = re.search(r'(web_ui/uploads/[^:]+)', source)
+            if match:
+                potential_path = Path(match.group(1))
+                if potential_path.exists():
+                    return str(potential_path)
+
+        # Search in common directories
+        for upload_dir in upload_dirs:
+            if upload_dir.exists():
+                # Look for exact filename
+                exact_path = upload_dir / filename
+                if exact_path.exists():
+                    return str(exact_path)
+
+                # Look for files with timestamp prefix
+                for file_path in upload_dir.glob(f"*_{filename}"):
+                    if file_path.exists():
+                        return str(file_path)
+
+                # Look for files containing the filename
+                for file_path in upload_dir.glob("*.pdf"):
+                    if filename in file_path.name:
+                        return str(file_path)
+
+        return None
+
+    except Exception:
+        return None
+
+def _render_cluster_deep_research_controls():
+    """Render Deep Research controls for selected cluster insights."""
+    if 'selected_cluster_insights' not in st.session_state or not st.session_state.selected_cluster_insights:
+        return
+
+    selected_count = len(st.session_state.selected_cluster_insights)
+
+    st.markdown("---")
+    st.markdown(f"**🔬 Deep Research ({selected_count} insights selected)**")
+
+    col1, col2, col3 = st.columns([2, 2, 1])
+
+    with col1:
+        if st.button(f"🚀 Start Deep Research", type="primary", help=f"Research {selected_count} selected insights"):
+            _execute_cluster_deep_research()
+
+    with col2:
+        if st.button("🗑️ Clear Selection", help="Clear all selected insights"):
+            st.session_state.selected_cluster_insights.clear()
+            if 'cluster_insight_data' in st.session_state:
+                st.session_state.cluster_insight_data.clear()
+            st.rerun()
+
+    with col3:
+        st.caption(f"📊 {selected_count} selected")
+
+def _execute_cluster_deep_research():
+    """Execute Deep Research pipeline for selected cluster insights."""
+    try:
+        if 'selected_cluster_insights' not in st.session_state or not st.session_state.selected_cluster_insights:
+            st.error("No insights selected for research")
+            return
+
+        # Show progress
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        selected_insights = st.session_state.cluster_insight_data
+        total_insights = len(selected_insights)
+
+        for i, (insight_id, insight_data) in enumerate(selected_insights.items()):
+            progress = (i + 1) / total_insights
+            progress_bar.progress(progress)
+            status_text.text(f"🔬 Researching insight {i+1}/{total_insights}...")
+
+            # Execute research for this insight
+            _research_single_cluster_insight(insight_id, insight_data)
+
+        progress_bar.progress(1.0)
+        status_text.text("✅ Deep Research completed!")
+
+        # Clear selection after successful research
+        st.session_state.selected_cluster_insights.clear()
+        st.session_state.cluster_insight_data.clear()
+
+        st.success(f"🎉 Deep Research completed for {total_insights} insights!")
+        st.rerun()
+
+    except Exception as e:
+        logger.error(f"Deep Research execution failed: {e}")
+        st.error(f"❌ Deep Research failed: {e}")
+
+def _research_single_cluster_insight(insight_id: str, insight_data: Dict[str, Any]):
+    """Research a single cluster insight using the automated pipeline."""
+    try:
+        insight = insight_data['insight']
+        cluster_name = insight_data['cluster_name']
+
+        # Extract weighted keywords from insight
+        insight_text = insight.get('synthesized_text', insight.get('content', ''))
+        keywords = _extract_weighted_keywords_from_insight(insight_text)
+
+        # Search ArXiv using keywords
+        search_query = ' '.join(keywords[:5])  # Use top 5 keywords
+
+        logger.info(f"🔍 Searching ArXiv for: {search_query}")
+
+        # Use ArXiv tool to search and download
+        from sam.web_retrieval.tools.arxiv_tool import get_arxiv_tool
+        arxiv_tool = get_arxiv_tool()
+
+        result = arxiv_tool.search_and_download(
+            query=search_query,
+            insight_text=insight_text
+        )
+
+        if result['success']:
+            # Auto-ingest the downloaded paper
+            paper_path = result['paper_metadata']['local_path']
+            _auto_ingest_research_paper(paper_path, insight_id, cluster_name, keywords)
+
+            # Store research result for display
+            _store_research_result(insight_id, result, keywords)
+
+            logger.info(f"✅ Research completed for insight: {insight_id}")
+        else:
+            logger.warning(f"⚠️ Research failed for insight {insight_id}: {result['error']}")
+
+    except Exception as e:
+        logger.error(f"Single insight research failed: {e}")
+
+def _extract_weighted_keywords_from_insight(insight_text: str) -> List[str]:
+    """Extract weighted keywords from insight text for ArXiv search."""
+    try:
+        import re
+        from collections import Counter
+
+        # Clean text
+        text = re.sub(r'<[^>]+>', '', insight_text)  # Remove HTML tags
+        text = re.sub(r'[^\w\s]', ' ', text)  # Remove punctuation
+
+        # Extract words
+        words = text.lower().split()
+
+        # Remove stop words
+        stop_words = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+            'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may',
+            'might', 'can', 'cannot', 'not', 'no', 'yes', 'also', 'very', 'much', 'more', 'most',
+            'some', 'any', 'all', 'each', 'every', 'both', 'either', 'neither', 'one', 'two',
+            'first', 'second', 'last', 'next', 'previous', 'new', 'old', 'good', 'bad', 'big', 'small'
+        }
+
+        # Filter meaningful words
+        meaningful_words = [
+            word for word in words
+            if word not in stop_words and len(word) > 3 and word.isalpha()
+        ]
+
+        # Count frequency and apply weights
+        word_freq = Counter(meaningful_words)
+
+        # Apply domain-specific weights
+        domain_weights = {
+            'neural': 2.0, 'network': 2.0, 'learning': 2.0, 'machine': 2.0, 'deep': 2.0,
+            'artificial': 2.0, 'intelligence': 2.0, 'algorithm': 2.0, 'model': 2.0,
+            'data': 1.5, 'analysis': 1.5, 'method': 1.5, 'approach': 1.5, 'technique': 1.5,
+            'research': 1.5, 'study': 1.5, 'experiment': 1.5, 'result': 1.5, 'finding': 1.5
+        }
+
+        # Calculate weighted scores
+        weighted_scores = {}
+        for word, freq in word_freq.items():
+            weight = domain_weights.get(word, 1.0)
+            weighted_scores[word] = freq * weight
+
+        # Return top keywords sorted by weighted score
+        sorted_keywords = sorted(weighted_scores.items(), key=lambda x: x[1], reverse=True)
+        return [word for word, score in sorted_keywords[:10]]
+
+    except Exception as e:
+        logger.error(f"Keyword extraction failed: {e}")
+        return ['machine learning', 'artificial intelligence']  # Fallback keywords
+
+def _auto_ingest_research_paper(paper_path: str, insight_id: str, cluster_name: str, keywords: List[str]):
+    """Auto-ingest downloaded research paper with Deep Research metadata."""
+    try:
+        from sam.ingestion.v2_ingestion_pipeline import ingest_document_v2
+        from datetime import datetime
+
+        # Create rich metadata for the research paper
+        metadata = {
+            'source_type': 'deep_research',
+            'research_context': 'cluster_insight_research',
+            'insight_id': insight_id,
+            'cluster_name': cluster_name,
+            'research_keywords': keywords,
+            'research_timestamp': datetime.now().isoformat(),
+            'priority_score': 0.9,  # High priority for research papers
+            'auto_ingested': True,
+            'research_session': f"deep_research_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        }
+
+        # Ingest the document
+        result = ingest_document_v2(
+            file_path=paper_path,
+            metadata=metadata
+        )
+
+        if result.successful_documents > 0:
+            logger.info(f"✅ Auto-ingested research paper: {paper_path}")
+
+            # Trigger auto-synthesis after ingestion
+            _trigger_auto_synthesis_after_research()
+        else:
+            logger.warning(f"⚠️ Auto-ingestion failed for: {paper_path}")
+
+    except Exception as e:
+        logger.error(f"Auto-ingestion failed: {e}")
+
+def _trigger_auto_synthesis_after_research():
+    """Trigger automatic synthesis after research paper ingestion."""
+    try:
+        from memory.synthesis.synthesis_engine import SynthesisEngine
+        from memory.memory_vectorstore import get_memory_store
+
+        # Get memory store
+        memory_store = get_memory_store()
+
+        # Initialize synthesis engine
+        synthesis_engine = SynthesisEngine()
+
+        # Run synthesis
+        logger.info("🧠 Triggering auto-synthesis after Deep Research...")
+        synthesis_result = synthesis_engine.run_synthesis(
+            memory_store=memory_store,
+            visualize=False,  # Don't show visualization during auto-synthesis
+            save_output=True
+        )
+
+        logger.info("✅ Auto-synthesis completed after Deep Research")
+
+    except Exception as e:
+        logger.error(f"Auto-synthesis failed: {e}")
+
+def _store_research_result(insight_id: str, result: Dict[str, Any], keywords: List[str]):
+    """Store research result for display below the original insight."""
+    if 'deep_research_results' not in st.session_state:
+        st.session_state.deep_research_results = {}
+
+    st.session_state.deep_research_results[insight_id] = {
+        'result': result,
+        'keywords': keywords,
+        'timestamp': datetime.now().isoformat(),
+        'status': 'completed'
+    }
+
+def _render_deep_research_results_for_insight(insight_id: str):
+    """Render Deep Research results below an insight if available."""
+    if 'deep_research_results' not in st.session_state:
+        return
+
+    if insight_id not in st.session_state.deep_research_results:
+        return
+
+    research_data = st.session_state.deep_research_results[insight_id]
+    result = research_data['result']
+    keywords = research_data['keywords']
+
+    st.markdown("---")
+    st.markdown("**🔬 Deep Research Results:**")
+
+    if result['success']:
+        paper_metadata = result['paper_metadata']
+
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            st.markdown(f"📄 **{paper_metadata['title']}**")
+            st.caption(f"Authors: {', '.join(paper_metadata['authors'][:3])}")
+            st.caption(f"ArXiv ID: {paper_metadata['arxiv_id']}")
+
+            # Show keywords used
+            st.caption(f"🔍 Keywords: {', '.join(keywords[:5])}")
+
+        with col2:
+            st.success("✅ Downloaded & Ingested")
+            st.caption(f"📊 Score: {result.get('relevance_score', 'N/A')}")
+
+        # Show paper summary
+        with st.expander("📋 Paper Summary", expanded=False):
+            summary = paper_metadata.get('summary', 'No summary available')
+            st.markdown(summary[:500] + "..." if len(summary) > 500 else summary)
+    else:
+        st.error(f"❌ Research failed: {result['error']}")
+
+def _try_kmeans_clustering(memory_store, n_clusters: int, min_cluster_size: int, quality_threshold: float):
+    """Try K-Means clustering to force a specific number of clusters."""
+    try:
+        from sklearn.cluster import KMeans
+        from memory.synthesis.clustering_service import ConceptCluster
+        import numpy as np
+        import uuid
+
+        logger.info(f"Attempting K-Means clustering with {n_clusters} clusters")
+
+        # Get all memories and embeddings
+        all_memories = memory_store.get_all_memories()
+        if len(all_memories) < n_clusters:
+            logger.warning(f"Not enough memories ({len(all_memories)}) for {n_clusters} clusters")
+            return []
+
+        # Extract embeddings
+        embeddings = []
+        valid_memories = []
+
+        for memory in all_memories:
+            if hasattr(memory, 'embedding') and memory.embedding is not None:
+                embeddings.append(memory.embedding)
+                valid_memories.append(memory)
+
+        if len(embeddings) < n_clusters:
+            logger.warning(f"Not enough embeddings ({len(embeddings)}) for {n_clusters} clusters")
+            return []
+
+        embeddings_array = np.array(embeddings)
+
+        # Perform K-Means clustering
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        cluster_labels = kmeans.fit_predict(embeddings_array)
+
+        # Create ConceptCluster objects
+        concept_clusters = []
+        for cluster_id in range(n_clusters):
+            # Get memories for this cluster
+            cluster_indices = np.where(cluster_labels == cluster_id)[0]
+
+            if len(cluster_indices) >= min_cluster_size:
+                cluster_memories = [valid_memories[i] for i in cluster_indices]
+                cluster_embeddings = embeddings_array[cluster_indices]
+
+                # Calculate centroid and coherence
+                centroid = np.mean(cluster_embeddings, axis=0)
+
+                # Calculate coherence (average cosine similarity to centroid)
+                from sklearn.metrics.pairwise import cosine_similarity
+                similarities = cosine_similarity(cluster_embeddings, [centroid])
+                coherence_score = np.mean(similarities)
+
+                # Only include if meets quality threshold
+                if coherence_score >= quality_threshold:
+                    # Create chunk objects (simplified)
+                    chunks = []
+                    chunk_ids = []
+                    for memory in cluster_memories:
+                        chunk_id = str(uuid.uuid4())
+                        chunk_ids.append(chunk_id)
+                        # Create a simple chunk-like object with all required attributes
+                        chunk = type('MemoryChunk', (), {
+                            'chunk_id': chunk_id,
+                            'content': getattr(memory, 'content', str(memory)),
+                            'source': getattr(memory, 'source', 'Unknown'),
+                            'embedding': getattr(memory, 'embedding', None),
+                            'timestamp': getattr(memory, 'timestamp', '2024-01-01T00:00:00'),
+                            'metadata': getattr(memory, 'metadata', {}),
+                            'memory_type': getattr(memory, 'memory_type', 'DOCUMENT'),
+                            'importance_score': getattr(memory, 'importance_score', 0.5),
+                            'relevance_score': getattr(memory, 'relevance_score', 0.5),
+                            'quality_score': getattr(memory, 'quality_score', 0.5)
+                        })()
+                        chunks.append(chunk)
+
+                    # Extract themes (simplified)
+                    themes = [f"Document Cluster {cluster_id + 1}"]
+
+                    concept_cluster = ConceptCluster(
+                        cluster_id=f"kmeans_cluster_{cluster_id}",
+                        chunk_ids=chunk_ids,
+                        chunks=chunks,
+                        centroid=centroid,
+                        coherence_score=coherence_score,
+                        size=len(cluster_memories),
+                        dominant_themes=themes,
+                        metadata={'method': 'kmeans', 'forced_clustering': True}
+                    )
+
+                    concept_clusters.append(concept_cluster)
+
+        logger.info(f"K-Means created {len(concept_clusters)} quality clusters")
+        return concept_clusters
+
+    except Exception as e:
+        logger.error(f"Error in K-Means clustering: {e}")
+        return []
+
+def _enhance_cluster_separation(clusters):
+    """Enhance cluster separation to prevent overlapping in visualization."""
+    import numpy as np
+
+    if len(clusters) <= 1:
+        return clusters
+
+    # Minimum separation distance
+    min_separation = 1.0
+
+    # Apply force-directed separation
+    for iteration in range(10):  # Multiple iterations for better separation
+        moved = False
+
+        for i, cluster_i in enumerate(clusters):
+            center_i = np.array(cluster_i.center)
+
+            for j, cluster_j in enumerate(clusters):
+                if i >= j:
+                    continue
+
+                center_j = np.array(cluster_j.center)
+                distance = np.linalg.norm(center_i - center_j)
+
+                if distance < min_separation and distance > 0:
+                    # Calculate repulsion force
+                    direction = (center_i - center_j) / distance
+                    push_distance = (min_separation - distance) / 2
+
+                    # Move clusters apart
+                    new_center_i = center_i + direction * push_distance
+                    new_center_j = center_j - direction * push_distance
+
+                    # Update cluster centers
+                    clusters[i] = MemoryCluster(
+                        id=cluster_i.id,
+                        name=cluster_i.name,
+                        memories=cluster_i.memories,
+                        center=tuple(new_center_i),
+                        color=cluster_i.color,
+                        size=cluster_i.size,
+                        coherence_score=cluster_i.coherence_score
+                    )
+
+                    clusters[j] = MemoryCluster(
+                        id=cluster_j.id,
+                        name=cluster_j.name,
+                        memories=cluster_j.memories,
+                        center=tuple(new_center_j),
+                        color=cluster_j.color,
+                        size=cluster_j.size,
+                        coherence_score=cluster_j.coherence_score
+                    )
+
+                    moved = True
+
+        if not moved:
+            break
+
+    return clusters
 
 def render_focused_synthesis_visualization(visualization_data):
     """Render focused synthesis visualization showing cluster memories and insights."""
@@ -488,6 +1363,8 @@ def render_cognitive_visualization(
 
     if mode == "Cognitive Landscape":
         render_landscape_view(cognitive_map, show_connections, show_labels)
+    elif mode == "Document Landscape":
+        render_document_landscape_view(cognitive_map, show_connections, show_labels)
     elif mode == "Memory Clusters":
         render_cluster_view(cognitive_map)
     elif mode == "Temporal Flow":
@@ -496,21 +1373,39 @@ def render_cognitive_visualization(
         render_network_view(cognitive_map, show_connections)
 
 def render_landscape_view(cognitive_map: CognitiveMap, show_connections: bool, show_labels: bool):
-    """Render the main landscape visualization with synthetic insights as golden stars."""
+    """Render the main landscape visualization with improved scaling and separation."""
+    import numpy as np
 
-    # Create scatter plot data
+    # Create scatter plot data with improved scaling
     x_coords = []
     y_coords = []
     colors = []
     sizes = []
     texts = []
 
-    for cluster in cognitive_map.clusters:
-        x_coords.append(cluster.center[0])
-        y_coords.append(cluster.center[1])
-        colors.append(cluster.color)
-        sizes.append(cluster.size * 3)  # Scale for visibility
-        texts.append(f"{cluster.name}<br>Memories: {cluster.size}<br>Coherence: {cluster.coherence_score:.2f}")
+    # Calculate better size scaling
+    if cognitive_map.clusters:
+        cluster_sizes = [cluster.size for cluster in cognitive_map.clusters]
+        min_size = min(cluster_sizes)
+        max_size = max(cluster_sizes)
+
+        # Normalize sizes to reasonable range (15-60 pixels)
+        size_range = max_size - min_size if max_size > min_size else 1
+
+        for cluster in cognitive_map.clusters:
+            x_coords.append(cluster.center[0])
+            y_coords.append(cluster.center[1])
+            colors.append(cluster.color)
+
+            # Better size scaling: normalize to 15-60 pixel range
+            normalized_size = 15 + (cluster.size - min_size) / size_range * 45
+            sizes.append(max(15, min(60, normalized_size)))  # Clamp to reasonable range
+
+            texts.append(f"{cluster.name}<br>Memories: {cluster.size}<br>Coherence: {cluster.coherence_score:.2f}")
+
+    if not x_coords:
+        st.warning("No clusters available for visualization")
+        return
 
     # Create the plot
     fig = go.Figure()
@@ -563,10 +1458,14 @@ def render_landscape_view(cognitive_map: CognitiveMap, show_connections: bool, s
 
             for insight in insights:
                 cluster_id = insight.get('cluster_id', '')
-                # Find corresponding cluster
+                # Find corresponding cluster with improved matching
                 matching_cluster = None
                 for cluster in cognitive_map.clusters:
-                    if cluster.name == cluster_id or cluster.id == cluster_id:
+                    # Try multiple matching strategies
+                    if (cluster.id == cluster_id or
+                        cluster.name == cluster_id or
+                        cluster.id.endswith(cluster_id) or
+                        cluster_id.endswith(cluster.id)):
                         matching_cluster = cluster
                         break
 
@@ -600,15 +1499,54 @@ def render_landscape_view(cognitive_map: CognitiveMap, show_connections: bool, s
                     showlegend=True
                 ))
 
-    # Update layout (preserved existing functionality)
+    # Calculate axis ranges for better visualization
+    if x_coords and y_coords:
+        x_range = [min(x_coords) - 1, max(x_coords) + 1]
+        y_range = [min(y_coords) - 1, max(y_coords) + 1]
+
+        # Ensure minimum range for visibility
+        x_span = x_range[1] - x_range[0]
+        y_span = y_range[1] - y_range[0]
+
+        if x_span < 2:
+            center_x = (x_range[0] + x_range[1]) / 2
+            x_range = [center_x - 1, center_x + 1]
+
+        if y_span < 2:
+            center_y = (y_range[0] + y_range[1]) / 2
+            y_range = [center_y - 1, center_y + 1]
+    else:
+        x_range = [-2, 2]
+        y_range = [-2, 2]
+
+    # Update layout with improved scaling
     fig.update_layout(
         title="🧠🎨 Cognitive Memory Landscape with Synthetic Insights",
-        xaxis_title="Cognitive Dimension 1",
-        yaxis_title="Cognitive Dimension 2",
-        showlegend=True,  # Changed to True to show insights legend
-        height=600,
-        plot_bgcolor='rgba(0,0,0,0.05)',
-        paper_bgcolor='white'
+        xaxis=dict(
+            title="Cognitive Dimension 1",
+            range=x_range,
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='rgba(128,128,128,0.2)',
+            zeroline=True,
+            zerolinewidth=2,
+            zerolinecolor='rgba(128,128,128,0.3)'
+        ),
+        yaxis=dict(
+            title="Cognitive Dimension 2",
+            range=y_range,
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='rgba(128,128,128,0.2)',
+            zeroline=True,
+            zerolinewidth=2,
+            zerolinecolor='rgba(128,128,128,0.3)'
+        ),
+        showlegend=True,
+        height=700,  # Increased height for better visibility
+        plot_bgcolor='rgba(248,249,250,0.8)',
+        paper_bgcolor='white',
+        hovermode='closest'
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -658,6 +1596,255 @@ def render_network_view(cognitive_map: CognitiveMap, show_connections: bool):
     
     # Placeholder for network graph
     # This would show memories as nodes and connections as edges
+
+def render_document_landscape_view(cognitive_map: CognitiveMap, show_connections: bool, show_labels: bool):
+    """Render document-level landscape showing individual documents as circles."""
+    import plotly.graph_objects as go
+    import numpy as np
+
+    st.markdown("### 📄 Document Landscape")
+    st.markdown("*Individual documents positioned by semantic similarity*")
+
+    try:
+        # Get memory store to access individual documents
+        from memory.memory_vectorstore import get_memory_store
+        memory_store = get_memory_store()
+
+        # Get all memories (will group by source document)
+        all_memories = memory_store.search_memories("", max_results=2000)
+
+        if not all_memories:
+            st.warning("No memories found for visualization")
+            return
+
+        # Group memories by source document or content type
+        doc_groups = {}
+        for memory in all_memories:
+            # Try multiple ways to get source information
+            source = getattr(memory, 'source', None)
+            if not source:
+                source = getattr(memory, 'metadata', {}).get('source', None)
+            if not source:
+                # Group by content type or first few words
+                content = getattr(memory, 'content', str(memory))[:50]
+                source = f"Memory Group {len(doc_groups) + 1}"
+
+            if source not in doc_groups:
+                doc_groups[source] = []
+            doc_groups[source].append(memory)
+
+        st.info(f"📊 Visualizing {len(doc_groups)} memory groups with {len(all_memories)} total memories")
+
+        # Create document-level visualization
+        fig = go.Figure()
+
+        # Get embeddings for documents (use first chunk as representative)
+        doc_embeddings = []
+        doc_names = []
+        doc_sizes = []
+        doc_colors = []
+
+        color_palette = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
+
+        for i, (doc_name, memories) in enumerate(doc_groups.items()):
+            # Try to get embedding from memory
+            embedding = None
+            for memory in memories:
+                if hasattr(memory, 'embedding') and memory.embedding:
+                    embedding = memory.embedding
+                    break
+                elif hasattr(memory, 'vector') and memory.vector:
+                    embedding = memory.vector
+                    break
+
+            if embedding:
+                doc_embeddings.append(embedding)
+                doc_names.append(doc_name.split('/')[-1] if '/' in doc_name else doc_name)
+                doc_sizes.append(len(memories))  # Size based on number of chunks
+                doc_colors.append(color_palette[i % len(color_palette)])
+
+        if not doc_embeddings:
+            # Fallback: create synthetic visualization based on content similarity
+            st.warning("No embeddings found - creating synthetic layout based on content")
+
+            # Create a simple grid layout for memory groups
+            import math
+            grid_size = math.ceil(math.sqrt(len(doc_groups)))
+
+            x_coords = []
+            y_coords = []
+            sizes = []
+            colors = []
+            names = []
+
+            for i, (doc_name, memories) in enumerate(doc_groups.items()):
+                x = i % grid_size
+                y = i // grid_size
+                x_coords.append(x)
+                y_coords.append(y)
+                sizes.append(len(memories) * 5 + 10)  # Scale size
+                colors.append(color_palette[i % len(color_palette)])
+                names.append(doc_name.split('/')[-1] if '/' in doc_name else doc_name)
+
+            # Add synthetic scatter plot
+            fig.add_trace(go.Scatter(
+                x=x_coords,
+                y=y_coords,
+                mode='markers+text' if show_labels else 'markers',
+                marker=dict(
+                    size=sizes,
+                    color=colors,
+                    opacity=0.7,
+                    line=dict(width=2, color='white')
+                ),
+                text=names if show_labels else None,
+                textposition="middle center",
+                textfont=dict(size=8, color='white'),
+                hovertemplate='<b>%{text}</b><br>Memories: %{marker.size}<br>Position: (%{x}, %{y})<extra></extra>',
+                name='Memory Groups'
+            ))
+
+            # Update layout for synthetic view
+            fig.update_layout(
+                title="📄 Memory Groups Layout (Synthetic - No Embeddings Available)",
+                xaxis=dict(title="Grid X", showgrid=True),
+                yaxis=dict(title="Grid Y", showgrid=True),
+                showlegend=True,
+                height=700,
+                plot_bgcolor='rgba(248,249,250,0.8)',
+                paper_bgcolor='white'
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Show statistics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Memory Groups", len(doc_groups))
+            with col2:
+                st.metric("Total Memories", len(all_memories))
+            with col3:
+                avg_memories = len(all_memories) / len(doc_groups) if doc_groups else 0
+                st.metric("Avg Memories/Group", f"{avg_memories:.1f}")
+
+            return
+
+        # Apply dimensionality reduction
+        from sklearn.manifold import TSNE
+        from sklearn.preprocessing import StandardScaler
+
+        embeddings_array = np.array(doc_embeddings)
+
+        # Normalize embeddings
+        scaler = StandardScaler()
+        embeddings_array = scaler.fit_transform(embeddings_array)
+
+        # Apply t-SNE for 2D visualization
+        tsne = TSNE(n_components=2, perplexity=min(30, len(embeddings_array)-1), random_state=42)
+        reduced_embeddings = tsne.fit_transform(embeddings_array)
+
+        # Create scatter plot for documents
+        x_coords = reduced_embeddings[:, 0]
+        y_coords = reduced_embeddings[:, 1]
+
+        # Normalize sizes to reasonable range (10-50 pixels)
+        min_size = min(doc_sizes)
+        max_size = max(doc_sizes)
+        size_range = max_size - min_size if max_size > min_size else 1
+
+        normalized_sizes = []
+        for size in doc_sizes:
+            normalized_size = 10 + (size - min_size) / size_range * 40
+            normalized_sizes.append(max(10, min(50, normalized_size)))
+
+        # Add document scatter plot
+        fig.add_trace(go.Scatter(
+            x=x_coords,
+            y=y_coords,
+            mode='markers+text' if show_labels else 'markers',
+            marker=dict(
+                size=normalized_sizes,
+                color=doc_colors,
+                opacity=0.7,
+                line=dict(width=2, color='white')
+            ),
+            text=doc_names if show_labels else None,
+            textposition="middle center",
+            textfont=dict(size=8, color='white'),
+            hovertemplate='<b>%{text}</b><br>Chunks: %{marker.size}<br>Position: (%{x:.2f}, %{y:.2f})<extra></extra>',
+            name='Documents'
+        ))
+
+        # Add connections between similar documents if requested
+        if show_connections:
+            # Calculate pairwise distances and connect close documents
+            for i in range(len(x_coords)):
+                for j in range(i+1, len(x_coords)):
+                    distance = np.sqrt((x_coords[i] - x_coords[j])**2 + (y_coords[i] - y_coords[j])**2)
+
+                    # Connect documents that are close together
+                    if distance < np.std(reduced_embeddings) * 1.5:
+                        fig.add_trace(go.Scatter(
+                            x=[x_coords[i], x_coords[j]],
+                            y=[y_coords[i], y_coords[j]],
+                            mode='lines',
+                            line=dict(width=1, color='rgba(128,128,128,0.3)'),
+                            showlegend=False,
+                            hoverinfo='skip'
+                        ))
+
+        # Update layout
+        fig.update_layout(
+            title="📄 Document Landscape - Individual Documents by Semantic Similarity",
+            xaxis=dict(
+                title="Semantic Dimension 1",
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(128,128,128,0.2)'
+            ),
+            yaxis=dict(
+                title="Semantic Dimension 2",
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(128,128,128,0.2)'
+            ),
+            showlegend=True,
+            height=700,
+            plot_bgcolor='rgba(248,249,250,0.8)',
+            paper_bgcolor='white',
+            hovermode='closest'
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Show document statistics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Documents", len(doc_groups))
+        with col2:
+            st.metric("Memory Chunks", len(all_memories))
+        with col3:
+            avg_chunks = len(all_memories) / len(doc_groups) if doc_groups else 0
+            st.metric("Avg Chunks/Doc", f"{avg_chunks:.1f}")
+
+        # Show document list
+        with st.expander("📋 Document Details"):
+            for doc_name, memories in doc_groups.items():
+                st.markdown(f"**{doc_name.split('/')[-1]}**: {len(memories)} chunks")
+
+    except Exception as e:
+        st.error(f"❌ Error rendering document landscape: {e}")
+        logger.error(f"Document landscape error: {e}")
+
+def render_insight_archive_mode():
+    """Render the insight archive interface."""
+    try:
+        from ui.insight_archive_ui import render_insight_archive
+        render_insight_archive()
+    except ImportError as e:
+        st.error(f"❌ Insight Archive UI not available: {e}")
+    except Exception as e:
+        st.error(f"❌ Error loading Insight Archive: {e}")
 
 def render_cognitive_insights(cognitive_map: CognitiveMap):
     """Render cognitive insights and analysis with synthesis integration."""
@@ -738,43 +1925,140 @@ def render_cluster_detailed_info(cluster, cluster_insights):
         # Get cluster statistics from registry
         cluster_stats = get_cluster_stats(cluster.name)
 
-        # Display cluster overview
+        # Display cluster overview (using simple layout to avoid column nesting)
         st.markdown("**📊 Cluster Overview:**")
-        col1, col2, col3 = st.columns(3)
+        st.markdown(f"• **Memories:** {cluster.size}")
+        st.markdown(f"• **Coherence:** {cluster.coherence_score:.2f}")
+        if cluster_insights:
+            st.markdown(f"• **Insights:** {len(cluster_insights)}")
+        else:
+            st.markdown(f"• **Insights:** 0")
 
-        with col1:
-            st.metric("Memories", cluster.size)
+        # Show emergent insights if Insight Archive is activated
+        if hasattr(st.session_state, 'show_insight_archive') and st.session_state.show_insight_archive and cluster_insights:
+            st.markdown("---")
+            st.markdown("**✨ Emergent Insights:**")
 
-        with col2:
-            st.metric("Coherence", f"{cluster.coherence_score:.2f}")
+            # Initialize selection state for Deep Research
+            if 'selected_cluster_insights' not in st.session_state:
+                st.session_state.selected_cluster_insights = set()
 
-        with col3:
-            if cluster_insights:
-                st.metric("Insights", len(cluster_insights))
-            else:
-                st.metric("Insights", "0")
+            for i, insight in enumerate(cluster_insights, 1):
+                insight_id = f"{cluster.id}_insight_{i}"
+
+                with st.expander(f"💡 Insight {i}: {insight.get('title', 'Untitled')}", expanded=False):
+                    # Add checkbox for Deep Research selection
+                    col1, col2 = st.columns([1, 10])
+
+                    with col1:
+                        is_selected = st.checkbox(
+                            "🔬",
+                            key=f"select_{insight_id}",
+                            value=insight_id in st.session_state.selected_cluster_insights,
+                            help="Select for Deep Research"
+                        )
+
+                        # Update selection state
+                        if is_selected:
+                            st.session_state.selected_cluster_insights.add(insight_id)
+                            # Store insight data for research
+                            if 'cluster_insight_data' not in st.session_state:
+                                st.session_state.cluster_insight_data = {}
+                            st.session_state.cluster_insight_data[insight_id] = {
+                                'insight': insight,
+                                'cluster_id': cluster.id,
+                                'cluster_name': cluster.name
+                            }
+                        else:
+                            st.session_state.selected_cluster_insights.discard(insight_id)
+                            if 'cluster_insight_data' in st.session_state and insight_id in st.session_state.cluster_insight_data:
+                                del st.session_state.cluster_insight_data[insight_id]
+
+                    with col2:
+                        # Display insight content
+                        insight_text = insight.get('synthesized_text', insight.get('content', ''))
+
+                        # Clean up the insight text (remove thinking tags)
+                        if '<think>' in insight_text and '</think>' in insight_text:
+                            parts = insight_text.split('</think>')
+                            if len(parts) > 1:
+                                insight_text = parts[-1].strip()
+
+                        st.markdown(insight_text)
+
+                        # Show insight metadata
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            confidence = insight.get('confidence_score', 0)
+                            st.caption(f"🎯 Confidence: {confidence:.2f}")
+                        with col2:
+                            generated_at = insight.get('generated_at', '')
+                            if generated_at:
+                                st.caption(f"🕐 Generated: {generated_at[:19]}")
+
+                        # Show Deep Research results if available
+                        _render_deep_research_results_for_insight(insight_id)
+
+            # Deep Research controls
+            _render_cluster_deep_research_controls()
+
+            # Add button to hide insights
+            if st.button("🔽 Hide Insights", key=f"hide_insights_{cluster.id}"):
+                st.session_state.show_insight_archive = False
+                st.rerun()
+
+        # Extract PDF files from cluster memories
+        pdf_files = _extract_pdf_files_from_cluster(cluster)
+
+        if pdf_files:
+            st.markdown("---")
+            st.markdown("**📚 PDF Documents in this Cluster:**")
+
+            # Group by document and show with links
+            for pdf_info in pdf_files[:10]:  # Show top 10 PDFs
+                filename = pdf_info['filename']
+                chunk_count = pdf_info['chunk_count']
+                file_path = pdf_info['file_path']
+
+                # Create clickable link if file exists
+                if file_path and Path(file_path).exists():
+                    # Create download link
+                    with open(file_path, 'rb') as f:
+                        file_data = f.read()
+
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"📄 **{filename}** ({chunk_count} chunks)")
+                    with col2:
+                        st.download_button(
+                            label="📥 Open PDF",
+                            data=file_data,
+                            file_name=filename,
+                            mime="application/pdf",
+                            key=f"download_{cluster.id}_{filename}"
+                        )
+                else:
+                    st.markdown(f"📄 **{filename}** ({chunk_count} chunks)")
+
+            if len(pdf_files) > 10:
+                st.caption(f"... and {len(pdf_files) - 10} more documents")
 
         # Display detailed cluster information if available from registry
         if cluster_stats['exists']:
             st.markdown("---")
-            st.markdown("**🔍 Detailed Information:**")
+            st.markdown("**🔍 Basic Information:**")
 
-            # Memory and source information
-            col1, col2 = st.columns(2)
+            # Cluster ID and basic info
+            st.markdown(f"• **Cluster ID:** {cluster.name}")
+            st.markdown(f"• **Memory count:** {cluster.size}")
+            st.markdown(f"• **Coherence score:** {cluster.coherence_score:.2f}")
+            st.markdown(f"• **Visualization color:** {cluster.color}")
 
-            with col1:
-                st.markdown("**Memory Details:**")
-                st.write(f"• **Total memories:** {cluster_stats['memory_count']}")
-                st.write(f"• **Average importance:** {cluster_stats['avg_importance']:.2f}")
-
-            with col2:
-                st.markdown("**Source Information:**")
-                st.write(f"• **Unique sources:** {cluster_stats['source_count']}")
-                if cluster_stats['sources']:
-                    st.write("• **Key sources:**")
-                    for source in cluster_stats['sources'][:3]:
-                        source_name = source.split('/')[-1] if '/' in source else source
-                        st.write(f"  - {source_name}")
+            # Show source statistics
+            if cluster_stats['sources']:
+                st.markdown("**📊 Source Statistics:**")
+                st.markdown(f"• **Unique sources:** {cluster_stats['source_count']}")
+                st.markdown(f"• **Average importance:** {cluster_stats['avg_importance']:.2f}")
 
             # Themes and topics
             if cluster_stats['dominant_themes']:
@@ -796,23 +2080,30 @@ def render_cluster_detailed_info(cluster, cluster_insights):
             st.markdown("---")
             st.markdown("**✨ Generated Insights:**")
             for j, insight in enumerate(cluster_insights[:3]):  # Show up to 3 insights per cluster
-                with st.expander(f"💡 Insight {j+1}", expanded=j==0):
-                    # Clean the insight text (remove <think> tags)
-                    clean_text = insight.get('synthesized_text', '')
-                    if '<think>' in clean_text and '</think>' in clean_text:
-                        parts = clean_text.split('</think>')
-                        if len(parts) > 1:
-                            clean_text = parts[-1].strip()
-                        else:
-                            clean_text = clean_text.replace('<think>', '').replace('</think>', '').strip()
+                # Clean the insight text (remove <think> tags)
+                clean_text = insight.get('synthesized_text', '')
+                if '<think>' in clean_text and '</think>' in clean_text:
+                    parts = clean_text.split('</think>')
+                    if len(parts) > 1:
+                        clean_text = parts[-1].strip()
+                    else:
+                        clean_text = clean_text.replace('<think>', '').replace('</think>', '').strip()
 
-                    st.markdown(f"**Insight:** {clean_text}")
+                # Display insight without nested expander
+                st.markdown(f"**💡 Insight {j+1}:**")
+                st.markdown(f"*{clean_text}*")
 
-                    # Show insight metadata
+                # Show insight metadata
+                col1, col2 = st.columns(2)
+                with col1:
                     if insight.get('confidence_score'):
                         st.write(f"**Confidence:** {insight['confidence_score']:.2f}")
+                with col2:
                     if insight.get('novelty_score'):
                         st.write(f"**Novelty:** {insight['novelty_score']:.2f}")
+
+                if j < len(cluster_insights) - 1:  # Add separator between insights
+                    st.markdown("---")
 
             if len(cluster_insights) > 3:
                 st.info(f"📋 Showing 3 of {len(cluster_insights)} insights for this cluster")
@@ -1175,13 +2466,7 @@ def update_synthesis_history(synthesis_results):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            if st.button("✨ View Synthesis Results", type="secondary", help="View detailed synthesis insights and patterns"):
-                # This button toggles the display of synthesis results
-                if not hasattr(st.session_state, 'show_synthesis_details'):
-                    st.session_state.show_synthesis_details = True
-                else:
-                    st.session_state.show_synthesis_details = not st.session_state.show_synthesis_details
-                st.rerun()
+            st.info("💡 Synthesis insights are displayed in the 'Most Coherent Clusters' section above.")
 
         with col2:
             if st.button("🎨 Load in Dream Canvas", help="Load synthesis results into Dream Canvas visualization"):
@@ -1204,21 +2489,18 @@ def update_synthesis_history(synthesis_results):
                     st.error(f"❌ Failed to load into Dream Canvas: {e}")
 
         with col3:
-            col3a, col3b = st.columns(2)
+            # Use simple layout to avoid column nesting
+            if st.button("⚙️ Settings", help="Configure synthesis settings"):
+                st.session_state.show_synthesis_settings = not st.session_state.get('show_synthesis_settings', False)
+                st.rerun()
 
-            with col3a:
-                if st.button("⚙️ Settings", help="Configure synthesis settings"):
-                    st.session_state.show_synthesis_settings = not st.session_state.get('show_synthesis_settings', False)
-                    st.rerun()
-
-            with col3b:
-                if st.button("🔄 Clear", help="Clear current synthesis results"):
-                    if hasattr(st.session_state, 'synthesis_results'):
-                        del st.session_state.synthesis_results
-                    if hasattr(st.session_state, 'show_synthesis_details'):
-                        del st.session_state.show_synthesis_details
-                    st.success("🧹 Synthesis results cleared")
-                    st.rerun()
+            if st.button("🔄 Clear", help="Clear current synthesis results"):
+                if hasattr(st.session_state, 'synthesis_results'):
+                    del st.session_state.synthesis_results
+                if hasattr(st.session_state, 'show_synthesis_details'):
+                    del st.session_state.show_synthesis_details
+                st.success("🧹 Synthesis results cleared")
+                st.rerun()
 
         # Show synthesis settings if requested
         if st.session_state.get('show_synthesis_settings', False):
@@ -1994,31 +3276,8 @@ def render_synthetic_insights_integration():
         # Display pattern discovery interface
         render_pattern_discovery_interface(synthesis_results)
     else:
-        # Show a brief summary that synthesis is available
-        st.markdown("---")
-        st.markdown("### ✨ Synthesis Complete")
-        insights_count = synthesis_results.get('insights_generated', 0)
-        clusters_count = synthesis_results.get('clusters_found', 0)
-        st.info(f"🌙 Dream state synthesis completed! Generated **{insights_count} insights** from **{clusters_count} clusters**. Use the controls above to view detailed results.")
-
-        # Show a preview of the first insight
-        insights = synthesis_results.get('insights', [])
-        if insights:
-            first_insight = insights[0]
-            clean_text = first_insight.get('synthesized_text', '')
-            if '<think>' in clean_text and '</think>' in clean_text:
-                parts = clean_text.split('</think>')
-                if len(parts) > 1:
-                    clean_text = parts[-1].strip()
-
-            # Show just the first sentence as a preview
-            sentences = clean_text.split('. ')
-            preview = sentences[0] if sentences else clean_text
-            if len(preview) > 100:
-                preview = preview[:100] + "..."
-
-            st.markdown(f"**Preview:** *{preview}*")
-            st.caption("Click 'View Synthesis Results' above to see all insights and patterns.")
+        # Synthesis results available - insights can be viewed in clusters via Insight Archive button
+        pass
 
 def render_synthetic_insights_panel(synthesis_results):
     """Display the actual synthetic insights generated by SAM's dream state."""
@@ -2063,7 +3322,10 @@ def render_synthetic_insights_panel(synthesis_results):
     st.markdown("#### 💡 Generated Insights")
 
     for i, insight in enumerate(insights[:5]):  # Show top 5 insights
-        with st.expander(f"💡 Insight {i+1}: Cluster {insight.get('cluster_id', 'Unknown')}", expanded=i<2):
+        # Use container instead of expander to avoid nesting issues
+        with st.container():
+            # Add insight header
+            st.markdown(f"### 💡 Insight {i+1}: Cluster {insight.get('cluster_id', 'Unknown')}")
 
             # Insight content
             st.markdown("**🧠 Synthesized Understanding:**")

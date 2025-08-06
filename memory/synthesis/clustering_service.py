@@ -39,12 +39,12 @@ class ClusteringService:
     - Density-based approach perfect for concept clustering
     """
     
-    def __init__(self, 
-                 eps: float = 0.3,
-                 min_samples: int = 3,
-                 min_cluster_size: int = 5,
+    def __init__(self,
+                 eps: float = 0.5,
+                 min_samples: int = 2,
+                 min_cluster_size: int = 3,
                  max_clusters: int = 20,
-                 quality_threshold: float = 0.6):
+                 quality_threshold: float = 0.3):
         """
         Initialize the clustering service.
         

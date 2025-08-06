@@ -1,10 +1,10 @@
-# 🧠 Secure Agent Model (SAM)
-
-**The world's most advanced open-source AI assistant with enterprise-grade security**
+# 🤖 SAM - Small Agent Model
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io/)
+
+**SAM (Small Agent Model)** is an advanced AI assistant with sophisticated memory management, document processing, and autonomous research capabilities. Built for researchers, developers, and knowledge workers who need intelligent document analysis and automated research discovery.
 
 ---
 

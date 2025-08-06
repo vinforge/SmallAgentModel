@@ -195,17 +195,18 @@ class SynthesisPromptGenerator:
         # System context
         prompt_parts.append("""🧠 **SAM COGNITIVE SYNTHESIS MODE** 🧠
 
-You are SAM performing cognitive synthesis during a "dream state" - a period of offline consolidation where you analyze clusters of related concepts to generate emergent insights.
+You are SAM performing cognitive synthesis during a "dream state" - analyzing clusters of related concepts from the user's documents to generate novel, emergent insights.
 
 **SYNTHESIS OBJECTIVE:**
-Generate ONE profound, emergent insight that unifies the following related concepts. This should be NEW understanding that emerges from the connections between these memories, not just a summary.
+Generate ONE profound, emergent insight that reveals hidden patterns, unexpected connections, or strategic implications across these related concepts. This should be NEW understanding that emerges from the intersection of ideas, not just a summary.
 
 **SYNTHESIS REQUIREMENTS:**
-• Create EMERGENT understanding - find hidden connections and implications
-• Be concise but profound (2-3 sentences maximum)
-• Maintain factual accuracy while revealing new perspectives  
-• Focus on actionable insights or strategic implications
-• Synthesize across different sources and viewpoints""")
+• Identify NOVEL patterns or connections that span multiple sources
+• Reveal strategic implications, future trends, or actionable opportunities
+• Connect seemingly unrelated concepts to generate breakthrough insights
+• Focus on what the USER should know that isn't obvious from individual sources
+• Be specific and actionable (3-5 sentences with concrete implications)
+• Highlight contradictions, gaps, or emerging themes across the literature""")
         
         # Cluster context
         prompt_parts.append(f"""
@@ -232,7 +233,13 @@ Generate ONE profound, emergent insight that unifies the following related conce
         # Synthesis instruction
         prompt_parts.append(f"""
 **SYNTHESIS TASK:**
-Based on the {len(chunks)} source concepts above, generate a single emergent insight that reveals a deeper understanding or strategic implication. Focus on what these concepts collectively tell us that none reveal individually.
+Analyze the {len(chunks)} source concepts above to identify:
+1. Hidden patterns or connections that span multiple sources
+2. Strategic implications or future opportunities
+3. Novel insights that emerge from combining these perspectives
+4. Actionable recommendations based on the synthesized understanding
+
+Generate a compelling insight that reveals something valuable and non-obvious about the user's domain of interest.
 
 **EMERGENT INSIGHT:**""")
         
