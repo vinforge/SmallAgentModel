@@ -8,6 +8,7 @@ import streamlit as st
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -170,15 +171,27 @@ def render_chat_interface():
                     with st.spinner("SAM is thinking..."):
                         # This would call the actual SAM model
                         response = generate_sam_response(prompt)
-                        
-                        # Add response to messages
-                        st.session_state.messages.append({"role": "assistant", "content": response})
-                        
+
+                        # Generate unique message ID for feedback tracking
+                        import uuid
+                        message_id = str(uuid.uuid4())
+
+                        # Add response to messages with ID
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content": response,
+                            "message_id": message_id
+                        })
+
                         # Process and display with thought handling
                         from utils.thought_processor import get_thought_processor
-                        
+
                         thought_processor = get_thought_processor()
                         show_thoughts = thought_processor.should_show_thoughts(st.session_state)
+
+                        # Add feedback controls
+                        st.markdown("---")
+                        render_feedback_controls(message_id, prompt, response)
                         
                         if show_thoughts:
                             processed = thought_processor.process_response(response)
@@ -261,12 +274,127 @@ This response demonstrates the new Sprint 16 thought transparency feature - you 
         logger.error(f"Error generating SAM response: {e}")
         return "I apologize, but I encountered an error generating a response. Please try again."
 
+def render_feedback_controls(message_id: str, query: str, response: str):
+    """Render feedback controls for a message."""
+    try:
+        st.markdown("**How was this response?**")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if st.button("👍 Helpful", key=f"helpful_{message_id}"):
+                submit_message_feedback(message_id, query, response, rating=0.8, feedback_type="positive")
+                st.success("Thank you for your feedback!")
+
+        with col2:
+            if st.button("👎 Needs Work", key=f"needs_work_{message_id}"):
+                submit_message_feedback(message_id, query, response, rating=0.2, feedback_type="negative")
+                st.warning("Thanks for letting me know. I'll work on improving!")
+
+        with col3:
+            if st.button("✏️ Suggest Improvement", key=f"suggest_{message_id}"):
+                st.session_state[f"show_correction_{message_id}"] = True
+
+        # Show correction input if requested
+        if st.session_state.get(f"show_correction_{message_id}", False):
+            correction_text = st.text_area(
+                "How can I improve this response?",
+                key=f"correction_{message_id}",
+                placeholder="e.g., 'too mechanical, more natural next time' or 'needs more detail about...'"
+            )
+
+            col_submit, col_cancel = st.columns(2)
+            with col_submit:
+                if st.button("Submit Feedback", key=f"submit_{message_id}"):
+                    if correction_text.strip():
+                        submit_message_feedback(
+                            message_id, query, response,
+                            rating=0.4, feedback_type="correction",
+                            correction_text=correction_text
+                        )
+                        st.success("Thank you! I'll learn from this feedback.")
+                        st.session_state[f"show_correction_{message_id}"] = False
+                        st.rerun()
+                    else:
+                        st.error("Please provide some feedback before submitting.")
+
+            with col_cancel:
+                if st.button("Cancel", key=f"cancel_{message_id}"):
+                    st.session_state[f"show_correction_{message_id}"] = False
+                    st.rerun()
+
+    except Exception as e:
+        logger.error(f"Error rendering feedback controls: {e}")
+
+def submit_message_feedback(message_id: str, query: str, response: str,
+                          rating: float, feedback_type: str,
+                          correction_text: str = None):
+    """Submit feedback for a message."""
+    try:
+        # Try to integrate with feedback system
+        from learning.feedback_handler import get_feedback_handler
+        from learning.feedback_types import FeedbackType, CorrectionType
+
+        feedback_handler = get_feedback_handler()
+        user_id = "streamlit_user"  # In production, get from session/auth
+
+        # Determine feedback type
+        if feedback_type == "correction":
+            fb_type = FeedbackType.CORRECTION
+            corr_type = CorrectionType.STYLE_IMPROVEMENT
+        else:
+            fb_type = FeedbackType.SATISFACTION_RATING
+            corr_type = None
+
+        # Submit feedback
+        feedback_id = feedback_handler.submit_feedback(
+            memory_id=message_id,
+            user_id=user_id,
+            feedback_type=fb_type,
+            rating=rating,
+            correction_text=correction_text,
+            correction_type=corr_type
+        )
+
+        logger.info(f"Feedback submitted: {feedback_id} for message {message_id}")
+
+        # Store in session state for immediate use
+        if 'feedback_history' not in st.session_state:
+            st.session_state.feedback_history = []
+
+        st.session_state.feedback_history.append({
+            'message_id': message_id,
+            'query': query,
+            'response': response,
+            'rating': rating,
+            'feedback_type': feedback_type,
+            'correction_text': correction_text,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Error submitting feedback: {e}")
+        # Fallback: store in session state only
+        if 'feedback_history' not in st.session_state:
+            st.session_state.feedback_history = []
+
+        st.session_state.feedback_history.append({
+            'message_id': message_id,
+            'query': query,
+            'response': response,
+            'rating': rating,
+            'feedback_type': feedback_type,
+            'correction_text': correction_text,
+            'timestamp': datetime.now().isoformat(),
+            'error': str(e)
+        })
+
 def render_thought_settings():
     """Render thought visibility settings panel."""
     try:
         st.subheader("🧠 Thought Transparency Settings")
         st.markdown("**Sprint 16 Feature:** Control how SAM's thinking process is displayed")
-        
+
         # Current settings
         col1, col2 = st.columns(2)
         

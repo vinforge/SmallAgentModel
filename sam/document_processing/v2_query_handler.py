@@ -83,21 +83,56 @@ def _process_v2_result(rag_result, routing_result, session_id: str = None) -> Tu
                 'session_id': session_id
             }
         
-        # Create response message
-        response_parts = []
-        response_parts.append("Based on your uploaded documents:")
-        response_parts.append("")
-        response_parts.append(context)
-        response_parts.append("")
-        
-        # Add source attribution
-        citations = _get_v2_citations(rag_result)
-        if citations:
-            response_parts.append("Sources:")
-            for citation in citations:
-                response_parts.append(f"• {citation}")
-        
-        response_text = "\n".join(response_parts)
+        # Generate enhanced natural response
+        try:
+            from sam.document_rag.enhanced_response_generator import generate_enhanced_document_response
+
+            # Get user ID from session
+            user_id = session_id or "default"
+
+            # Generate enhanced response
+            enhanced_response, enhancement_metadata = generate_enhanced_document_response(
+                query=query,
+                document_context=context,
+                metadata={
+                    'source_documents': rag_result.source_documents,
+                    'similarity_scores': rag_result.similarity_scores,
+                    'document_count': rag_result.document_count
+                },
+                user_id=user_id
+            )
+
+            response_text = enhanced_response
+
+            # Add enhancement metadata to response metadata
+            metadata.update({
+                'enhancement_applied': True,
+                'enhancement_metadata': enhancement_metadata
+            })
+
+        except Exception as e:
+            logger.warning(f"Enhanced response generation failed, using fallback: {e}")
+
+            # Fallback to original mechanical response
+            response_parts = []
+            response_parts.append("Based on your uploaded documents:")
+            response_parts.append("")
+            response_parts.append(context)
+            response_parts.append("")
+
+            # Add source attribution
+            citations = _get_v2_citations(rag_result)
+            if citations:
+                response_parts.append("Sources:")
+                for citation in citations:
+                    response_parts.append(f"• {citation}")
+
+            response_text = "\n".join(response_parts)
+
+            metadata.update({
+                'enhancement_applied': False,
+                'enhancement_error': str(e)
+            })
         
         # Create metadata
         metadata = {
@@ -339,3 +374,6 @@ def query_v2_documents(query: str, session_id: str = None) -> Tuple[bool, str, D
     except Exception as e:
         logger.error(f"❌ v2 document query failed: {e}")
         return False, f"v2 query failed: {str(e)}", {'error': str(e)}
+
+# Alias for compatibility
+handle_v2_document_query = query_documents_v2

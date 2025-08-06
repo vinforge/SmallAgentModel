@@ -461,9 +461,91 @@ class FeedbackHandler:
             logger.error(f"Error applying learning insight: {e}")
             return False
 
+    def get_user_feedback_history(self, user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get feedback history for a specific user."""
+        try:
+            user_feedback = []
+
+            for feedback in self.feedback_store:
+                if feedback.user_id == user_id:
+                    user_feedback.append({
+                        'feedback_id': feedback.feedback_id,
+                        'memory_id': feedback.memory_id,
+                        'timestamp': feedback.timestamp,
+                        'feedback_type': feedback.feedback_type.value,
+                        'rating': feedback.rating,
+                        'correction_text': feedback.correction_text,
+                        'correction_type': feedback.correction_type.value if feedback.correction_type else None,
+                        'original_query': feedback.original_query,
+                        'original_response': feedback.original_response,
+                        'learning_priority': feedback.learning_priority.value
+                    })
+
+            # Sort by timestamp (most recent first) and limit
+            user_feedback.sort(key=lambda x: x['timestamp'], reverse=True)
+            return user_feedback[:limit]
+
+        except Exception as e:
+            logger.error(f"Error getting user feedback history: {e}")
+            return []
+
+
+# Global feedback handler instance
+_feedback_handler = None
+
+def get_feedback_handler() -> FeedbackHandler:
+    """Get the global feedback handler instance."""
+    global _feedback_handler
+    if _feedback_handler is None:
+        # Create with mock dependencies for now
+        from learning.episodic_memory import EpisodicMemoryStore
+        from learning.user_modeling import UserModelingEngine
+
+        try:
+            episodic_store = EpisodicMemoryStore()
+            user_modeler = UserModelingEngine()
+            _feedback_handler = FeedbackHandler(episodic_store, user_modeler)
+        except Exception as e:
+            # Create minimal feedback handler for testing
+            _feedback_handler = MinimalFeedbackHandler()
+
+    return _feedback_handler
+
+class MinimalFeedbackHandler:
+    """Minimal feedback handler for testing when full system is not available."""
+
+    def __init__(self):
+        self.feedback_store = []
+        self.logger = logging.getLogger(__name__)
+
+    def submit_feedback(self, memory_id: str, user_id: str, feedback_type,
+                       rating: float = None, correction_text: str = None,
+                       correction_type = None) -> str:
+        """Submit feedback (minimal implementation)."""
+        feedback_id = f"feedback_{len(self.feedback_store)}"
+
+        feedback = {
+            'feedback_id': feedback_id,
+            'memory_id': memory_id,
+            'user_id': user_id,
+            'feedback_type': feedback_type,
+            'rating': rating,
+            'correction_text': correction_text,
+            'correction_type': correction_type,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        self.feedback_store.append(feedback)
+        self.logger.info(f"Feedback submitted: {feedback_id}")
+        return feedback_id
+
+    def get_user_feedback_history(self, user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get feedback history for a user."""
+        user_feedback = [f for f in self.feedback_store if f['user_id'] == user_id]
+        return user_feedback[-limit:] if user_feedback else []
 
 # Convenience functions
-def create_feedback_handler(episodic_store: EpisodicMemoryStore, 
+def create_feedback_handler(episodic_store: EpisodicMemoryStore,
                           user_modeler: UserModelingEngine) -> FeedbackHandler:
     """Create and return a feedback handler instance."""
     return FeedbackHandler(episodic_store, user_modeler)
