@@ -42,7 +42,13 @@ class UserProfile:
     preferred_detail: str = "medium"  # low, medium, high
     tpv_preference: str = "auto"      # always, auto, never
     domain_expertise: List[str] = None
-    
+
+    # Profile constants for compatibility
+    RESEARCHER = "researcher"
+    BUSINESS = "business"
+    GENERAL = "general"
+    EXPERT = "expert"
+
     def __post_init__(self):
         if self.domain_expertise is None:
             self.domain_expertise = []

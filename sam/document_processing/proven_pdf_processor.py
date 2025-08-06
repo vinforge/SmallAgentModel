@@ -27,7 +27,11 @@ try:
     # Try to import langchain components (optional)
     try:
         from langchain.text_splitter import RecursiveCharacterTextSplitter
-        from langchain.vectorstores import FAISS
+        try:
+    from langchain_community.vectorstores import FAISS
+except ImportError:
+    # Fallback for older LangChain versions
+    from langchain.vectorstores import FAISS
         from langchain.schema import Document
         LANGCHAIN_AVAILABLE = True
     except ImportError:

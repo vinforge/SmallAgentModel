@@ -12,9 +12,26 @@ Reasoning Skills:
 """
 
 from .implicit_knowledge import ImplicitKnowledgeSkill
-from .test_time_adaptation import TestTimeAdaptationSkill
 
-__all__ = [
-    'ImplicitKnowledgeSkill',
-    'TestTimeAdaptationSkill',
-]
+try:
+    from .test_time_adaptation import (
+        TestTimeAdaptation,
+        AdaptationResult,
+        get_test_time_adaptation,
+        is_test_time_adaptation_available
+    )
+    # Create alias for compatibility
+    TestTimeAdaptationSkill = TestTimeAdaptation
+
+    __all__ = [
+        'ImplicitKnowledgeSkill',
+        'TestTimeAdaptationSkill',
+        'TestTimeAdaptation',
+        'AdaptationResult',
+        'get_test_time_adaptation',
+        'is_test_time_adaptation_available'
+    ]
+except ImportError:
+    __all__ = [
+        'ImplicitKnowledgeSkill',
+    ]

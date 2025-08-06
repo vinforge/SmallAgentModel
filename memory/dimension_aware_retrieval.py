@@ -19,9 +19,12 @@ from .ranking_engine import MemoryRankingEngine
 try:
     from multimodal_processing.dimension_prober_v2 import EnhancedDimensionProberV2, ProfileManager
     DIMENSION_PROBING_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    EnhancedDimensionProberV2 = None
+    ProfileManager = None
     DIMENSION_PROBING_AVAILABLE = False
-    logging.warning("Dimension probing not available for dimension-aware retrieval")
+    logging.warning(f"Dimension-aware retrieval not available: {e}")
+    logging.info("Falling back to standard semantic retrieval")
 
 logger = logging.getLogger(__name__)
 
