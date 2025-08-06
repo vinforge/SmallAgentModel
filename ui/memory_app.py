@@ -223,14 +223,9 @@ def render_security_status_indicator():
         """, unsafe_allow_html=True)
 
 def is_dream_canvas_available():
-    """Check if Dream Canvas feature is available (requires SAM Pro)."""
-    try:
-        from sam.entitlements.validator import EntitlementValidator
-        validator = EntitlementValidator()
-        return validator.is_pro_unlocked()
-    except Exception as e:
-        # If entitlement system is not available, allow access (development mode)
-        return True
+    """Check if Dream Canvas feature is available (now available in Community Edition)."""
+    # Dream Canvas is now available to all SAM Community Edition users
+    return True
 
 def render_dream_canvas_locked():
     """Render the locked Dream Canvas interface for non-Pro users."""
@@ -2370,10 +2365,7 @@ def render_dream_canvas():
         st.subheader("🧠🎨 Dream Canvas - Cognitive Synthesis Visualization")
         st.markdown("Explore SAM's memory landscape through interactive visualization and cognitive synthesis")
 
-        # Check if Dream Canvas feature is available (SAM Pro required)
-        if not is_dream_canvas_available():
-            render_dream_canvas_locked()
-            return
+        # Dream Canvas is now available to all Community Edition users
 
         # Dream Canvas Controls Section
         st.markdown("### 🎛️ Dream Canvas Controls")
