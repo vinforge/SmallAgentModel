@@ -418,6 +418,10 @@ def main():
     is_unlocked = security_ui.render_security_interface()
 
     if is_unlocked:
+        # Check for session timeout before showing main application
+        if not check_session_timeout():
+            st.stop()
+
         # Show main SAM application
         render_main_sam_application()
     else:
@@ -485,6 +489,72 @@ def render_basic_first_time_setup():
         st.markdown("Please complete setup manually:")
         st.markdown("1. Create your master password in the Security section")
         st.markdown("2. Start using SAM Community Edition!")
+
+def check_session_timeout():
+    """Check if the current session has timed out and enforce automatic logout."""
+    try:
+        if not hasattr(st.session_state, 'security_manager'):
+            return False
+
+        security_manager = st.session_state.security_manager
+
+        # Get session info to check timeout
+        session_info = security_manager.get_session_info()
+
+        # Check if session is still valid
+        if session_info.get('is_unlocked', False):
+            time_remaining = session_info.get('time_remaining', 0)
+
+            # If time remaining is 0 or negative, session has expired
+            if time_remaining <= 0:
+                logger.warning("⏰ Session timeout detected - automatically locking application")
+
+                # Lock the application
+                security_manager.lock_application()
+
+                # Show timeout message
+                st.error("🔒 **Session Timeout**")
+                st.warning("Your session has expired after 60 minutes of inactivity for security.")
+                st.info("🔄 Please unlock SAM again to continue using the application.")
+
+                # Force page refresh to show login screen
+                st.rerun()
+                return False
+
+            # Update activity timestamp to extend session
+            security_manager.update_activity()
+
+            # Show warning if session is expiring soon (less than 5 minutes)
+            if time_remaining < 300:  # 5 minutes
+                minutes_remaining = time_remaining // 60
+                seconds_remaining = time_remaining % 60
+
+                if minutes_remaining > 0:
+                    st.warning(f"⏰ **Session expires in {minutes_remaining}m {seconds_remaining}s**")
+                else:
+                    st.warning(f"⏰ **Session expires in {seconds_remaining}s**")
+
+                # Add extend session button
+                col1, col2, col3 = st.columns([1, 1, 2])
+                with col1:
+                    if st.button("⏱️ Extend Session", type="primary"):
+                        security_manager.extend_session()
+                        st.success("✅ Session extended!")
+                        st.rerun()
+
+                with col2:
+                    if st.button("🔒 Lock Now"):
+                        security_manager.lock_application()
+                        st.rerun()
+
+            return True
+        else:
+            # Session is not unlocked
+            return False
+
+    except Exception as e:
+        logger.error(f"Session timeout check failed: {e}")
+        return False
 
 def render_main_sam_application():
     """Render the main SAM application with security integration."""

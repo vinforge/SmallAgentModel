@@ -11,10 +11,13 @@ Version: 2.0.0
 import os
 import json
 import time
+import logging
 from enum import Enum
 from typing import Optional, Dict, Any
 from .keystore_manager import KeystoreManager
 from .crypto_utils import CryptoManager
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityState(Enum):
@@ -237,7 +240,15 @@ class SecureStateManager:
         """Update last activity timestamp."""
         if self.current_state == SecurityState.AUTHENTICATED:
             self.last_activity = time.time()
-    
+
+    def extend_session(self):
+        """Extend the current session by resetting the activity timestamp."""
+        if self.current_state == SecurityState.AUTHENTICATED:
+            self.last_activity = time.time()
+            logger.info("Session extended - activity timestamp updated")
+        else:
+            logger.warning("Cannot extend session - not authenticated")
+
     def _has_valid_session(self) -> bool:
         """Check if current session is valid (not timed out)."""
         if not self.session_start_time or not self.last_activity:
