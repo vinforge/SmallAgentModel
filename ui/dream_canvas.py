@@ -1996,6 +1996,9 @@ def render_cluster_detailed_info(cluster, cluster_insights):
                             if generated_at:
                                 st.caption(f"🕐 Generated: {generated_at[:19]}")
 
+                        # Show related paragraphs/source content if available
+                        _render_insight_source_paragraphs(insight, insight_id)
+
                         # Show Deep Research results if available
                         _render_deep_research_results_for_insight(insight_id)
 
@@ -3632,3 +3635,166 @@ def render_top_patterns_summary(insights):
 
             st.markdown(f"*{preview}*")
             st.markdown("---")
+
+def _render_insight_source_paragraphs(insight: Dict[str, Any], insight_id: str):
+    """Render the source paragraphs/chunks that the insight was derived from."""
+    try:
+        # Check if user wants to see source paragraphs
+        show_sources_key = f"show_sources_{insight_id}"
+
+        if st.button("📄 Show Related Paragraphs", key=f"btn_{show_sources_key}", help="View the source content this insight was derived from"):
+            st.session_state[show_sources_key] = not st.session_state.get(show_sources_key, False)
+
+        if st.session_state.get(show_sources_key, False):
+            st.markdown("**📚 Source Content:**")
+
+            # Try to get source chunks from insight metadata
+            source_chunks = insight.get('source_chunks', [])
+            source_documents = insight.get('source_documents', [])
+            cluster_id = insight.get('cluster_id')
+
+            if source_chunks:
+                # Display actual source chunks if available
+                for i, chunk in enumerate(source_chunks[:5], 1):
+                    with st.expander(f"📄 Source {i}: {chunk.get('source', 'Unknown')}", expanded=False):
+                        content = chunk.get('content', '')
+                        if content:
+                            st.markdown(f"**Content:**\n\n{content}")
+
+                            # Show metadata if available
+                            if chunk.get('memory_type'):
+                                st.caption(f"Type: {chunk.get('memory_type')}")
+                            if chunk.get('confidence'):
+                                st.caption(f"Confidence: {chunk.get('confidence'):.2f}")
+                        else:
+                            st.info("Content not available for this source")
+
+            elif cluster_id:
+                # Try to get cluster memories if source chunks not available
+                try:
+                    cluster_memories = _get_cluster_memories_for_insight(cluster_id)
+
+                    if cluster_memories:
+                        st.markdown("**📋 Related Cluster Content:**")
+                        for i, memory in enumerate(cluster_memories[:3], 1):
+                            with st.expander(f"📄 Memory {i}: {memory.get('source', 'Unknown')}", expanded=False):
+                                content = memory.get('content', '')
+                                if content:
+                                    # Truncate very long content
+                                    if len(content) > 1000:
+                                        content = content[:1000] + "..."
+                                    st.markdown(f"**Content:**\n\n{content}")
+
+                                    # Show metadata
+                                    if memory.get('memory_type'):
+                                        st.caption(f"Type: {memory.get('memory_type')}")
+                                    if memory.get('timestamp'):
+                                        st.caption(f"Timestamp: {memory.get('timestamp')}")
+                                else:
+                                    st.info("Content not available for this memory")
+                    else:
+                        st.info("No cluster memories found for this insight")
+
+                except Exception as e:
+                    logger.warning(f"Failed to retrieve cluster memories: {e}")
+                    st.info("Unable to retrieve cluster content at this time")
+
+            elif source_documents:
+                # Fallback: show source document names
+                st.markdown("**📚 Source Documents:**")
+                for doc in source_documents:
+                    st.caption(f"• {doc}")
+                st.info("💡 Tip: Source content extraction is being enhanced. Document names shown above.")
+
+            else:
+                st.info("No source content available for this insight")
+
+    except Exception as e:
+        logger.error(f"Error rendering insight source paragraphs: {e}")
+        st.error("Unable to display source content at this time")
+
+def _get_cluster_memories_for_insight(cluster_id: str) -> List[Dict[str, Any]]:
+    """Get memories for a cluster to display as source content."""
+    try:
+        # Try multiple approaches to get cluster memories
+
+        # Approach 1: Try cluster registry
+        try:
+            from memory.synthesis.cluster_registry import get_cluster_registry
+            registry = get_cluster_registry()
+            cluster_metadata = registry.get_cluster_metadata(cluster_id)
+
+            if cluster_metadata and hasattr(cluster_metadata, 'memories'):
+                return cluster_metadata.memories
+        except Exception as e:
+            logger.debug(f"Cluster registry approach failed: {e}")
+
+        # Approach 2: Try to find cluster in synthesis results
+        if hasattr(st.session_state, 'synthesis_results'):
+            insights = st.session_state.synthesis_results.get('insights', [])
+            for insight in insights:
+                if insight.get('cluster_id') == cluster_id:
+                    source_chunks = insight.get('source_chunks', [])
+                    if source_chunks:
+                        # Convert source chunks to memory format
+                        memories = []
+                        for chunk in source_chunks:
+                            memory = {
+                                'content': chunk.get('content', ''),
+                                'source': chunk.get('source', 'Unknown'),
+                                'memory_type': chunk.get('memory_type', 'document'),
+                                'timestamp': chunk.get('timestamp', ''),
+                                'confidence': chunk.get('importance_score', 0.0)
+                            }
+                            memories.append(memory)
+                        return memories
+
+        # Approach 3: Try to get memories from memory store by cluster
+        try:
+            from memory.memory_vectorstore import get_memory_store
+            memory_store = get_memory_store()
+
+            # Get all memories and filter by cluster (if cluster info is stored)
+            all_memories = memory_store.get_all_memories()
+            cluster_memories = []
+
+            for memory in all_memories:
+                # Check if memory belongs to this cluster (various ways to check)
+                memory_cluster_id = None
+
+                # Check metadata for cluster ID
+                if hasattr(memory, 'metadata') and memory.metadata:
+                    memory_cluster_id = memory.metadata.get('cluster_id')
+
+                # Check if memory content matches cluster theme
+                if memory_cluster_id == cluster_id:
+                    memory_dict = {
+                        'content': getattr(memory, 'content', str(memory)),
+                        'source': getattr(memory, 'source', 'Unknown'),
+                        'memory_type': getattr(memory, 'memory_type', 'unknown'),
+                        'timestamp': getattr(memory, 'timestamp', ''),
+                        'confidence': getattr(memory, 'importance_score', 0.0)
+                    }
+                    cluster_memories.append(memory_dict)
+
+            if cluster_memories:
+                return cluster_memories[:5]  # Limit to 5 memories
+
+        except Exception as e:
+            logger.debug(f"Memory store approach failed: {e}")
+
+        # Approach 4: Fallback - create sample content
+        logger.info(f"No specific memories found for cluster {cluster_id}, using fallback")
+        return [
+            {
+                'content': f"This insight was generated from cluster {cluster_id}. The specific source content is being retrieved...",
+                'source': f"Cluster {cluster_id}",
+                'memory_type': 'cluster_summary',
+                'timestamp': datetime.now().isoformat(),
+                'confidence': 0.5
+            }
+        ]
+
+    except Exception as e:
+        logger.error(f"Error getting cluster memories: {e}")
+        return []
