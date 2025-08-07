@@ -3596,6 +3596,78 @@ def render_vetting_interface():
                     if len(recent_files) > 3:
                         st.caption(f"... and {len(recent_files) - 3} more recent files")
 
+                # Bulk selection controls
+                st.markdown("---")
+                st.markdown("**🎯 Bulk Selection Controls:**")
+
+                col_select, col_actions = st.columns([1, 2])
+
+                with col_select:
+                    if st.button("☑️ Select All", key="select_all_quarantine"):
+                        for i, content in enumerate(quarantined_content):
+                            filename = content.get('filename', 'Unknown')
+                            selection_key = f"select_quarantine_{i}_{filename}"
+                            st.session_state[selection_key] = True
+                        st.rerun()
+
+                    if st.button("☐ Deselect All", key="deselect_all_quarantine"):
+                        for i, content in enumerate(quarantined_content):
+                            filename = content.get('filename', 'Unknown')
+                            selection_key = f"select_quarantine_{i}_{filename}"
+                            st.session_state[selection_key] = False
+                        st.rerun()
+
+                with col_actions:
+                    # Count selected items
+                    selected_count = 0
+                    selected_files = []
+
+                    for i, content in enumerate(quarantined_content):
+                        filename = content.get('filename', 'Unknown')
+                        selection_key = f"select_quarantine_{i}_{filename}"
+                        if st.session_state.get(selection_key, False):
+                            selected_count += 1
+                            selected_files.append(filename)
+
+                    if selected_count > 0:
+                        st.info(f"📋 **{selected_count} item(s) selected** for bulk action")
+
+                        col_bulk_approve, col_bulk_reject = st.columns(2)
+
+                        with col_bulk_approve:
+                            if st.button(f"✅ Approve Selected ({selected_count})",
+                                       key="bulk_approve_quarantine",
+                                       use_container_width=True):
+                                success_count = 0
+                                for filename in selected_files:
+                                    if approve_quarantined_content(filename):
+                                        success_count += 1
+
+                                if success_count > 0:
+                                    st.success(f"✅ **{success_count}/{selected_count}** items approved and integrated!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Failed to approve any selected items")
+
+                        with col_bulk_reject:
+                            if st.button(f"❌ Reject Selected ({selected_count})",
+                                       key="bulk_reject_quarantine",
+                                       use_container_width=True):
+                                success_count = 0
+                                for filename in selected_files:
+                                    if reject_quarantined_content(filename):
+                                        success_count += 1
+
+                                if success_count > 0:
+                                    st.success(f"❌ **{success_count}/{selected_count}** items rejected!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Failed to reject any selected items")
+                    else:
+                        st.info("☑️ Select items below to enable bulk actions")
+
+                st.markdown("---")
+
                 for i, content in enumerate(quarantined_content):
                     render_quarantined_content_item(content, i)
             else:
@@ -7128,6 +7200,65 @@ def render_quarantined_content_item(content: Dict[str, Any], index: int):
                 if len(content_info['sources']) > 5:
                     st.markdown(f"• ... and {len(content_info['sources']) - 5} more sources")
 
+            # Individual approval controls
+            st.markdown("---")
+            st.markdown("**🎯 Individual Approval Controls:**")
+
+            # Initialize selection state if not exists
+            selection_key = f"select_quarantine_{index}_{filename}"
+            if selection_key not in st.session_state:
+                st.session_state[selection_key] = False
+
+            # Checkbox for selection
+            col_check, col_actions = st.columns([1, 3])
+
+            with col_check:
+                selected = st.checkbox(
+                    "Select for approval",
+                    key=selection_key,
+                    help="Check this box to include this content in individual approval"
+                )
+
+            with col_actions:
+                if selected:
+                    # Individual action buttons
+                    col_approve, col_vet, col_reject = st.columns(3)
+
+                    with col_approve:
+                        if st.button("✅ Approve & Integrate",
+                                   key=f"approve_quarantine_{index}",
+                                   help="Approve this content and integrate it into SAM's knowledge base",
+                                   use_container_width=True):
+                            if approve_quarantined_content(filename):
+                                st.success(f"✅ **{filename}** approved and integrated!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Failed to approve content")
+
+                    with col_vet:
+                        if st.button("🛡️ Vet This Item",
+                                   key=f"vet_individual_{index}",
+                                   help="Run security analysis on this specific item",
+                                   use_container_width=True):
+                            if vet_individual_content(filename):
+                                st.success(f"🛡️ **{filename}** vetted successfully!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Failed to vet content")
+
+                    with col_reject:
+                        if st.button("❌ Reject",
+                                   key=f"reject_quarantine_{index}",
+                                   help="Reject and remove this content from quarantine",
+                                   use_container_width=True):
+                            if reject_quarantined_content(filename):
+                                st.success(f"❌ **{filename}** rejected and removed!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Failed to reject content")
+                else:
+                    st.info("☑️ Check the box above to enable individual approval actions")
+
             # Status indicator
             st.info("⏳ **Status:** Awaiting security analysis and vetting")
 
@@ -7950,6 +8081,210 @@ def reject_content(filename: str) -> bool:
 
     except Exception as e:
         logger.error(f"Error rejecting content {filename}: {e}")
+        return False
+
+def approve_quarantined_content(filename: str) -> bool:
+    """Approve quarantined content directly and integrate into knowledge base."""
+    try:
+        from pathlib import Path
+        import shutil
+        import json
+
+        quarantine_path = Path("quarantine") / filename
+        approved_path = Path("approved") / filename
+
+        if not quarantine_path.exists():
+            logger.warning(f"Quarantined file not found: {filename}")
+            return False
+
+        # Create approved directory if it doesn't exist
+        approved_path.parent.mkdir(exist_ok=True)
+
+        # Load the quarantined content
+        with open(quarantine_path, 'r', encoding='utf-8') as f:
+            content_data = json.load(f)
+
+        # Add approval metadata
+        from datetime import datetime
+        content_data['approval_metadata'] = {
+            'approved_at': datetime.now().isoformat(),
+            'approval_method': 'individual_manual',
+            'approved_by': 'user',
+            'bypass_vetting': True
+        }
+
+        # Save to approved directory
+        with open(approved_path, 'w', encoding='utf-8') as f:
+            json.dump(content_data, f, indent=2, ensure_ascii=False)
+
+        # Remove from quarantine
+        quarantine_path.unlink()
+
+        # Try to integrate into knowledge base
+        try:
+            integrate_approved_content(filename)
+            logger.info(f"Quarantined content approved and integrated: {filename}")
+        except Exception as e:
+            logger.warning(f"Content approved but integration failed: {e}")
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to approve quarantined content {filename}: {e}")
+        return False
+
+def vet_individual_content(filename: str) -> bool:
+    """Run vetting process on a single quarantined file."""
+    try:
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        logger.info(f"Starting individual vetting for: {filename}")
+
+        # Get project root directory
+        project_root = Path(__file__).parent
+
+        # Run the vetting script on the specific file
+        cmd = [
+            sys.executable,
+            str(project_root / "scripts" / "vet_quarantined_content.py"),
+            "--file", filename,
+            "--quiet"
+        ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,  # 5 minute timeout
+            cwd=str(project_root)
+        )
+
+        if result.returncode == 0:
+            logger.info(f"Individual vetting completed successfully for: {filename}")
+            return True
+        else:
+            logger.error(f"Individual vetting failed for {filename}: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.error(f"Individual vetting timed out for: {filename}")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to vet individual content {filename}: {e}")
+        return False
+
+def reject_quarantined_content(filename: str) -> bool:
+    """Reject quarantined content and move to rejected directory."""
+    try:
+        from pathlib import Path
+        import shutil
+
+        quarantine_path = Path("quarantine") / filename
+        rejected_path = Path("rejected") / filename
+
+        if not quarantine_path.exists():
+            logger.warning(f"Quarantined file not found: {filename}")
+            return False
+
+        # Create rejected directory if it doesn't exist
+        rejected_path.parent.mkdir(exist_ok=True)
+
+        # Move to rejected directory
+        shutil.move(str(quarantine_path), str(rejected_path))
+        logger.info(f"Quarantined content rejected: {filename}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to reject quarantined content {filename}: {e}")
+        return False
+
+def integrate_approved_content(filename: str) -> bool:
+    """Integrate approved content into SAM's knowledge base."""
+    try:
+        from pathlib import Path
+        import json
+
+        approved_path = Path("approved") / filename
+
+        if not approved_path.exists():
+            logger.warning(f"Approved file not found: {filename}")
+            return False
+
+        # Load the approved content
+        with open(approved_path, 'r', encoding='utf-8') as f:
+            content_data = json.load(f)
+
+        # Try to integrate into memory store
+        try:
+            from memory.memory_vectorstore import get_memory_store
+            memory_store = get_memory_store()
+
+            # Extract content for integration
+            articles = content_data.get('articles', [])
+            search_results = content_data.get('search_results', [])
+
+            integrated_count = 0
+
+            # Process articles
+            for article in articles:
+                title = article.get('title', 'Unknown Title')
+                content = article.get('content', '')
+                url = article.get('url', '')
+
+                if content:
+                    # Create memory entry
+                    memory_entry = {
+                        'content': f"Title: {title}\n\nContent: {content}",
+                        'source': url or 'Web Search',
+                        'memory_type': 'web_content',
+                        'metadata': {
+                            'title': title,
+                            'url': url,
+                            'integration_method': 'individual_approval',
+                            'approved_at': content_data.get('approval_metadata', {}).get('approved_at'),
+                            'original_filename': filename
+                        }
+                    }
+
+                    # Add to memory store
+                    memory_store.add_memory(memory_entry)
+                    integrated_count += 1
+
+            # Process search results if no articles
+            if integrated_count == 0 and search_results:
+                for result in search_results:
+                    title = result.get('title', 'Unknown Title')
+                    snippet = result.get('snippet', '')
+                    url = result.get('url', '')
+
+                    if snippet:
+                        memory_entry = {
+                            'content': f"Title: {title}\n\nSnippet: {snippet}",
+                            'source': url or 'Web Search',
+                            'memory_type': 'web_snippet',
+                            'metadata': {
+                                'title': title,
+                                'url': url,
+                                'integration_method': 'individual_approval',
+                                'approved_at': content_data.get('approval_metadata', {}).get('approved_at'),
+                                'original_filename': filename
+                            }
+                        }
+
+                        memory_store.add_memory(memory_entry)
+                        integrated_count += 1
+
+            logger.info(f"Integrated {integrated_count} items from {filename} into knowledge base")
+            return integrated_count > 0
+
+        except Exception as e:
+            logger.error(f"Failed to integrate content into memory store: {e}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Failed to integrate approved content {filename}: {e}")
         return False
 
 def save_to_quarantine(content_result: Dict[str, Any], query: str):
