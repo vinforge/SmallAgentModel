@@ -70,7 +70,7 @@ class SmartSummarizer:
         """Initialize the smart summarizer."""
         self.config = config or self._get_default_config()
         self.max_summary_length = self.config.get('max_summary_length', 1000)
-        self.min_memory_threshold = self.config.get('min_memory_threshold', 2)
+        self.min_memory_threshold = self.config.get('min_memory_threshold', 1)
         
         # Initialize LLM for summarization
         self.llm_model = None
@@ -83,7 +83,7 @@ class SmartSummarizer:
         """Get default configuration for summarizer."""
         return {
             'max_summary_length': 1000,
-            'min_memory_threshold': 2,
+            'min_memory_threshold': 1,
             'default_format': 'markdown',
             'include_sources_by_default': True,
             'enable_key_topic_extraction': True,

@@ -2,7 +2,7 @@
   "version": "1.0.0-beta",
   "agent_mode": "solo",
   "collaboration_key_path": "config/collab_key.json",
-  "memory_backend": "simple",
+  "memory_backend": "chroma",
   "memory_storage_dir": "memory_store",
   "memory_max_size_mb": 1000,
   "memory_auto_cleanup": true,

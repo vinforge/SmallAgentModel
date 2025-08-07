@@ -794,7 +794,13 @@ def generate_smart_summary(topic):
         from memory.memory_vectorstore import get_memory_store
 
         summarizer = get_smart_summarizer()
-        memory_store = get_memory_store()
+        # Use ChromaDB for document retrieval
+        from memory.memory_vectorstore import VectorStoreType
+        memory_store = get_memory_store(
+            store_type=VectorStoreType.CHROMA,
+            storage_directory="memory_store",
+            embedding_dimension=384
+        )
 
         # Create summary request
         request = SummaryRequest(
@@ -1058,8 +1064,12 @@ def generate_enhanced_document_response(message, document_memories):
 
         # Search for relevant content in document memories
         try:
-            from memory.memory_vectorstore import get_memory_store
-            memory_store = get_memory_store()
+            from memory.memory_vectorstore import get_memory_store, VectorStoreType
+            memory_store = get_memory_store(
+                store_type=VectorStoreType.CHROMA,
+                storage_directory="memory_store",
+                embedding_dimension=384
+            )
         except ImportError as e:
             logger.error(f"Failed to import memory store: {e}")
             return f"I apologize, but I'm having trouble accessing the memory system: {str(e)}"
@@ -1455,9 +1465,13 @@ def generate_general_document_response(message):
     """Generate response for general document queries."""
     try:
         # Search through all documents
-        from memory.memory_vectorstore import get_memory_store
+        from memory.memory_vectorstore import get_memory_store, VectorStoreType
 
-        memory_store = get_memory_store()
+        memory_store = get_memory_store(
+            store_type=VectorStoreType.CHROMA,
+            storage_directory="memory_store",
+            embedding_dimension=384
+        )
 
         # Phase 3.2: Use enhanced search with hybrid ranking
         try:
@@ -2183,12 +2197,16 @@ def status_endpoint():
     try:
         from config.config_manager import get_config_manager
         from config.agent_mode import get_mode_controller
-        from memory.memory_vectorstore import get_memory_store
+        from memory.memory_vectorstore import get_memory_store, VectorStoreType
         from utils.health_monitor import get_health_monitor
 
         config_manager = get_config_manager()
         mode_controller = get_mode_controller()
-        memory_store = get_memory_store()
+        memory_store = get_memory_store(
+            store_type=VectorStoreType.CHROMA,
+            storage_directory="memory_store",
+            embedding_dimension=384
+        )
         health_monitor = get_health_monitor()
 
         # Get configuration summary
@@ -2323,9 +2341,13 @@ def submit_feedback():
 def learning_history():
     """Get SAM's learning history from processed documents."""
     try:
-        from memory.memory_vectorstore import get_memory_store
+        from memory.memory_vectorstore import get_memory_store, VectorStoreType
 
-        memory_store = get_memory_store()
+        memory_store = get_memory_store(
+            store_type=VectorStoreType.CHROMA,
+            storage_directory="memory_store",
+            embedding_dimension=384
+        )
         all_memories = memory_store.get_all_memories()
 
         # Filter for document summaries (learning events)

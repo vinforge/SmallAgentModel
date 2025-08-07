@@ -73,7 +73,7 @@ class SemanticDocumentSearchEngine:
     def search_uploaded_documents(self,
                                 query: str,
                                 max_results: int = 5,
-                                min_similarity: float = 0.4,
+                                min_similarity: float = 0.1,
                                 boost_filename_matches: bool = True) -> DocumentSearchResult:
         """
         Search uploaded documents for relevant content.
