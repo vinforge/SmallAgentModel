@@ -26,6 +26,9 @@ from sam.orchestration.uif import SAM_UIF, UIFStatus
 from sam.cognition.table_processing.sam_integration import get_table_aware_retrieval
 from memory.memory_vectorstore import get_memory_store, MemoryType
 
+# Create logs directory if it doesn't exist (BEFORE logging setup)
+Path("logs").mkdir(exist_ok=True)
+
 # Configure detailed logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -46,9 +49,6 @@ class DeepDiagnosisAnalyzer:
         self.expert = TableToCodeExpert()
         self.memory_store = get_memory_store()
         self.diagnosis_results = {}
-        
-        # Create logs directory
-        Path("logs").mkdir(exist_ok=True)
         
     def run_deep_diagnosis(self) -> Dict[str, Any]:
         """Run comprehensive diagnosis on failing test cases."""

@@ -23,6 +23,9 @@ import sqlite3
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
+# Create logs directory if it doesn't exist (BEFORE logging setup)
+Path("logs").mkdir(exist_ok=True)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

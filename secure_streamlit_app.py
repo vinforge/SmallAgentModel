@@ -36,6 +36,9 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Create logs directory if it doesn't exist (BEFORE logging setup)
+Path('logs').mkdir(exist_ok=True)
+
 # Configure logging with better error handling
 logging.basicConfig(
     level=logging.INFO,
@@ -46,9 +49,6 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
-
-# Create logs directory if it doesn't exist
-Path('logs').mkdir(exist_ok=True)
 
 # PHASE 3: Utility function to handle RankedMemoryResult compatibility
 def extract_result_content(result: Any) -> tuple:

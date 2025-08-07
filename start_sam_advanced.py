@@ -28,6 +28,9 @@ from config.config_manager import get_config_manager
 from config.onboarding import get_onboarding_manager
 from utils.health_monitor import HealthMonitor
 
+# Create logs directory if it doesn't exist (BEFORE logging setup)
+Path("logs").mkdir(exist_ok=True)
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -433,13 +436,10 @@ class SAMLauncher:
 def main():
     """Main entry point."""
     try:
-        # Create logs directory
-        Path("logs").mkdir(exist_ok=True)
-        
-        # Initialize and start SAM
+        # Initialize and start SAM (logs directory already created above)
         launcher = SAMLauncher()
         success = launcher.start()
-        
+
         return 0 if success else 1
         
     except KeyboardInterrupt:
