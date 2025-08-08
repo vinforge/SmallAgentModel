@@ -1,0 +1,8 @@
+{
+  "metrics_collection": true,
+  "performance_tracking": true,
+  "error_reporting": true,
+  "user_feedback_collection": true,
+  "intervention_rate_monitoring": true,
+  "efficiency_tracking": true
+}

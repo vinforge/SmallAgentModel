@@ -1,0 +1,88 @@
+{
+  "name": "general",
+  "description": "Balanced reasoning for general knowledge work and everyday AI assistance",
+  "version": "2.0",
+  "target_users": ["knowledge_workers", "students", "researchers", "general_public"],
+  "dimensions": {
+    "utility": {
+      "weight": 1.2,
+      "description": "Practical value and real-world usefulness",
+      "patterns": [
+        "practical application",
+        "real-world use",
+        "implementation",
+        "solution",
+        "benefit",
+        "advantage"
+      ],
+      "boost_keywords": ["useful", "practical", "applicable", "valuable", "beneficial"]
+    },
+    "complexity": {
+      "weight": 1.0,
+      "description": "Technical sophistication and conceptual difficulty",
+      "patterns": [
+        "algorithm",
+        "technical",
+        "sophisticated",
+        "advanced",
+        "complex",
+        "intricate"
+      ],
+      "boost_keywords": ["complex", "sophisticated", "advanced", "technical", "detailed"]
+    },
+    "clarity": {
+      "weight": 1.1,
+      "description": "Information clarity and comprehensibility",
+      "patterns": [
+        "clear explanation",
+        "well-defined",
+        "straightforward",
+        "understandable",
+        "explicit"
+      ],
+      "boost_keywords": ["clear", "obvious", "explicit", "straightforward", "simple"]
+    },
+    "relevance": {
+      "weight": 1.3,
+      "description": "Topic relevance and contextual importance",
+      "patterns": [
+        "relevant",
+        "important",
+        "significant",
+        "key",
+        "essential",
+        "critical"
+      ],
+      "boost_keywords": ["relevant", "important", "significant", "key", "essential"]
+    },
+    "credibility": {
+      "weight": 1.1,
+      "description": "Source reliability and information accuracy",
+      "patterns": [
+        "verified",
+        "validated",
+        "peer-reviewed",
+        "authoritative",
+        "reliable",
+        "evidence-based"
+      ],
+      "boost_keywords": ["verified", "proven", "validated", "reliable", "authoritative"]
+    }
+  },
+  "retrieval_weights": {
+    "semantic_similarity": 0.6,
+    "dimension_alignment": 0.4
+  },
+  "priority_boosts": {
+    "high_utility_high_relevance": 1.3,
+    "high_clarity_moderate_complexity": 1.2,
+    "high_credibility": 1.15
+  },
+  "explanation_templates": {
+    "utility": "High utility ({score:.2f}) due to practical applications and real-world value",
+    "complexity": "Complexity score ({score:.2f}) reflects technical sophistication and depth",
+    "clarity": "Clarity score ({score:.2f}) indicates information comprehensibility",
+    "relevance": "Relevance score ({score:.2f}) shows contextual importance",
+    "credibility": "Credibility score ({score:.2f}) reflects source reliability"
+  }
+}

@@ -1,0 +1,268 @@
+{
+  "profile_name": "web_vetting",
+  "description": "Security-focused dimensional analysis for web content vetting and risk assessment",
+  "version": "1.0",
+  "created_date": "2025-06-11",
+  "purpose": "Automated analysis of web content for security risks, bias detection, and credibility assessment",
+  
+  "dimensions": {
+    "credibility": {
+      "description": "Factual accuracy and source reliability indicators",
+      "weight": 0.30,
+      "analysis_focus": "evidence_based_content",
+      "indicators": [
+        "presence of citations and verifiable sources",
+        "factual language vs unsubstantiated claims",
+        "neutral tone vs emotional manipulation",
+        "specific data and statistics vs vague generalizations",
+        "expert quotes and authoritative references",
+        "balanced presentation of multiple viewpoints"
+      ],
+      "positive_signals": [
+        "contains specific dates, numbers, and verifiable facts",
+        "includes citations to authoritative sources",
+        "uses neutral, academic language",
+        "presents evidence for claims made",
+        "acknowledges limitations and uncertainties"
+      ],
+      "negative_signals": [
+        "makes broad claims without evidence",
+        "uses absolute statements without qualification",
+        "lacks any source attribution",
+        "contains obvious factual errors",
+        "presents opinion as established fact"
+      ],
+      "scoring": {
+        "high": "Contains verifiable facts, citations, neutral tone, evidence-based claims",
+        "medium": "Mix of factual and opinion content with some supporting evidence",
+        "low": "Mostly opinions, claims without evidence, emotional language"
+      }
+    },
+    
+    "persuasion": {
+      "description": "Detection of persuasive and potentially manipulative language techniques",
+      "weight": 0.25,
+      "analysis_focus": "manipulation_detection",
+      "indicators": [
+        "emotionally charged and inflammatory language",
+        "urgency and scarcity tactics (limited time, act now)",
+        "rhetorical questions designed to lead thinking",
+        "hyperbole and extreme superlatives",
+        "call-to-action language and pressure tactics",
+        "fear-based appeals and threat language"
+      ],
+      "positive_signals": [
+        "neutral, informational tone throughout",
+        "presents information without emotional manipulation",
+        "allows reader to form own conclusions",
+        "uses measured, balanced language",
+        "focuses on facts rather than emotions"
+      ],
+      "negative_signals": [
+        "excessive use of exclamation points and caps",
+        "words like 'urgent', 'immediate', 'crisis', 'emergency'",
+        "superlatives like 'best', 'worst', 'never', 'always'",
+        "emotional appeals to fear, anger, or greed",
+        "pressure tactics and artificial deadlines"
+      ],
+      "scoring": {
+        "high": "Heavy use of persuasive techniques, emotional manipulation, pressure tactics",
+        "medium": "Some persuasive elements present but balanced with factual content",
+        "low": "Neutral, informational tone with minimal persuasive language"
+      }
+    },
+    
+    "speculation": {
+      "description": "Differentiation between established facts and opinions, predictions, or hypotheticals",
+      "weight": 0.20,
+      "analysis_focus": "fact_vs_opinion",
+      "indicators": [
+        "forward-looking statements and predictions",
+        "hypothetical scenarios and what-if statements",
+        "opinion markers (I think, believe, feel, in my opinion)",
+        "prediction language (will, might, could, may, probably)",
+        "uncertainty qualifiers and hedging language",
+        "speculation about future events or outcomes"
+      ],
+      "positive_signals": [
+        "clearly distinguishes between facts and opinions",
+        "uses appropriate qualifiers for uncertain statements",
+        "focuses on established, verifiable information",
+        "acknowledges when making predictions or assumptions",
+        "presents historical facts and current data"
+      ],
+      "negative_signals": [
+        "presents predictions as certain facts",
+        "excessive speculation without factual basis",
+        "conflates opinion with established knowledge",
+        "makes definitive statements about uncertain future events",
+        "lacks distinction between proven and theoretical concepts"
+      ],
+      "scoring": {
+        "high": "Mostly speculation, predictions, and opinions presented as facts",
+        "medium": "Mix of facts and opinions with some clear distinctions",
+        "low": "Primarily factual statements with clear labeling of opinions"
+      }
+    },
+    
+    "purity": {
+      "description": "Technical security assessment for injection attempts and content integrity",
+      "weight": 0.15,
+      "analysis_focus": "security_threats",
+      "indicators": [
+        "prompt injection patterns and system commands",
+        "hidden instructions and embedded directives",
+        "unusual formatting artifacts and encoding anomalies",
+        "non-linguistic content and garbled text",
+        "suspicious character sequences and control codes",
+        "attempts to manipulate AI behavior or responses"
+      ],
+      "positive_signals": [
+        "clean, natural human language throughout",
+        "consistent formatting and encoding",
+        "no suspicious command-like structures",
+        "readable text without hidden elements",
+        "standard punctuation and grammar patterns"
+      ],
+      "negative_signals": [
+        "phrases like 'ignore previous instructions'",
+        "system-like commands or directives",
+        "unusual character encodings or zero-width characters",
+        "attempts to inject code or scripts",
+        "hidden text or steganographic content"
+      ],
+      "scoring": {
+        "high": "Clean, natural text content with no security concerns",
+        "medium": "Minor formatting issues but no obvious security threats",
+        "low": "Suspicious patterns detected, potential security risks"
+      }
+    },
+    
+    "source_reputation": {
+      "description": "Domain credibility and source authority assessment",
+      "weight": 0.10,
+      "analysis_focus": "domain_authority",
+      "indicators": [
+        "top-level domain reputation and trustworthiness",
+        "known authoritative and academic sources",
+        "government and institutional domains",
+        "commercial vs informational intent indicators",
+        "domain age and established reputation",
+        "presence in trusted source databases"
+      ],
+      "positive_signals": [
+        "government (.gov) or educational (.edu) domains",
+        "established news organizations and institutions",
+        "academic journals and research publications",
+        "recognized expert and professional sources",
+        "domains with long-standing reputations"
+      ],
+      "negative_signals": [
+        "suspicious or newly registered domains",
+        "domains known for misinformation",
+        "commercial sites masquerading as news",
+        "domains with poor reputation scores",
+        "anonymous or untraceable sources"
+      ],
+      "scoring": {
+        "high": "Authoritative, trusted domain with established credibility",
+        "medium": "Neutral or unknown domain with no red flags",
+        "low": "Questionable, suspicious, or known problematic domain"
+      }
+    }
+  },
+  
+  "scoring_thresholds": {
+    "pass_threshold": 0.70,
+    "warning_threshold": 0.50,
+    "fail_threshold": 0.30,
+    "high_risk_threshold": 0.20
+  },
+  
+  "risk_factors": {
+    "high_persuasion": {
+      "threshold": 0.80,
+      "severity": "medium",
+      "description": "Content uses heavy persuasive techniques"
+    },
+    "low_credibility": {
+      "threshold": 0.40,
+      "severity": "high",
+      "description": "Content lacks credible sources and evidence"
+    },
+    "high_speculation": {
+      "threshold": 0.75,
+      "severity": "medium",
+      "description": "Content is mostly speculative or opinion-based"
+    },
+    "low_purity": {
+      "threshold": 0.50,
+      "severity": "critical",
+      "description": "Content contains potential security threats"
+    },
+    "poor_source": {
+      "threshold": 0.30,
+      "severity": "high",
+      "description": "Content from questionable or untrusted source"
+    }
+  },
+  
+  "analysis_weights": {
+    "security_focus": {
+      "purity": 0.40,
+      "credibility": 0.25,
+      "source_reputation": 0.20,
+      "persuasion": 0.10,
+      "speculation": 0.05
+    },
+    "quality_focus": {
+      "credibility": 0.35,
+      "speculation": 0.25,
+      "persuasion": 0.20,
+      "source_reputation": 0.15,
+      "purity": 0.05
+    },
+    "balanced": {
+      "credibility": 0.30,
+      "persuasion": 0.25,
+      "speculation": 0.20,
+      "purity": 0.15,
+      "source_reputation": 0.10
+    }
+  },
+  
+  "recommendation_logic": {
+    "PASS": {
+      "conditions": [
+        "overall_score >= 0.70",
+        "purity_score >= 0.60",
+        "no_critical_risk_factors"
+      ],
+      "description": "Content appears safe and credible for ingestion"
+    },
+    "REVIEW": {
+      "conditions": [
+        "overall_score >= 0.50 AND overall_score < 0.70",
+        "purity_score >= 0.40",
+        "max_one_high_risk_factor"
+      ],
+      "description": "Content requires manual review before ingestion"
+    },
+    "FAIL": {
+      "conditions": [
+        "overall_score < 0.50",
+        "purity_score < 0.40",
+        "multiple_high_risk_factors"
+      ],
+      "description": "Content should not be ingested due to security or quality concerns"
+    }
+  },
+  
+  "metadata": {
+    "created_by": "SAM Phase 7.2 Implementation",
+    "use_case": "Automated web content vetting and security analysis",
+    "update_frequency": "As needed based on threat landscape",
+    "validation_status": "Active",
+    "compatible_versions": ["SAM 1.0+"]
+  }
+}

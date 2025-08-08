@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # SAM Main Application
+  sam-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sam-main
+    restart: unless-stopped
+    ports:
+      - "8502:8502"  # Secure Streamlit App
+      - "8501:8501"  # Memory Control Center
+      - "8503:8503"  # Welcome Setup
+    volumes:
+      # Persistent data volumes
+      - sam_data:/app/data
+      - sam_memory:/app/memory_store
+      - sam_logs:/app/logs
+      - sam_chroma:/app/chroma_db
+      - sam_uploads:/app/uploads
+      - sam_cache:/app/cache
+      - sam_backups:/app/backups
+      - sam_security:/app/security
+      # Configuration (optional override)
+      - ./docker/sam_docker_config.json:/app/config/sam_config.json:ro
+    environment:
+      - SAM_DOCKER=true
+      - SAM_ENVIRONMENT=production
+      - SAM_DATA_DIR=/app/data
+      - SAM_LOGS_DIR=/app/logs
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chroma
+      - CHROMA_PORT=8000
+    depends_on:
+      - redis
+      - chroma
+    networks:
+      - sam-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8502/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis for session management and caching
+  redis:
+    image: redis:7-alpine
+    container_name: sam-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - sam_redis:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - sam-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ChromaDB Vector Database
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: sam-chroma
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - sam_chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - PERSIST_DIRECTORY=/chroma/chroma
+    networks:
+      - sam-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy (Production)
+  nginx:
+    image: nginx:alpine
+    container_name: sam-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+      - sam_nginx_logs:/var/log/nginx
+    depends_on:
+      - sam-app
+    networks:
+      - sam-network
+    profiles:
+      - production
+
+# Named volumes for data persistence
+volumes:
+  sam_data:
+    driver: local
+  sam_memory:
+    driver: local
+  sam_logs:
+    driver: local
+  sam_chroma:
+    driver: local
+  sam_chroma_data:
+    driver: local
+  sam_uploads:
+    driver: local
+  sam_cache:
+    driver: local
+  sam_backups:
+    driver: local
+  sam_security:
+    driver: local
+  sam_redis:
+    driver: local
+  sam_nginx_logs:
+    driver: local
+
+# Networks
+networks:
+  sam-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

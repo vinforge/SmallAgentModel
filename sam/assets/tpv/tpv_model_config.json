@@ -1,0 +1,9 @@
+{
+  "model_type": "tpv",
+  "hidden_size": 4096,
+  "num_attention_heads": 8,
+  "num_hidden_layers": 12,
+  "vocab_size": 32000,
+  "mock": true,
+  "created_for": "SAM_TPV_Phase0_Development"
+}

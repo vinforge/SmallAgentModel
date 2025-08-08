@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "sources": [
+    {
+      "id": "source_1",
+      "name": "Research",
+      "path": "/Users/vinsoncornejo/Downloads/ToLearn",
+      "file_types": [
+        "pdf",
+        "txt",
+        "md",
+        "docx",
+        "py",
+        "js",
+        "json"
+      ],
+      "enabled": true,
+      "added_date": "2025-08-05T14:35:30.337142",
+      "last_scanned": null,
+      "status": "ready",
+      "files_processed": 0,
+      "last_scan_results": {}
+    }
+  ],
+  "settings": {
+    "auto_scan_enabled": false,
+    "scan_interval_minutes": 60,
+    "default_file_types": [
+      "pdf",
+      "txt",
+      "md",
+      "docx",
+      "py",
+      "js",
+      "json"
+    ],
+    "max_file_size_mb": 100,
+    "enable_notifications": true
+  },
+  "last_updated": "2025-08-05T14:35:30.337150"
+}

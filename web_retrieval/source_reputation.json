@@ -1,0 +1,224 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-06-11",
+  "description": "Source reputation database for web content vetting",
+  
+  "domain_scores": {
+    "government": {
+      ".gov": 0.95,
+      ".mil": 0.90,
+      ".gov.uk": 0.90,
+      ".gov.au": 0.90,
+      ".gov.ca": 0.90,
+      ".europa.eu": 0.85
+    },
+    "education": {
+      ".edu": 0.90,
+      ".ac.uk": 0.85,
+      ".edu.au": 0.85,
+      ".ac.jp": 0.85,
+      ".uni-": 0.80
+    },
+    "organizations": {
+      ".org": 0.75,
+      ".int": 0.80
+    },
+    "commercial": {
+      ".com": 0.60,
+      ".net": 0.55,
+      ".biz": 0.35,
+      ".info": 0.40
+    },
+    "suspicious": {
+      ".tk": 0.20,
+      ".ml": 0.25,
+      ".ga": 0.25,
+      ".cf": 0.25,
+      ".click": 0.30,
+      ".download": 0.25,
+      ".loan": 0.20,
+      ".win": 0.25
+    }
+  },
+  
+  "trusted_domains": {
+    "news_organizations": [
+      "reuters.com",
+      "bbc.com",
+      "bbc.co.uk",
+      "apnews.com",
+      "npr.org",
+      "pbs.org",
+      "cnn.com",
+      "nytimes.com",
+      "washingtonpost.com",
+      "wsj.com",
+      "theguardian.com",
+      "economist.com",
+      "ft.com",
+      "bloomberg.com"
+    ],
+    "academic_sources": [
+      "nature.com",
+      "science.org",
+      "cell.com",
+      "nejm.org",
+      "bmj.com",
+      "thelancet.com",
+      "arxiv.org",
+      "pubmed.ncbi.nlm.nih.gov",
+      "scholar.google.com",
+      "jstor.org",
+      "ieee.org",
+      "acm.org"
+    ],
+    "reference_sites": [
+      "wikipedia.org",
+      "britannica.com",
+      "merriam-webster.com",
+      "dictionary.com",
+      "oxforddictionaries.com",
+      "stanford.edu",
+      "mit.edu",
+      "harvard.edu",
+      "cambridge.org",
+      "oxford.ac.uk"
+    ],
+    "government_agencies": [
+      "cdc.gov",
+      "nih.gov",
+      "nasa.gov",
+      "noaa.gov",
+      "usgs.gov",
+      "fda.gov",
+      "epa.gov",
+      "who.int",
+      "un.org",
+      "worldbank.org"
+    ],
+    "technology": [
+      "github.com",
+      "stackoverflow.com",
+      "mozilla.org",
+      "w3.org",
+      "ietf.org",
+      "rfc-editor.org"
+    ]
+  },
+  
+  "suspicious_domains": [
+    "fake-news-site.com",
+    "clickbait-central.info",
+    "conspiracy-theories.net",
+    "miracle-cures.biz",
+    "get-rich-quick.click",
+    "breaking-news-now.tk",
+    "truth-exposed.ml",
+    "secret-government.ga"
+  ],
+  
+  "reputation_factors": {
+    "https_bonus": 0.05,
+    "subdomain_penalty": -0.10,
+    "short_domain_penalty": -0.15,
+    "numeric_domain_penalty": -0.20,
+    "hyphen_penalty": -0.05,
+    "new_domain_penalty": -0.25,
+    "long_path_penalty": -0.10,
+    "suspicious_params_penalty": -0.15
+  },
+  
+  "content_indicators": {
+    "high_quality": [
+      "peer-reviewed",
+      "published in",
+      "according to research",
+      "study shows",
+      "data indicates",
+      "statistics reveal",
+      "expert analysis",
+      "scientific evidence"
+    ],
+    "low_quality": [
+      "doctors hate this",
+      "one weird trick",
+      "you won't believe",
+      "shocking truth",
+      "secret revealed",
+      "they don't want you to know",
+      "miracle cure",
+      "instant results"
+    ],
+    "bias_indicators": [
+      "mainstream media",
+      "fake news",
+      "deep state",
+      "conspiracy",
+      "cover-up",
+      "hidden agenda",
+      "wake up",
+      "sheeple"
+    ]
+  },
+  
+  "scoring_rules": {
+    "base_score_calculation": {
+      "step1": "Get TLD base score from domain_scores",
+      "step2": "Check if domain is in trusted_domains (bonus +0.20)",
+      "step3": "Check if domain is in suspicious_domains (penalty -0.50)",
+      "step4": "Apply reputation_factors based on URL structure",
+      "step5": "Normalize final score to 0.0-1.0 range"
+    },
+    "minimum_score": 0.0,
+    "maximum_score": 1.0,
+    "default_unknown_domain": 0.50
+  },
+  
+  "risk_categories": {
+    "very_high_risk": {
+      "score_range": [0.0, 0.20],
+      "description": "Known malicious or highly suspicious domains",
+      "action": "Block immediately"
+    },
+    "high_risk": {
+      "score_range": [0.21, 0.40],
+      "description": "Suspicious domains with poor reputation",
+      "action": "Require manual review"
+    },
+    "medium_risk": {
+      "score_range": [0.41, 0.60],
+      "description": "Unknown or neutral domains",
+      "action": "Standard vetting process"
+    },
+    "low_risk": {
+      "score_range": [0.61, 0.80],
+      "description": "Generally trusted commercial domains",
+      "action": "Reduced vetting requirements"
+    },
+    "very_low_risk": {
+      "score_range": [0.81, 1.00],
+      "description": "Highly trusted authoritative sources",
+      "action": "Minimal vetting required"
+    }
+  },
+  
+  "update_policy": {
+    "frequency": "Monthly or as needed",
+    "sources": [
+      "Security threat intelligence feeds",
+      "Academic reputation databases",
+      "News organization credibility ratings",
+      "Community feedback and reports"
+    ],
+    "validation_process": "Manual review of all additions/changes",
+    "backup_retention": "Keep 6 months of historical versions"
+  },
+  
+  "usage_notes": {
+    "domain_matching": "Use exact match first, then TLD fallback",
+    "subdomain_handling": "Apply subdomain penalty unless in trusted list",
+    "case_sensitivity": "All matching should be case-insensitive",
+    "internationalization": "Support for IDN domains with punycode conversion",
+    "caching": "Cache reputation scores for 24 hours to improve performance"
+  }
+}

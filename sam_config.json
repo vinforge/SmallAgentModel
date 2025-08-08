@@ -1,0 +1,59 @@
+{
+  "model": {
+    "backend": "auto",
+    "size": "8b",
+    "max_context_length": 128000,
+    "temperature": 0.7,
+    "max_tokens": 1000,
+    "timeout_seconds": 120,
+    "dynamic_backend": "llama31-8b",
+    "transformer_model_name": "hf.co/unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF:Q4_K_M",
+    "transformer_api_url": "http://localhost:11434",
+    "hybrid_model_path": null,
+    "hybrid_linear_ratio": 3,
+    "hybrid_feature_map": "relu",
+    "use_flash_attention": true,
+    "gradient_checkpointing": false,
+    "enable_thinking_tokens": true
+  },
+  "app_name": "SAM",
+  "version": "2.0.0",
+  "debug_mode": false,
+  "log_level": "INFO",
+  "streamlit_port": 8502,
+  "memory_center_port": 8501,
+  "welcome_page_port": 8503,
+  "enable_memory_center": true,
+  "enable_dream_canvas": true,
+  "enable_cognitive_automation": true,
+  "enable_self_reflect": true,
+  "max_concurrent_requests": 10,
+  "request_timeout": 300,
+  "enable_caching": true,
+  "cache_size_mb": 1024,
+  "require_authentication": true,
+  "session_timeout_minutes": 60,
+  "enable_encryption": true,
+  "data_directory": "data",
+  "logs_directory": "logs",
+  "models_directory": "models",
+  "cache_directory": "cache",
+  "retrieval_pipeline": {
+    "version": "v1_chunking",
+    "v1_settings": {
+      "chunk_size": 1000,
+      "chunk_overlap": 200,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2"
+    },
+    "v2_settings": {
+      "embedder_model": "colbert-ir/colbertv2.0",
+      "fde_dim": 768,
+      "chunk_size": 512,
+      "chunk_overlap": 50,
+      "max_workers": 4,
+      "batch_size": 10,
+      "enable_deduplication": true,
+      "fallback_to_v1": true
+    }
+  }
+}

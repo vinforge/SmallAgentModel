@@ -1,0 +1,89 @@
+{
+  "name": "business",
+  "description": "Business and strategic analysis focus for commercial and organizational contexts",
+  "version": "2.0",
+  "target_users": ["business_analysts", "consultants", "managers", "entrepreneurs", "strategists"],
+  "dimensions": {
+    "market_impact": {
+      "weight": 1.4,
+      "description": "Market influence and business ecosystem impact",
+      "patterns": [
+        "market share",
+        "competitive advantage",
+        "market disruption",
+        "customer value",
+        "revenue impact",
+        "market opportunity"
+      ],
+      "boost_keywords": ["market", "competitive", "revenue", "profit", "customer"]
+    },
+    "feasibility": {
+      "weight": 1.3,
+      "description": "Implementation feasibility and practical viability",
+      "patterns": [
+        "implementable",
+        "feasible",
+        "viable",
+        "practical",
+        "achievable",
+        "realistic"
+      ],
+      "boost_keywords": ["feasible", "viable", "practical", "achievable", "realistic"]
+    },
+    "risk": {
+      "weight": 1.2,
+      "description": "Business and operational risk assessment",
+      "patterns": [
+        "risk assessment",
+        "potential downside",
+        "mitigation",
+        "uncertainty",
+        "volatility",
+        "compliance risk"
+      ],
+      "boost_keywords": ["risk", "uncertainty", "volatile", "compliance", "regulatory"]
+    },
+    "roi_potential": {
+      "weight": 1.5,
+      "description": "Return on investment and financial potential",
+      "patterns": [
+        "return on investment",
+        "ROI",
+        "profitability",
+        "cost-benefit",
+        "financial return",
+        "value creation"
+      ],
+      "boost_keywords": ["ROI", "profit", "return", "value", "financial", "cost-effective"]
+    },
+    "scalability": {
+      "weight": 1.1,
+      "description": "Solution scalability and growth potential",
+      "patterns": [
+        "scalable",
+        "growth potential",
+        "expandable",
+        "replicable",
+        "sustainable",
+        "long-term"
+      ],
+      "boost_keywords": ["scalable", "growth", "expandable", "sustainable", "long-term"]
+    }
+  },
+  "retrieval_weights": {
+    "semantic_similarity": 0.6,
+    "dimension_alignment": 0.4
+  },
+  "priority_boosts": {
+    "high_roi_low_risk": 1.4,
+    "high_market_impact_high_feasibility": 1.35,
+    "high_scalability": 1.2
+  },
+  "explanation_templates": {
+    "market_impact": "Market impact ({score:.2f}) reflects business ecosystem influence",
+    "feasibility": "Feasibility ({score:.2f}) indicates implementation viability",
+    "risk": "Risk assessment ({score:.2f}) shows potential business exposure",
+    "roi_potential": "ROI potential ({score:.2f}) suggests financial return opportunity",
+    "scalability": "Scalability ({score:.2f}) indicates growth and expansion potential"
+  }
+}

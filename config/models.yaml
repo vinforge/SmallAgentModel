@@ -1,0 +1,159 @@
+# SAM Installation Wizard - Curated Model Metadata
+# This file contains the list of supported AI models with hardware requirements
+# and compatibility information for the SAM installation wizard.
+
+version: "1.0.0"
+last_updated: "2025-01-07"
+
+models:
+  - name: "TinyLlama-1.1B-Chat-v1.0"
+    id: "tinyllama-1.1b"
+    description: "Lightweight model perfect for everyday tasks and low-end hardware"
+    recommended_ram: ">=8GB"
+    minimum_ram: ">=4GB"
+    cpu: ["Intel", "AMD", "Apple Silicon"]
+    acceleration: ["CPU"]
+    quantization: "int4"
+    model_format: "GGUF"
+    model_size: "1.1B"
+    download_size: "637MB"
+    download_url: "https://huggingface.co/cognitivecomputations/TinyLlama-1.1B-Chat-v1.0"
+    ollama_model: "tinyllama:1.1b"
+    performance:
+      tokens_per_second: "15-25"
+      context_length: 2048
+    use_cases: ["Chat", "Basic Q&A", "Simple tasks"]
+    notes: "Fast and lightweight. Good for everyday tasks on low-end laptops. Excellent for learning and testing."
+    difficulty: "beginner"
+    priority: 1
+
+  - name: "Phi-4-mini-reasoning-MLX-4bitif"
+    id: "phi-4-mini"
+    description: "Microsoft's reasoning-optimized model for Apple Silicon"
+    recommended_ram: ">=16GB"
+    minimum_ram: ">=12GB"
+    cpu: ["Apple Silicon"]
+    acceleration: ["MLX"]
+    quantization: "4bit"
+    model_format: "MLX"
+    model_size: "14B"
+    download_size: "8.2GB"
+    download_url: "https://huggingface.co/lmstudio-community/Phi-4-mini-reasoning-MLX-4bitif"
+    ollama_model: "phi4:14b-mini-reasoning-q4_0"
+    performance:
+      tokens_per_second: "20-35"
+      context_length: 4096
+    use_cases: ["Reasoning", "Code", "Analysis", "Complex Q&A"]
+    notes: "Optimized for Apple M1/M2/M3 with MLX acceleration. Excellent reasoning capabilities."
+    difficulty: "intermediate"
+    priority: 2
+
+  - name: "Mistral-7B-Instruct-GGUF"
+    id: "mistral-7b"
+    description: "High-performance model for NVIDIA GPUs with excellent instruction following"
+    recommended_ram: ">=24GB"
+    minimum_ram: ">=16GB"
+    cpu: ["Intel", "AMD"]
+    acceleration: ["CUDA", "CPU"]
+    quantization: "q4_0"
+    model_format: "GGUF"
+    model_size: "7B"
+    download_size: "4.1GB"
+    download_url: "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF"
+    ollama_model: "mistral:7b-instruct"
+    performance:
+      tokens_per_second: "25-45"
+      context_length: 8192
+    use_cases: ["Professional tasks", "Code generation", "Analysis", "Creative writing"]
+    notes: "Higher accuracy, best for NVIDIA GPUs with enough memory. Excellent for professional use."
+    difficulty: "advanced"
+    priority: 3
+
+  - name: "Llama-3.2-3B-Instruct"
+    id: "llama-3.2-3b"
+    description: "Meta's efficient model balancing performance and resource usage"
+    recommended_ram: ">=12GB"
+    minimum_ram: ">=8GB"
+    cpu: ["Intel", "AMD", "Apple Silicon"]
+    acceleration: ["CPU", "CUDA", "Metal"]
+    quantization: "q4_0"
+    model_format: "GGUF"
+    model_size: "3B"
+    download_size: "1.9GB"
+    download_url: "https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct"
+    ollama_model: "llama3.2:3b"
+    performance:
+      tokens_per_second: "18-30"
+      context_length: 4096
+    use_cases: ["General chat", "Education", "Content creation", "Code assistance"]
+    notes: "Good balance of performance and efficiency. Works well across different hardware."
+    difficulty: "intermediate"
+    priority: 2
+
+  - name: "DeepSeek-R1-Distill-Qwen-7B"
+    id: "deepseek-r1-7b"
+    description: "Advanced reasoning model with excellent problem-solving capabilities"
+    recommended_ram: ">=20GB"
+    minimum_ram: ">=16GB"
+    cpu: ["Intel", "AMD", "Apple Silicon"]
+    acceleration: ["CPU", "CUDA", "Metal"]
+    quantization: "q4_k_m"
+    model_format: "GGUF"
+    model_size: "7B"
+    download_size: "4.3GB"
+    download_url: "https://huggingface.co/unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF"
+    ollama_model: "hf.co/unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF:Q4_K_M"
+    performance:
+      tokens_per_second: "20-35"
+      context_length: 8192
+    use_cases: ["Research", "Complex reasoning", "Problem solving", "Analysis"]
+    notes: "SAM's default model. Excellent for complex reasoning and analysis tasks."
+    difficulty: "advanced"
+    priority: 1
+
+# Hardware compatibility matrix
+compatibility:
+  apple_silicon:
+    recommended_models: ["phi-4-mini", "llama-3.2-3b", "deepseek-r1-7b"]
+    acceleration: "MLX"
+    notes: "Apple Silicon Macs have excellent MLX support for optimized performance"
+  
+  nvidia_gpu:
+    recommended_models: ["mistral-7b", "deepseek-r1-7b", "llama-3.2-3b"]
+    acceleration: "CUDA"
+    notes: "NVIDIA GPUs provide excellent acceleration with CUDA support"
+  
+  intel_amd_cpu:
+    recommended_models: ["tinyllama-1.1b", "llama-3.2-3b", "deepseek-r1-7b"]
+    acceleration: "CPU"
+    notes: "CPU-only processing works well for smaller models"
+
+# Installation recommendations based on use case
+use_case_recommendations:
+  beginner:
+    models: ["tinyllama-1.1b"]
+    description: "Start with lightweight models to learn SAM"
+  
+  general_use:
+    models: ["llama-3.2-3b", "deepseek-r1-7b"]
+    description: "Balanced performance for everyday tasks"
+  
+  professional:
+    models: ["mistral-7b", "deepseek-r1-7b"]
+    description: "High-performance models for professional work"
+  
+  research:
+    models: ["deepseek-r1-7b", "phi-4-mini"]
+    description: "Advanced reasoning capabilities for research tasks"
+
+# System requirements
+system_requirements:
+  minimum:
+    ram: "4GB"
+    storage: "10GB"
+    os: ["Windows 10+", "macOS 10.15+", "Ubuntu 18.04+"]
+  
+  recommended:
+    ram: "16GB"
+    storage: "50GB"
+    os: ["Windows 11", "macOS 12+", "Ubuntu 20.04+"]

@@ -1,0 +1,86 @@
+# SAM - Essential Dependencies
+# Version-pinned for consistent behavior across all platforms
+# Last updated: December 2024 - Based on working installations
+
+# Core Web Framework (Required) - PINNED to working version
+streamlit==1.42.0
+flask>=2.3.0,<3.0.0
+
+# HTTP Requests (Required)
+requests>=2.31.0,<3.0.0
+
+# Essential AI/ML Libraries
+sentence-transformers>=2.2.0
+colbert-ai>=0.2.19,<3.0.0
+numpy>=1.24.0,<2.0.0
+scipy>=1.7.0,<2.0.0
+
+# Document Processing
+PyPDF2>=3.0.0,<4.0.0
+python-docx>=0.8.11,<1.0.0
+python-magic>=0.4.24,<1.0.0  # For file type detection (v2)
+beautifulsoup4>=4.12.0,<5.0.0
+langchain>=0.1.0,<1.0.0
+langchain-community>=0.0.10,<1.0.0  # Fixes LangChain deprecation warnings
+
+# Data Processing
+pandas>=2.0.0,<3.0.0
+
+# Configuration & Environment
+python-dotenv>=1.0.0,<2.0.0
+
+# System Monitoring
+psutil>=5.9.0,<6.0.0
+
+# Progress Bars & UI
+tqdm>=4.65.0,<5.0.0
+colorama>=0.4.6,<1.0.0
+
+# JSON Schema Validation
+pydantic>=2.0.0,<3.0.0
+
+# Advanced Features (Optional - installed automatically when needed)
+# Web Browsing & Automation
+playwright>=1.40.0,<2.0.0
+selenium>=4.15.0,<5.0.0
+
+# Vector Database & ML
+faiss-cpu>=1.7.4,<2.0.0
+chromadb>=0.4.0,<1.0.0
+transformers>=4.30.0,<5.0.0
+torch>=2.0.0,<3.0.0
+scikit-learn>=1.3.0,<2.0.0
+
+# Hybrid Linear Attention Support (SAM 2.0)
+flash-linear-attention>=0.1.0
+triton>=2.0.0,<3.0.0; sys_platform == "linux"  # GPU optimizations (Linux only)
+accelerate>=0.20.0,<1.0.0  # For efficient model loading and training
+
+# Dream Canvas Visualization
+umap-learn>=0.5.4,<1.0.0
+plotly>=5.17.0,<6.0.0
+
+# TPV (Thinking Process Verification)
+einops>=0.7.0,<1.0.0
+
+# Security Features
+cryptography>=41.0.0,<42.0.0
+argon2-cffi>=23.1.0,<24.0.0
+
+# Database Features
+sqlalchemy>=2.0.0,<3.0.0
+
+# Development Tools (optional)
+pytest>=7.4.0,<8.0.0
+black>=23.7.0,<24.0.0
+
+# SAM Model Foundry Dependencies
+transformers>=4.40.0,<5.0.0
+torch>=2.0.0,<3.0.0
+bitsandbytes>=0.41.0,<1.0.0
+sentencepiece>=0.1.99,<1.0.0
+protobuf>=3.20.0,<5.0.0
+
+# Note: Built-in Python modules are included automatically:
+# pathlib, json, datetime, threading, subprocess, signal, time,
+# os, sys, logging, uuid, hashlib, base64, zipfile, shutil, webbrowser

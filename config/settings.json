@@ -1,0 +1,27 @@
+{
+  "security": {
+    "session_timeout": 3600,
+    "max_unlock_attempts": 5,
+    "auto_lock_enabled": true
+  },
+  "ui": {
+    "default_interface": "streamlit",
+    "theme": "auto",
+    "show_security_status": true
+  },
+  "memory": {
+    "max_memories": 10000,
+    "embedding_dimension": 384,
+    "similarity_threshold": 0.7
+  },
+  "uploads": {
+    "max_file_size_mb": 100,
+    "allowed_extensions": [
+      ".pdf",
+      ".txt",
+      ".docx",
+      ".md"
+    ],
+    "auto_process": true
+  }
+}
