@@ -1,0 +1,39 @@
+[
+  {
+    "job_id": "dpo_test_user_20250809_132701",
+    "user_id": "test_user",
+    "status": "pending",
+    "created_at": "2025-08-09T13:27:01.520896",
+    "started_at": null,
+    "completed_at": null,
+    "config_overrides": {
+      "training": {
+        "num_train_epochs": 1
+      }
+    },
+    "output_dir": "models/personalized/test_user/dpo_test_user_20250809_132701",
+    "model_path": null,
+    "error_message": null
+  },
+  {
+    "job_id": "dpo_test_user_e2e_20250809_164223",
+    "user_id": "test_user_e2e",
+    "status": "pending",
+    "created_at": "2025-08-09T16:42:23.694766",
+    "started_at": null,
+    "completed_at": null,
+    "config_overrides": {
+      "training": {
+        "num_train_epochs": 1,
+        "learning_rate": 0.001
+      },
+      "data": {
+        "min_confidence_threshold": 0.8,
+        "max_training_samples": 10
+      }
+    },
+    "output_dir": "models/personalized/test_user_e2e/dpo_test_user_e2e_20250809_164223",
+    "model_path": null,
+    "error_message": null
+  }
+]

@@ -369,6 +369,7 @@ def main():
                 "Chat with SAM",
                 "🔍 Reasoning Visualizer",
                 "🧠📊 TPV Dissonance Demo",  # NEW: Phase 5B Demo
+                "🧠 Personalized Tuner",  # NEW: DPO Integration
                 "📁 Bulk Ingestion",
                 "🔑 API Key Manager",
                 "🧠🎨 Dream Canvas",
@@ -460,6 +461,8 @@ def main():
         render_reasoning_visualizer()
     elif page == "🧠📊 TPV Dissonance Demo":
         render_tpv_dissonance_demo()
+    elif page == "🧠 Personalized Tuner":
+        render_personalized_tuner()
     elif page == "📁 Bulk Ingestion":
         render_bulk_ingestion()
     elif page == "🔑 API Key Manager":
@@ -6659,6 +6662,583 @@ def render_tpv_dissonance_demo():
         - Verify TPV system is properly initialized
         - Ensure all dependencies are installed
         """)
+
+def render_personalized_tuner():
+    """Render the Personalized Tuner interface for DPO fine-tuning."""
+    try:
+        st.subheader("🧠 Personalized Tuner")
+        st.markdown("**Direct Preference Optimization (DPO) for Personalized Model Fine-Tuning**")
+
+        # Import required modules
+        try:
+            from sam.learning.dpo_data_manager import get_dpo_data_manager
+            from sam.learning.feedback_handler import get_feedback_handler
+            from memory.episodic_store import create_episodic_store
+        except ImportError as e:
+            st.error(f"❌ Required modules not available: {e}")
+            st.info("Please ensure the DPO integration is properly installed.")
+            return
+
+        # Initialize components
+        episodic_store = create_episodic_store()
+        dpo_manager = get_dpo_data_manager(episodic_store)
+        feedback_handler = get_feedback_handler()
+
+        # User ID input
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            user_id = st.text_input("User ID", value="default_user", help="Enter your user ID to view personalization data")
+        with col2:
+            if st.button("🔄 Refresh Data", help="Reload preference data"):
+                st.rerun()
+
+        if not user_id:
+            st.warning("Please enter a user ID to continue.")
+            return
+
+        # Get user statistics
+        user_stats = dpo_manager.get_user_stats(user_id)
+        feedback_stats = feedback_handler.get_dpo_statistics(user_id)
+
+        # Statistics overview
+        st.markdown("### 📊 Training Data Overview")
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Total Preference Pairs", user_stats.get('total_pairs', 0))
+        with col2:
+            st.metric("Active for Training", user_stats.get('active_pairs', 0))
+        with col3:
+            st.metric("Avg Confidence", f"{user_stats.get('avg_confidence', 0.0):.2f}")
+        with col4:
+            training_ready = user_stats.get('training_ready_pairs', 0)
+            st.metric("Training Ready", training_ready,
+                     delta="Ready" if training_ready >= 10 else "Need more data")
+
+        # Main interface tabs
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "📋 Preference Data",
+            "🎯 Training Controls",
+            "🧠 Model Management",
+            "📈 Analytics",
+            "⚙️ Settings"
+        ])
+
+        with tab1:
+            render_preference_data_tab(dpo_manager, user_id)
+
+        with tab2:
+            render_training_controls_tab(dpo_manager, user_id, user_stats)
+
+        with tab3:
+            render_model_management_tab(user_id)
+
+        with tab4:
+            render_dpo_analytics_tab(dpo_manager, feedback_handler, user_id)
+
+        with tab5:
+            render_dpo_settings_tab()
+
+    except Exception as e:
+        st.error(f"❌ Error loading Personalized Tuner: {e}")
+        st.markdown("""
+        **Possible causes:**
+        - DPO integration components not properly installed
+        - Database connection issues
+        - Missing dependencies
+
+        **Try:**
+        1. Check that sam/learning/dpo_data_manager.py exists
+        2. Verify database is accessible
+        3. Restart the Memory Center if issues persist
+        """)
+
+def render_preference_data_tab(dpo_manager, user_id):
+    """Render the preference data management tab."""
+    st.markdown("#### 📋 DPO Preference Pairs")
+
+    # Filtering controls
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        min_confidence = st.slider("Minimum Confidence", 0.0, 1.0, 0.7, 0.1,
+                                  help="Filter pairs by confidence score")
+    with col2:
+        show_inactive = st.checkbox("Show Inactive", help="Include inactive pairs")
+    with col3:
+        max_pairs = st.number_input("Max Pairs", 1, 1000, 50, help="Maximum pairs to display")
+
+    # Get preference data
+    preferences = dpo_manager.episodic_store.get_dpo_preferences(
+        user_id=user_id,
+        min_confidence=min_confidence,
+        active_only=not show_inactive,
+        limit=max_pairs
+    )
+
+    if not preferences:
+        st.info("No preference pairs found matching the criteria.")
+        return
+
+    st.markdown(f"**Found {len(preferences)} preference pairs**")
+
+    # Display preference pairs
+    for i, pref in enumerate(preferences):
+        with st.expander(f"Pair {i+1}: {pref.feedback_type} (Confidence: {pref.feedback_confidence_score:.2f})"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Original Response (Rejected):**")
+                st.text_area("", pref.original_response, height=100, key=f"orig_{pref.id}", disabled=True)
+
+            with col2:
+                st.markdown("**Corrected Response (Chosen):**")
+                st.text_area("", pref.corrected_response, height=100, key=f"corr_{pref.id}", disabled=True)
+
+            # Metadata
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.caption(f"**Prompt:** {pref.prompt_text[:50]}...")
+            with col2:
+                st.caption(f"**Quality:** {pref.quality_score or 'N/A'}")
+            with col3:
+                st.caption(f"**Created:** {pref.created_timestamp[:10]}")
+            with col4:
+                # Toggle active status
+                new_status = st.checkbox("Active", value=pref.is_active_for_tuning, key=f"active_{pref.id}")
+                if new_status != pref.is_active_for_tuning:
+                    if dpo_manager.episodic_store.update_dpo_preference_status(pref.id, new_status):
+                        st.success("Status updated!")
+                        st.rerun()
+
+def render_training_controls_tab(dpo_manager, user_id, user_stats):
+    """Render the training controls tab."""
+    st.markdown("#### 🎯 Fine-Tuning Controls")
+
+    # Import training manager
+    try:
+        from sam.cognition.dpo import get_dpo_training_manager
+        training_manager = get_dpo_training_manager()
+    except ImportError:
+        st.error("❌ Training manager not available. Please ensure DPO dependencies are installed.")
+        return
+
+    training_ready_pairs = user_stats.get('training_ready_pairs', 0)
+
+    if training_ready_pairs < 10:
+        st.warning(f"⚠️ Only {training_ready_pairs} training-ready pairs available. Recommended minimum: 10")
+        st.info("Continue using the feedback system to collect more high-quality preference pairs.")
+        return
+
+    st.success(f"✅ {training_ready_pairs} training-ready pairs available!")
+
+    # Check for existing jobs
+    user_jobs = training_manager.get_user_jobs(user_id)
+    running_jobs = [job for job in user_jobs if job['status'] == 'running']
+
+    if running_jobs:
+        st.info(f"🔄 Training job in progress: {running_jobs[0]['job_id']}")
+        render_job_progress(training_manager, running_jobs[0])
+        return
+
+    # Training configuration
+    st.markdown("##### Training Configuration")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        min_confidence = st.slider("Training Confidence Threshold", 0.5, 1.0, 0.8, 0.05)
+        min_quality = st.slider("Training Quality Threshold", 0.0, 1.0, 0.6, 0.1)
+        max_training_pairs = st.number_input("Max Training Pairs", 10, 1000, 100)
+
+    with col2:
+        learning_rate = st.number_input("Learning Rate", 0.0001, 0.01, 0.0005, format="%.4f")
+        num_epochs = st.number_input("Training Epochs", 1, 10, 3)
+        lora_rank = st.number_input("LoRA Rank", 4, 64, 16)
+        beta = st.number_input("DPO Beta", 0.01, 1.0, 0.1, format="%.2f")
+
+    # Preview training dataset
+    if st.button("📊 Preview Training Dataset"):
+        training_data = dpo_manager.get_training_dataset(
+            user_id=user_id,
+            min_confidence=min_confidence,
+            min_quality=min_quality,
+            limit=max_training_pairs
+        )
+
+        st.markdown(f"**Training dataset preview: {len(training_data)} examples**")
+        if training_data:
+            # Show first few examples
+            for i, example in enumerate(training_data[:3]):
+                with st.expander(f"Example {i+1}"):
+                    st.markdown(f"**Prompt:** {example['prompt']}")
+                    st.markdown(f"**Chosen:** {example['chosen'][:100]}...")
+                    st.markdown(f"**Rejected:** {example['rejected'][:100]}...")
+
+    # Training controls
+    st.markdown("##### Start Fine-Tuning")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🚀 Start Fine-Tuning", type="primary"):
+            # Create configuration overrides
+            config_overrides = {
+                'data': {
+                    'min_confidence_threshold': min_confidence,
+                    'min_quality_threshold': min_quality,
+                    'max_training_samples': max_training_pairs
+                },
+                'training': {
+                    'learning_rate': learning_rate,
+                    'num_train_epochs': num_epochs,
+                    'beta': beta
+                },
+                'lora': {
+                    'r': lora_rank
+                }
+            }
+
+            # Create and start training job
+            job_id = training_manager.create_training_job(user_id, config_overrides)
+
+            if training_manager.start_training_job(job_id):
+                st.success(f"🚀 Training job started: {job_id}")
+                st.info("Refresh the page to see training progress.")
+                st.rerun()
+            else:
+                st.error("❌ Failed to start training job")
+
+    with col2:
+        if st.button("💾 Export Training Data"):
+            training_data = dpo_manager.get_training_dataset(
+                user_id=user_id,
+                min_confidence=min_confidence,
+                min_quality=min_quality,
+                limit=max_training_pairs
+            )
+
+            if training_data:
+                import json
+                json_data = json.dumps(training_data, indent=2)
+                st.download_button(
+                    "📥 Download JSON",
+                    json_data,
+                    f"dpo_training_data_{user_id}.json",
+                    "application/json"
+                )
+
+    # Recent jobs section
+    if user_jobs:
+        st.markdown("##### Recent Training Jobs")
+        for job in user_jobs[-5:]:  # Show last 5 jobs
+            with st.expander(f"Job {job['job_id']} - {job['status'].title()}"):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Status", job['status'].title())
+                with col2:
+                    if job['duration_seconds']:
+                        duration_min = job['duration_seconds'] / 60
+                        st.metric("Duration", f"{duration_min:.1f} min")
+                with col3:
+                    if job['progress']:
+                        st.metric("Progress", f"{job['progress']*100:.1f}%")
+
+                if job['error_message']:
+                    st.error(f"Error: {job['error_message']}")
+
+                if job['model_path']:
+                    st.success(f"Model saved to: {job['model_path']}")
+
+
+def render_job_progress(training_manager, job):
+    """Render progress for a running training job."""
+    st.markdown("##### 🔄 Training Progress")
+
+    # Progress metrics
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Status", job['status'].title())
+    with col2:
+        if job['duration_seconds']:
+            duration_min = job['duration_seconds'] / 60
+            st.metric("Duration", f"{duration_min:.1f} min")
+    with col3:
+        if job['progress']:
+            st.metric("Progress", f"{job['progress']*100:.1f}%")
+    with col4:
+        if job['current_loss']:
+            st.metric("Current Loss", f"{job['current_loss']:.4f}")
+
+    # Progress bar
+    if job['progress']:
+        st.progress(job['progress'])
+
+    # Control buttons
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🔄 Refresh"):
+            st.rerun()
+
+    with col2:
+        if st.button("📋 View Logs"):
+            if job['log_file']:
+                try:
+                    with open(job['log_file'], 'r') as f:
+                        log_content = f.read()
+                    st.text_area("Training Logs", log_content[-2000:], height=300)  # Last 2000 chars
+                except Exception as e:
+                    st.error(f"Error reading logs: {e}")
+
+    with col3:
+        if st.button("❌ Cancel Training", type="secondary"):
+            if training_manager.cancel_training_job(job['job_id']):
+                st.success("Training job cancelled")
+                st.rerun()
+            else:
+                st.error("Failed to cancel job")
+
+def render_dpo_analytics_tab(dpo_manager, feedback_handler, user_id):
+    """Render the DPO analytics tab."""
+    st.markdown("#### 📈 Training Data Analytics")
+
+    # Get comprehensive stats
+    user_stats = dpo_manager.get_user_stats(user_id)
+    feedback_stats = feedback_handler.get_statistics()
+
+    # Quality distribution
+    preferences = dpo_manager.episodic_store.get_dpo_preferences(user_id, 0.0, False, 1000)
+
+    if preferences:
+        # Confidence distribution
+        confidences = [p.feedback_confidence_score for p in preferences]
+        quality_scores = [p.quality_score for p in preferences if p.quality_score is not None]
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**Confidence Score Distribution**")
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.hist(confidences, bins=20, alpha=0.7, color='blue')
+            ax.set_xlabel('Confidence Score')
+            ax.set_ylabel('Count')
+            ax.set_title('Distribution of Confidence Scores')
+            st.pyplot(fig)
+
+        with col2:
+            if quality_scores:
+                st.markdown("**Quality Score Distribution**")
+                fig, ax = plt.subplots(figsize=(8, 4))
+                ax.hist(quality_scores, bins=20, alpha=0.7, color='green')
+                ax.set_xlabel('Quality Score')
+                ax.set_ylabel('Count')
+                ax.set_title('Distribution of Quality Scores')
+                st.pyplot(fig)
+            else:
+                st.info("No quality scores available yet.")
+
+        # Feedback type breakdown
+        feedback_types = {}
+        for p in preferences:
+            feedback_types[p.feedback_type] = feedback_types.get(p.feedback_type, 0) + 1
+
+        st.markdown("**Feedback Type Breakdown**")
+        for feedback_type, count in feedback_types.items():
+            st.metric(feedback_type.replace('_', ' ').title(), count)
+
+    else:
+        st.info("No preference data available for analytics.")
+
+def render_dpo_settings_tab():
+    """Render the DPO settings tab."""
+    st.markdown("#### ⚙️ Personalized Tuner Settings")
+
+    st.markdown("##### Data Collection Settings")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        auto_collect = st.checkbox("Auto-collect DPO pairs", value=True,
+                                  help="Automatically create preference pairs from feedback")
+        confidence_threshold = st.slider("DPO Confidence Threshold", 0.5, 1.0, 0.7, 0.05,
+                                        help="Minimum confidence for DPO pair creation")
+
+    with col2:
+        validate_pairs = st.checkbox("Validate preference pairs", value=True,
+                                   help="Run quality validation on new pairs")
+        min_correction_length = st.number_input("Min correction length (words)", 1, 50, 5,
+                                              help="Minimum words in correction")
+
+    st.markdown("##### Model Settings")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        base_model = st.selectbox("Base Model", ["llama-3.1-8b", "llama-3.1-70b", "custom"],
+                                 help="Base model for fine-tuning")
+        lora_rank = st.number_input("LoRA Rank", 1, 256, 16, help="LoRA adapter rank")
+
+    with col2:
+        lora_alpha = st.number_input("LoRA Alpha", 1, 512, 32, help="LoRA scaling parameter")
+        max_seq_length = st.number_input("Max Sequence Length", 512, 4096, 2048,
+                                       help="Maximum sequence length for training")
+
+    if st.button("💾 Save Settings"):
+        st.success("Settings saved! (Note: Settings persistence will be implemented in Phase 2)")
+
+
+def render_model_management_tab(user_id):
+    """Render the model management tab."""
+    st.markdown("#### 🧠 Personalized Model Management")
+
+    try:
+        from sam.cognition.dpo import (
+            get_dpo_model_manager,
+            get_personalized_sam_client,
+            get_user_personalization_status
+        )
+
+        model_manager = get_dpo_model_manager()
+        sam_client = get_personalized_sam_client()
+
+    except ImportError:
+        st.error("❌ Model management not available. Please ensure DPO dependencies are installed.")
+        return
+
+    # Get personalization status
+    status = get_user_personalization_status(user_id)
+
+    # Current status display
+    st.markdown("##### Current Status")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if status.get('personalization_enabled'):
+            st.success("✅ Personalization Available")
+        else:
+            st.error("❌ Personalization Unavailable")
+
+    with col2:
+        if status.get('has_active_model'):
+            st.success(f"🧠 Active Model: {status.get('active_model_id', 'Unknown')}")
+        else:
+            st.info("🔄 Using Base Model")
+
+    with col3:
+        engine_status = status.get('engine_status', {})
+        metrics = engine_status.get('metrics', {})
+        total_requests = metrics.get('total_requests', 0)
+        personalized_requests = metrics.get('personalized_requests', 0)
+
+        if total_requests > 0:
+            personalization_rate = (personalized_requests / total_requests) * 100
+            st.metric("Personalization Rate", f"{personalization_rate:.1f}%")
+        else:
+            st.metric("Personalization Rate", "0%")
+
+    # Available models section
+    st.markdown("##### Available Personalized Models")
+
+    user_models = model_manager.get_user_models(user_id)
+
+    if not user_models:
+        st.info("No personalized models available. Train a model first using the Training Controls tab.")
+        return
+
+    # Model list with activation controls
+    for model in user_models:
+        with st.expander(f"Model: {model.model_id} ({'Active' if model.is_active else 'Inactive'})"):
+            col1, col2 = st.columns([2, 1])
+
+            with col1:
+                # Model information
+                st.markdown(f"**Created:** {model.created_at.strftime('%Y-%m-%d %H:%M')}")
+                st.markdown(f"**Base Model:** {model.base_model}")
+                st.markdown(f"**Training Job:** {model.training_job_id}")
+                st.markdown(f"**Usage Count:** {model.usage_count}")
+
+                if model.last_used:
+                    st.markdown(f"**Last Used:** {model.last_used.strftime('%Y-%m-%d %H:%M')}")
+
+                # Training stats
+                if model.training_stats:
+                    stats = model.training_stats
+                    if 'final_loss' in stats:
+                        st.markdown(f"**Final Loss:** {stats['final_loss']:.4f}")
+                    if 'training_time_seconds' in stats:
+                        training_time = stats['training_time_seconds'] / 60
+                        st.markdown(f"**Training Time:** {training_time:.1f} minutes")
+
+                # LoRA configuration
+                if model.lora_config:
+                    lora_info = f"Rank: {model.lora_config.get('r', 'N/A')}, Alpha: {model.lora_config.get('alpha', 'N/A')}"
+                    st.markdown(f"**LoRA Config:** {lora_info}")
+
+            with col2:
+                # Activation controls
+                if model.is_active:
+                    if st.button("🔄 Deactivate", key=f"deactivate_{model.model_id}"):
+                        if sam_client.deactivate_personalized_model(user_id):
+                            st.success("Model deactivated")
+                            st.rerun()
+                        else:
+                            st.error("Failed to deactivate model")
+                else:
+                    if st.button("🚀 Activate", key=f"activate_{model.model_id}", type="primary"):
+                        if sam_client.activate_personalized_model(user_id, model.model_id):
+                            st.success("Model activated")
+                            st.rerun()
+                        else:
+                            st.error("Failed to activate model")
+
+                # Model actions
+                if st.button("🗑️ Delete", key=f"delete_{model.model_id}", type="secondary"):
+                    if st.session_state.get(f"confirm_delete_{model.model_id}"):
+                        if model_manager.delete_model(model.model_id, user_id):
+                            st.success("Model deleted")
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete model")
+                    else:
+                        st.session_state[f"confirm_delete_{model.model_id}"] = True
+                        st.warning("Click again to confirm deletion")
+
+    # Test personalization section
+    st.markdown("##### Test Personalization")
+
+    test_prompt = st.text_area(
+        "Test Prompt",
+        placeholder="Enter a prompt to test your personalized model...",
+        help="This will generate a response using your active personalized model (if any)"
+    )
+
+    if st.button("🧪 Test Response") and test_prompt:
+        with st.spinner("Generating response..."):
+            try:
+                from sam.cognition.dpo import generate_personalized_response
+
+                response = generate_personalized_response(
+                    prompt=test_prompt,
+                    user_id=user_id
+                )
+
+                st.markdown("**Response:**")
+                st.write(response.content)
+
+                # Show metadata
+                with st.expander("Response Metadata"):
+                    st.json(response.metadata)
+
+                # Show personalization info
+                if response.is_personalized:
+                    st.success(f"✅ Generated using personalized model: {response.model_id}")
+                else:
+                    st.info("ℹ️ Generated using base model")
+
+                if response.fallback_used:
+                    st.warning("⚠️ Fallback was used during generation")
+
+            except Exception as e:
+                st.error(f"Error generating test response: {e}")
+
 
 if __name__ == "__main__":
     main()

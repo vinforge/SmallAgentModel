@@ -1,0 +1,21 @@
+# DPO (Direct Preference Optimization) Dependencies
+# Additional requirements for SAM Personalized Tuner
+
+# Core DPO Training Libraries
+trl>=0.7.0,<1.0.0                    # Transformers Reinforcement Learning (includes DPO)
+peft>=0.8.0,<1.0.0                   # Parameter-Efficient Fine-Tuning (LoRA)
+datasets>=2.14.0,<3.0.0              # Dataset handling for training
+
+# Enhanced Training Support
+wandb>=0.16.0,<1.0.0                 # Weights & Biases for experiment tracking (optional)
+tensorboard>=2.14.0,<3.0.0           # TensorBoard logging (optional)
+
+# Additional ML utilities for DPO
+evaluate>=0.4.0,<1.0.0               # Model evaluation metrics
+rouge-score>=0.1.2,<1.0.0            # ROUGE metrics for text evaluation
+
+# Memory optimization for training
+deepspeed>=0.12.0,<1.0.0             # DeepSpeed for memory-efficient training (optional)
+
+# Note: Core dependencies (transformers, torch, accelerate) are already in requirements.txt
+# This file contains only the additional dependencies needed for DPO fine-tuning

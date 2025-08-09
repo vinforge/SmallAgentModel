@@ -1,0 +1,161 @@
+# DPO (Direct Preference Optimization) Configuration
+# SAM Personalized Tuner Settings
+
+# Model Configuration
+model:
+  # Base model settings
+  base_model_name: "meta-llama/Llama-3.1-8B-Instruct"  # Default base model
+  model_cache_dir: "./models/cache"
+  torch_dtype: "bfloat16"  # Use bfloat16 for better performance
+  device_map: "auto"  # Automatic device mapping
+  
+  # Model loading settings
+  load_in_8bit: false
+  load_in_4bit: true  # Use 4-bit quantization for memory efficiency
+  use_flash_attention: true
+  trust_remote_code: false
+
+# LoRA (Low-Rank Adaptation) Configuration
+lora:
+  # LoRA hyperparameters
+  r: 16                    # LoRA rank (higher = more parameters, better adaptation)
+  alpha: 32               # LoRA scaling parameter (typically 2x rank)
+  dropout: 0.1            # LoRA dropout rate
+  bias: "none"            # LoRA bias setting ("none", "all", "lora_only")
+  
+  # Target modules for LoRA adaptation
+  target_modules:
+    - "q_proj"
+    - "k_proj" 
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  
+  # LoRA task type
+  task_type: "CAUSAL_LM"
+
+# DPO Training Configuration
+training:
+  # Core DPO hyperparameters
+  beta: 0.1               # DPO temperature parameter (controls preference strength)
+  learning_rate: 5.0e-7   # Learning rate for DPO training
+  max_length: 2048        # Maximum sequence length
+  max_prompt_length: 1024 # Maximum prompt length
+  
+  # Training schedule
+  num_train_epochs: 3     # Number of training epochs
+  per_device_train_batch_size: 1  # Batch size per device
+  gradient_accumulation_steps: 4   # Gradient accumulation steps
+  warmup_steps: 100       # Number of warmup steps
+  
+  # Optimization settings
+  optim: "adamw_torch"    # Optimizer type
+  weight_decay: 0.01      # Weight decay for regularization
+  max_grad_norm: 1.0      # Gradient clipping norm
+  
+  # Learning rate schedule
+  lr_scheduler_type: "cosine"
+  save_steps: 500         # Save checkpoint every N steps
+  logging_steps: 10       # Log every N steps
+  eval_steps: 250         # Evaluate every N steps
+  
+  # Memory optimization
+  dataloader_num_workers: 4
+  remove_unused_columns: false
+  group_by_length: true   # Group samples by length for efficiency
+
+# Data Configuration
+data:
+  # Data filtering thresholds
+  min_confidence_threshold: 0.8    # Minimum confidence for training data
+  min_quality_threshold: 0.6       # Minimum quality score for training data
+  max_training_samples: 1000       # Maximum number of training samples
+  
+  # Data preprocessing
+  shuffle_data: true               # Shuffle training data
+  train_test_split: 0.9           # Fraction for training (rest for validation)
+  
+  # Response filtering
+  min_response_length: 10         # Minimum response length (tokens)
+  max_response_length: 1024       # Maximum response length (tokens)
+  filter_duplicates: true         # Remove duplicate preference pairs
+
+# Output Configuration
+output:
+  # Model saving
+  output_dir: "./models/personalized"  # Directory to save fine-tuned models
+  save_total_limit: 3                  # Maximum number of checkpoints to keep
+  save_strategy: "steps"               # Save strategy ("steps" or "epoch")
+  
+  # Logging and monitoring
+  logging_dir: "./logs/dpo_training"   # Directory for training logs
+  report_to: ["tensorboard"]          # Reporting tools (tensorboard, wandb)
+  run_name: null                       # Run name (auto-generated if null)
+
+# Evaluation Configuration
+evaluation:
+  # Evaluation settings
+  evaluation_strategy: "steps"        # When to evaluate ("steps", "epoch", "no")
+  eval_accumulation_steps: 1          # Accumulation steps for evaluation
+  
+  # Metrics to compute
+  compute_metrics: true               # Whether to compute custom metrics
+  metric_for_best_model: "eval_loss"  # Metric to use for best model selection
+  greater_is_better: false            # Whether higher metric values are better
+
+# Hardware Configuration
+hardware:
+  # GPU settings
+  use_cuda: true                      # Use CUDA if available
+  fp16: false                         # Use FP16 training
+  bf16: true                          # Use BF16 training (recommended for modern GPUs)
+  
+  # Memory management
+  gradient_checkpointing: true        # Use gradient checkpointing to save memory
+  dataloader_pin_memory: true         # Pin memory for faster data loading
+  
+  # Distributed training (for multi-GPU setups)
+  ddp_find_unused_parameters: false   # DDP setting for unused parameters
+
+# Safety and Validation
+safety:
+  # Training safety checks
+  max_training_time_hours: 24         # Maximum training time in hours
+  early_stopping_patience: 5          # Early stopping patience (epochs)
+  early_stopping_threshold: 0.001     # Early stopping threshold
+  
+  # Model validation
+  validate_before_training: true      # Validate data before training
+  validate_model_outputs: true        # Validate model outputs during training
+  
+  # Backup and recovery
+  auto_backup_checkpoints: true       # Automatically backup checkpoints
+  resume_from_checkpoint: null        # Path to checkpoint to resume from
+
+# Advanced Configuration
+advanced:
+  # Experimental features
+  use_rslora: false                   # Use Rank-Stabilized LoRA
+  use_dora: false                     # Use Weight-Decomposed Low-Rank Adaptation
+  
+  # Custom loss settings
+  loss_type: "sigmoid"                # DPO loss type ("sigmoid", "hinge", "ipo")
+  label_smoothing: 0.0                # Label smoothing factor
+  
+  # Reference model settings
+  ref_model: null                     # Reference model (null = use base model)
+  ref_model_init_kwargs: {}           # Reference model initialization kwargs
+  
+  # Tokenizer settings
+  tokenizer_padding_side: "left"      # Tokenizer padding side
+  tokenizer_truncation_side: "left"   # Tokenizer truncation side
+
+# User-specific overrides (populated at runtime)
+user_overrides: {}
+
+# Version and metadata
+version: "1.0.0"
+created_by: "SAM Personalized Tuner"
+description: "Configuration for Direct Preference Optimization fine-tuning"

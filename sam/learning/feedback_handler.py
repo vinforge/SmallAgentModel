@@ -18,6 +18,14 @@ from enum import Enum
 from ..orchestration.uif import SAM_UIF
 from ..orchestration.skills.internal.memoir_edit import MEMOIR_EditSkill
 from ..orchestration.memoir_sof_integration import get_memoir_sof_integration
+try:
+    from .dpo_data_manager import get_dpo_data_manager, DPODataManager
+except ImportError:
+    # Fallback for direct execution
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent))
+    from dpo_data_manager import get_dpo_data_manager, DPODataManager
 
 logger = logging.getLogger(__name__)
 
@@ -74,15 +82,21 @@ class MEMOIRFeedbackHandler:
             'confidence_threshold': 0.7,
             'max_edit_attempts': 3,
             'enable_validation': True,
-            'store_feedback_history': True
+            'store_feedback_history': True,
+            'enable_dpo_collection': True,  # Enable DPO preference pair collection
+            'dpo_confidence_threshold': 0.7  # Threshold for DPO pair creation
         }
-        
+
+        # Initialize DPO data manager
+        self.dpo_manager = get_dpo_data_manager()
+
         # Feedback storage
         self.feedback_history: List[FeedbackEvent] = []
         self.processing_stats = {
             'total_feedback': 0,
             'successful_edits': 0,
             'failed_edits': 0,
+            'dpo_pairs_created': 0,  # Track DPO pair creation
             'feedback_types': {ft.value: 0 for ft in FeedbackType}
         }
         
@@ -289,17 +303,50 @@ class MEMOIRFeedbackHandler:
             }
         
         # Process based on feedback type
+        memoir_result = None
+        dpo_result = None
+
+        # Create MEMOIR edit for suitable feedback types
         if feedback_event.feedback_type in [
             FeedbackType.FACTUAL_CORRECTION,
             FeedbackType.KNOWLEDGE_UPDATE,
             FeedbackType.PREFERENCE_LEARNING
         ]:
-            return self._create_memoir_edit(feedback_event)
+            memoir_result = self._create_memoir_edit(feedback_event)
+
+        # Create DPO preference pair for suitable feedback types
+        if (self.config.get('enable_dpo_collection', True) and
+            feedback_event.feedback_type in [
+                FeedbackType.FACTUAL_CORRECTION,
+                FeedbackType.BEHAVIOR_ADJUSTMENT,
+                FeedbackType.PREFERENCE_LEARNING
+            ] and
+            feedback_event.confidence_score >= self.config.get('dpo_confidence_threshold', 0.7) and
+            feedback_event.corrected_response):
+
+            dpo_result = self._create_dpo_preference_pair(feedback_event)
+
+        # Combine results
+        if memoir_result:
+            result = memoir_result.copy()
+            if dpo_result:
+                result['dpo_pair_created'] = dpo_result.get('success', False)
+                result['dpo_pair_id'] = dpo_result.get('preference_id')
+            return result
+        elif dpo_result:
+            return {
+                'feedback_id': feedback_event.feedback_id,
+                'auto_processed': True,
+                'memoir_edit_created': False,
+                'dpo_pair_created': dpo_result.get('success', False),
+                'dpo_pair_id': dpo_result.get('preference_id'),
+                'success': dpo_result.get('success', False)
+            }
         else:
             return {
                 'feedback_id': feedback_event.feedback_id,
                 'auto_processed': False,
-                'reason': f'Feedback type {feedback_event.feedback_type.value} not suitable for MEMOIR edit',
+                'reason': f'Feedback type {feedback_event.feedback_type.value} not suitable for processing',
                 'success': True
             }
     
@@ -380,6 +427,65 @@ class MEMOIRFeedbackHandler:
                 'success': False,
                 'error': str(e),
                 'auto_processed': True
+            }
+
+    def _create_dpo_preference_pair(self, feedback_event: FeedbackEvent) -> Dict[str, Any]:
+        """Create a DPO preference pair from feedback event."""
+        try:
+            # Extract user and session information from context
+            user_id = feedback_event.context.get('user_id', 'unknown_user')
+            session_id = feedback_event.context.get('session_id', 'unknown_session')
+
+            # Create preference pair using DPO data manager
+            success, preference_data, issues = self.dpo_manager.create_preference_pair(
+                feedback_id=feedback_event.feedback_id,
+                user_id=user_id,
+                session_id=session_id,
+                prompt_text=feedback_event.original_query,
+                original_response=feedback_event.sam_response,
+                corrected_response=feedback_event.corrected_response,
+                feedback_confidence_score=feedback_event.confidence_score,
+                feedback_type=feedback_event.feedback_type.value,
+                validate=True
+            )
+
+            if success and preference_data:
+                # Store the preference pair
+                stored = self.dpo_manager.store_preference_pair(preference_data)
+
+                if stored:
+                    self.processing_stats['dpo_pairs_created'] += 1
+                    self.logger.info(f"✅ Created DPO preference pair from feedback {feedback_event.feedback_id}")
+
+                    return {
+                        'feedback_id': feedback_event.feedback_id,
+                        'success': True,
+                        'preference_id': preference_data.id,
+                        'quality_score': preference_data.quality_score,
+                        'issues': issues
+                    }
+                else:
+                    return {
+                        'feedback_id': feedback_event.feedback_id,
+                        'success': False,
+                        'error': 'Failed to store preference pair',
+                        'issues': issues
+                    }
+            else:
+                self.logger.warning(f"DPO preference pair validation failed for feedback {feedback_event.feedback_id}: {issues}")
+                return {
+                    'feedback_id': feedback_event.feedback_id,
+                    'success': False,
+                    'error': 'Validation failed',
+                    'issues': issues
+                }
+
+        except Exception as e:
+            self.logger.error(f"Failed to create DPO preference pair from feedback: {e}")
+            return {
+                'feedback_id': feedback_event.feedback_id,
+                'success': False,
+                'error': str(e)
             }
 
     # SELF-REFLECT Integration (Phase 5C)
@@ -642,13 +748,22 @@ class MEMOIRFeedbackHandler:
             'total_feedback_events': self.processing_stats['total_feedback'],
             'successful_edits': self.processing_stats['successful_edits'],
             'failed_edits': self.processing_stats['failed_edits'],
+            'dpo_pairs_created': self.processing_stats.get('dpo_pairs_created', 0),
             'success_rate': success_rate,
             'feedback_by_type': self.processing_stats['feedback_types'],
-            'recent_feedback_count': len([f for f in self.feedback_history if 
+            'recent_feedback_count': len([f for f in self.feedback_history if
                                         (datetime.now() - f.timestamp).days < 7]),
             'processed_feedback_count': len([f for f in self.feedback_history if f.processed]),
             'configuration': self.config
         }
+
+    def get_dpo_statistics(self, user_id: str) -> Dict[str, Any]:
+        """Get DPO-related statistics for a user."""
+        try:
+            return self.dpo_manager.get_user_stats(user_id)
+        except Exception as e:
+            self.logger.error(f"Error getting DPO statistics: {e}")
+            return {}
     
     def get_recent_feedback(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent feedback events."""

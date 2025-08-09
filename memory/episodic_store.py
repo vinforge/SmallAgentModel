@@ -99,6 +99,24 @@ class MemoryPattern:
     last_seen: str
     examples: List[str] = field(default_factory=list)
 
+@dataclass
+class DPOPreferenceData:
+    """Represents a DPO preference pair for personalized fine-tuning."""
+    id: Optional[int]
+    feedback_id: str
+    user_id: str
+    session_id: str
+    prompt_text: str
+    original_response: str
+    corrected_response: str
+    feedback_confidence_score: float
+    feedback_type: str
+    created_timestamp: str
+    is_active_for_tuning: bool = True
+    quality_score: Optional[float] = None
+    response_similarity: Optional[float] = None
+    correction_word_count: Optional[int] = None
+
 class EpisodicMemoryStore:
     """
     Advanced episodic memory system for SAM that stores and retrieves
@@ -171,13 +189,40 @@ class EpisodicMemoryStore:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # DPO preference data table for personalized fine-tuning
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS dpo_preference_data (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    feedback_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    prompt_text TEXT NOT NULL,
+                    original_response TEXT NOT NULL,
+                    corrected_response TEXT NOT NULL,
+                    feedback_confidence_score REAL NOT NULL,
+                    feedback_type TEXT NOT NULL,
+                    created_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_active_for_tuning BOOLEAN DEFAULT 1,
+                    quality_score REAL DEFAULT NULL,
+                    response_similarity REAL DEFAULT NULL,
+                    correction_word_count INTEGER DEFAULT NULL,
+                    FOREIGN KEY (feedback_id) REFERENCES episodic_memories (memory_id)
+                )
+            """)
             
             # Create indexes for performance
             conn.execute("CREATE INDEX IF NOT EXISTS idx_user_timestamp ON episodic_memories(user_id, timestamp)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_session ON episodic_memories(session_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_interaction_type ON episodic_memories(interaction_type)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_query_hash ON episodic_memories(query)")
-            
+
+            # DPO preference data indexes
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_dpo_user_active ON dpo_preference_data(user_id, is_active_for_tuning)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_dpo_feedback ON dpo_preference_data(feedback_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_dpo_confidence ON dpo_preference_data(feedback_confidence_score)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_dpo_timestamp ON dpo_preference_data(created_timestamp)")
+
             conn.commit()
     
     def store_memory(self, memory: EpisodicMemory) -> bool:
@@ -459,6 +504,167 @@ class EpisodicMemoryStore:
             return timestamp >= cutoff
         except Exception:
             return False
+
+    # DPO Preference Data Management Methods
+
+    def store_dpo_preference(self, preference_data: DPOPreferenceData) -> bool:
+        """Store a DPO preference pair for fine-tuning."""
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    # Calculate additional metrics
+                    correction_word_count = len(preference_data.corrected_response.split())
+
+                    # Calculate response similarity (simple word overlap for now)
+                    original_words = set(preference_data.original_response.lower().split())
+                    corrected_words = set(preference_data.corrected_response.lower().split())
+                    if original_words:
+                        similarity = len(original_words & corrected_words) / len(original_words | corrected_words)
+                    else:
+                        similarity = 0.0
+
+                    conn.execute("""
+                        INSERT INTO dpo_preference_data (
+                            feedback_id, user_id, session_id, prompt_text, original_response,
+                            corrected_response, feedback_confidence_score, feedback_type,
+                            is_active_for_tuning, quality_score, response_similarity,
+                            correction_word_count
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        preference_data.feedback_id, preference_data.user_id, preference_data.session_id,
+                        preference_data.prompt_text, preference_data.original_response,
+                        preference_data.corrected_response, preference_data.feedback_confidence_score,
+                        preference_data.feedback_type, preference_data.is_active_for_tuning,
+                        preference_data.quality_score, similarity, correction_word_count
+                    ))
+                    conn.commit()
+
+            logger.info(f"Stored DPO preference pair for feedback: {preference_data.feedback_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error storing DPO preference data: {e}")
+            return False
+
+    def get_dpo_preferences(self, user_id: str, min_confidence: float = 0.0,
+                           active_only: bool = True, limit: int = 1000) -> List[DPOPreferenceData]:
+        """Retrieve DPO preference pairs for a user."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                query = """
+                    SELECT id, feedback_id, user_id, session_id, prompt_text, original_response,
+                           corrected_response, feedback_confidence_score, feedback_type,
+                           created_timestamp, is_active_for_tuning, quality_score,
+                           response_similarity, correction_word_count
+                    FROM dpo_preference_data
+                    WHERE user_id = ? AND feedback_confidence_score >= ?
+                """
+                params = [user_id, min_confidence]
+
+                if active_only:
+                    query += " AND is_active_for_tuning = 1"
+
+                query += " ORDER BY created_timestamp DESC LIMIT ?"
+                params.append(limit)
+
+                cursor = conn.execute(query, params)
+                rows = cursor.fetchall()
+
+                preferences = []
+                for row in rows:
+                    preferences.append(DPOPreferenceData(
+                        id=row[0], feedback_id=row[1], user_id=row[2], session_id=row[3],
+                        prompt_text=row[4], original_response=row[5], corrected_response=row[6],
+                        feedback_confidence_score=row[7], feedback_type=row[8],
+                        created_timestamp=row[9], is_active_for_tuning=bool(row[10]),
+                        quality_score=row[11], response_similarity=row[12],
+                        correction_word_count=row[13]
+                    ))
+
+                logger.debug(f"Retrieved {len(preferences)} DPO preferences for user {user_id}")
+                return preferences
+
+        except Exception as e:
+            logger.error(f"Error retrieving DPO preferences: {e}")
+            return []
+
+    def update_dpo_preference_status(self, preference_id: int, is_active: bool) -> bool:
+        """Update the active status of a DPO preference pair."""
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute("""
+                        UPDATE dpo_preference_data
+                        SET is_active_for_tuning = ?
+                        WHERE id = ?
+                    """, (is_active, preference_id))
+                    conn.commit()
+
+                    if conn.total_changes > 0:
+                        logger.debug(f"Updated DPO preference {preference_id} active status to {is_active}")
+                        return True
+                    else:
+                        logger.warning(f"No DPO preference found with ID {preference_id}")
+                        return False
+
+        except Exception as e:
+            logger.error(f"Error updating DPO preference status: {e}")
+            return False
+
+    def delete_dpo_preference(self, preference_id: int) -> bool:
+        """Delete a DPO preference pair."""
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute("DELETE FROM dpo_preference_data WHERE id = ?", (preference_id,))
+                    conn.commit()
+
+                    if conn.total_changes > 0:
+                        logger.debug(f"Deleted DPO preference {preference_id}")
+                        return True
+                    else:
+                        logger.warning(f"No DPO preference found with ID {preference_id}")
+                        return False
+
+        except Exception as e:
+            logger.error(f"Error deleting DPO preference: {e}")
+            return False
+
+    def get_dpo_stats(self, user_id: str) -> Dict[str, Any]:
+        """Get statistics about DPO preference data for a user."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute("""
+                    SELECT
+                        COUNT(*) as total_pairs,
+                        COUNT(CASE WHEN is_active_for_tuning = 1 THEN 1 END) as active_pairs,
+                        AVG(feedback_confidence_score) as avg_confidence,
+                        MIN(feedback_confidence_score) as min_confidence,
+                        MAX(feedback_confidence_score) as max_confidence,
+                        AVG(correction_word_count) as avg_correction_length
+                    FROM dpo_preference_data
+                    WHERE user_id = ?
+                """, (user_id,))
+
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        'total_pairs': row[0],
+                        'active_pairs': row[1],
+                        'avg_confidence': round(row[2] or 0.0, 3),
+                        'min_confidence': row[3] or 0.0,
+                        'max_confidence': row[4] or 0.0,
+                        'avg_correction_length': round(row[5] or 0.0, 1)
+                    }
+                else:
+                    return {
+                        'total_pairs': 0, 'active_pairs': 0, 'avg_confidence': 0.0,
+                        'min_confidence': 0.0, 'max_confidence': 0.0, 'avg_correction_length': 0.0
+                    }
+
+        except Exception as e:
+            logger.error(f"Error getting DPO stats: {e}")
+            return {}
 
 
 # Convenience functions for easy integration
