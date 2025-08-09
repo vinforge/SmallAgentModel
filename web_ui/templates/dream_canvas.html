@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAM Dream Canvas - Cognitive Synthesis Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-color: transparent;
+        }
+
+        .control-btn.primary:hover {
+            background: linear-gradient(135deg, #3d8bfe 0%, #00d4fe 100%);
+        }
+
+        .visualization-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .status-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 5px;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .cluster-info {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .cluster-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .cluster-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .cluster-item:hover {
+            background: rgba(255,255,255,0.1);
+            border-left-color: #4facfe;
+            transform: translateX(5px);
+        }
+
+        .cluster-item.clickable {
+            border-left-color: #4facfe;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: white;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover {
+            color: #ff6b7a;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+            color: white;
+        }
+
+        .cluster-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .memory-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .memory-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #4facfe;
+            transition: all 0.3s ease;
+        }
+
+        .memory-card:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateX(5px);
+        }
+
+        .memory-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #4facfe;
+        }
+
+        .memory-content {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .memory-meta {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .cluster-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .cluster-id {
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .cluster-score {
+            background: rgba(79, 172, 254, 0.2);
+            color: #4facfe;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .cluster-themes {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid #4facfe;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            color: #ff6b7a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .success-message {
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            color: #4ade80;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .navigation {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .control-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .status-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .cluster-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navigation">
+        <a href="/" class="nav-btn">← Back to Chat</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🧠 SAM Dream Canvas</h1>
+            <p>Visualize SAM's cognitive synthesis and memory clustering in real-time</p>
+        </div>
+
+        <div class="controls">
+            <button id="triggerSynthesis" class="control-btn primary">🌙 Enter Dream State</button>
+            <button id="triggerVisualization" class="control-btn">🎨 Generate Visualization</button>
+            <button id="findImplicitConnection" class="control-btn" disabled>💡 Find Implicit Connection</button>
+            <button id="analyzeCluster" class="control-btn" disabled>🔬 Analyze Cluster</button>
+            <button id="refreshHistory" class="control-btn">📚 Refresh History</button>
+            <button id="clearCanvas" class="control-btn">🧹 Clear Canvas</button>
+        </div>
+
+        <div class="status-panel">
+            <h3>🔍 Synthesis Status</h3>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-value" id="memoryCount">-</div>
+                    <div class="status-label">Total Memories</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="clusterCount">-</div>
+                    <div class="status-label">Clusters Found</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="insightCount">-</div>
+                    <div class="status-label">Insights Generated</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="lastRun">-</div>
+                    <div class="status-label">Last Synthesis</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <p>SAM is entering dream state... Analyzing memory clusters...</p>
+        </div>
+
+        <div class="visualization-container" id="visualizationContainer" style="display: none;">
+            <h3 style="color: #333; margin-bottom: 20px;">🎨 Memory Landscape</h3>
+            <div id="dreamCanvas" style="width: 100%; height: 600px;"></div>
+        </div>
+
+        <div class="cluster-info" id="clusterInfo" style="display: none;">
+            <h3>🔍 Discovered Clusters</h3>
+            <div class="cluster-list" id="clusterList"></div>
+        </div>
+
+        <!-- Cluster Detail Modal -->
+        <div class="modal" id="clusterDetailModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="clusterDetailTitle">🔍 Cluster Details</h3>
+                    <span class="close" id="closeClusterModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="clusterDetailContent">
+                        <div class="cluster-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Memories:</span>
+                                <span class="stat-value" id="clusterMemoryCount">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Coherence:</span>
+                                <span class="stat-value" id="clusterCoherence">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Connections:</span>
+                                <span class="stat-value" id="clusterConnections">-</span>
+                            </div>
+                        </div>
+                        <div class="memory-list" id="clusterMemoryList">
+                            <!-- Memory cards will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="messageContainer"></div>
+    </div>
+
+    <script>
+        // Dream Canvas JavaScript functionality will be added here
+        // This is a placeholder for the interactive visualization logic
+        
+        class DreamCanvas {
+            constructor() {
+                this.currentVisualizationData = null;
+                this.currentClusters = null;
+                this.selectedNodes = new Set();
+                this.ghostLinks = [];
+                this.hypothesisNodes = [];
+                this.initializeEventListeners();
+                this.loadInitialStatus();
+            }
+
+            initializeEventListeners() {
+                document.getElementById('triggerSynthesis').addEventListener('click', () => this.triggerSynthesis());
+                document.getElementById('triggerVisualization').addEventListener('click', () => this.triggerVisualization());
+                document.getElementById('findImplicitConnection').addEventListener('click', () => this.findImplicitConnection());
+                document.getElementById('analyzeCluster').addEventListener('click', () => this.analyzeCluster());
+                document.getElementById('refreshHistory').addEventListener('click', () => this.refreshHistory());
+                document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
+
+                // Modal event listeners
+                document.getElementById('closeClusterModal').addEventListener('click', () => this.closeClusterModal());
+                window.addEventListener('click', (event) => {
+                    if (event.target === document.getElementById('clusterDetailModal')) {
+                        this.closeClusterModal();
+                    }
+                });
+            }
+
+            async loadInitialStatus() {
+                try {
+                    // Load synthesis history to populate status
+                    const response = await fetch('/api/synthesis/history');
+                    const data = await response.json();
+                    
+                    if (data.status === 'success' && data.history.length > 0) {
+                        const latest = data.history[0];
+                        document.getElementById('insightCount').textContent = latest.insights_generated || 0;
+                        document.getElementById('clusterCount').textContent = latest.clusters_analyzed || 0;
+                        document.getElementById('lastRun').textContent = this.formatTimestamp(latest.timestamp);
+                    }
+                } catch (error) {
+                    console.error('Error loading initial status:', error);
+                }
+            }
+
+            async triggerSynthesis() {
+                this.showLoading(true);
+                this.showMessage('🧠 SAM is entering dream state...', 'info');
+                
+                try {
+                    const response = await fetch('/api/synthesis/trigger', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ visualize: false })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.updateStatus(data);
+                        this.showMessage(`✅ Synthesis complete! Generated ${data.insights_generated} insights from ${data.clusters_found} clusters.`, 'success');
+                    } else {
+                        this.showMessage(`❌ Synthesis failed: ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    this.showMessage(`❌ Error: ${error.message}`, 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async triggerVisualization() {
+                this.showLoading(true);
+                this.showMessage('🎨 Generating dream visualization...', 'info');
+                
+                try {
+                    const response = await fetch('/api/synthesis/trigger', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ visualize: true })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.updateStatus(data);
+                        
+                        if (data.visualization_enabled && data.visualization_data) {
+                            this.renderVisualization(data.visualization_data);
+                            this.showMessage(`✅ Visualization complete! Mapped ${data.visualization_data.length} memory points.`, 'success');
+                        } else {
+                            this.showMessage('⚠️ Synthesis completed but visualization data not available.', 'warning');
+                        }
+                    } else {
+                        this.showMessage(`❌ Visualization failed: ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    this.showMessage(`❌ Error: ${error.message}`, 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            renderVisualization(visualizationData) {
+                console.log('Rendering visualization with', visualizationData.length, 'data points');
+
+                // Show visualization container
+                document.getElementById('visualizationContainer').style.display = 'block';
+
+                // Prepare data for Plotly
+                const traces = this.prepareVisualizationTraces(visualizationData);
+
+                // Create layout
+                const layout = {
+                    title: {
+                        text: '🧠 SAM\'s Memory Landscape',
+                        font: { size: 18, color: '#333' }
+                    },
+                    xaxis: {
+                        title: 'UMAP Dimension 1',
+                        showgrid: true,
+                        gridcolor: '#f0f0f0'
+                    },
+                    yaxis: {
+                        title: 'UMAP Dimension 2',
+                        showgrid: true,
+                        gridcolor: '#f0f0f0'
+                    },
+                    hovermode: 'closest',
+                    showlegend: true,
+                    legend: {
+                        x: 1,
+                        y: 1,
+                        bgcolor: 'rgba(255,255,255,0.8)'
+                    },
+                    plot_bgcolor: '#fafafa',
+                    paper_bgcolor: 'white'
+                };
+
+                // Configuration
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    modeBarButtonsToRemove: ['pan2d', 'lasso2d'],
+                    displaylogo: false
+                };
+
+                // Render the plot
+                Plotly.newPlot('dreamCanvas', traces, layout, config);
+
+                // Add click event handler
+                document.getElementById('dreamCanvas').on('plotly_click', (data) => {
+                    this.handlePointClick(data, visualizationData);
+                });
+            }
+
+            prepareVisualizationTraces(visualizationData) {
+                // Group data by cluster and memory type
+                const clusters = {};
+                const syntheticPoints = [];
+                const noisePoints = [];
+
+                visualizationData.forEach(point => {
+                    if (point.is_synthetic) {
+                        syntheticPoints.push(point);
+                    } else if (point.cluster_id === -1) {
+                        noisePoints.push(point);
+                    } else {
+                        if (!clusters[point.cluster_id]) {
+                            clusters[point.cluster_id] = [];
+                        }
+                        clusters[point.cluster_id].push(point);
+                    }
+                });
+
+                const traces = [];
+
+                // Add cluster traces
+                const clusterColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+                let colorIndex = 0;
+
+                Object.keys(clusters).forEach(clusterId => {
+                    const clusterPoints = clusters[clusterId];
+                    const color = clusterColors[colorIndex % clusterColors.length];
+                    colorIndex++;
+
+                    traces.push({
+                        x: clusterPoints.map(p => p.coordinates.x),
+                        y: clusterPoints.map(p => p.coordinates.y),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: `Cluster ${clusterId}`,
+                        marker: {
+                            color: color,
+                            size: clusterPoints.map(p => 8 + p.importance_score * 4),
+                            opacity: 0.7,
+                            line: { width: 1, color: 'white' }
+                        },
+                        text: clusterPoints.map(p => this.createHoverText(p)),
+                        hovertemplate: '%{text}<extra></extra>'
+                    });
+                });
+
+                // Add synthetic insights trace
+                if (syntheticPoints.length > 0) {
+                    traces.push({
+                        x: syntheticPoints.map(p => p.coordinates.x),
+                        y: syntheticPoints.map(p => p.coordinates.y),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: '✨ Synthetic Insights',
+                        marker: {
+                            color: '#FFD700',
+                            size: syntheticPoints.map(p => 12 + p.importance_score * 6),
+                            opacity: 0.9,
+                            symbol: 'star',
+                            line: { width: 2, color: '#FF8C00' }
+                        },
+                        text: syntheticPoints.map(p => this.createHoverText(p)),
+                        hovertemplate: '%{text}<extra></extra>'
+                    });
+                }
+
+                // Add noise points trace
+                if (noisePoints.length > 0) {
+                    traces.push({
+                        x: noisePoints.map(p => p.coordinates.x),
+                        y: noisePoints.map(p => p.coordinates.y),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: 'Unclustered',
+                        marker: {
+                            color: '#BDC3C7',
+                            size: noisePoints.map(p => 6 + p.importance_score * 3),
+                            opacity: 0.5,
+                            line: { width: 1, color: 'white' }
+                        },
+                        text: noisePoints.map(p => this.createHoverText(p)),
+                        hovertemplate: '%{text}<extra></extra>'
+                    });
+                }
+
+                return traces;
+            }
+
+            createHoverText(point) {
+                const type = point.is_synthetic ? '✨ Synthetic' : point.memory_type;
+                const importance = (point.importance_score * 100).toFixed(0);
+                const tags = point.tags.length > 0 ? point.tags.join(', ') : 'None';
+
+                return `<b>${type} Memory</b><br>` +
+                       `Source: ${point.source}<br>` +
+                       `Importance: ${importance}%<br>` +
+                       `Tags: ${tags}<br>` +
+                       `Content: ${point.content_snippet}<br>` +
+                       `<i>Click for details</i>`;
+            }
+
+            handlePointClick(data, visualizationData) {
+                if (data.points && data.points.length > 0) {
+                    const pointIndex = data.points[0].pointIndex;
+                    const traceIndex = data.points[0].curveNumber;
+
+                    // Find the actual data point
+                    const point = this.findDataPoint(pointIndex, traceIndex, visualizationData);
+
+                    if (point) {
+                        // Toggle node selection for implicit connection feature
+                        this.toggleNodeSelection(point);
+                        this.showMessage(`🔍 Node ${this.selectedNodes.has(point.memory_id || point.id) ? 'selected' : 'deselected'}. ${this.selectedNodes.size} nodes selected.`, 'info');
+                    } else {
+                        console.log('Point clicked:', { pointIndex, traceIndex });
+                        this.showMessage(`🔍 Clicked on memory point. Full details panel coming soon!`, 'info');
+                    }
+                }
+            }
+
+            findDataPoint(pointIndex, traceIndex, visualizationData) {
+                // Simple approach to find the data point
+                // In a full implementation, this would be more sophisticated
+                if (visualizationData && pointIndex < visualizationData.length) {
+                    return visualizationData[pointIndex];
+                }
+                return null;
+            }
+
+            toggleNodeSelection(point) {
+                const nodeId = point.memory_id || point.id || `point_${Date.now()}`;
+
+                if (this.selectedNodes.has(nodeId)) {
+                    this.selectedNodes.delete(nodeId);
+                } else {
+                    this.selectedNodes.add(nodeId);
+                }
+
+                // Update the Find Implicit Connection button state
+                const button = document.getElementById('findImplicitConnection');
+                if (this.selectedNodes.size >= 2) {
+                    button.disabled = false;
+                    button.textContent = `💡 Find Connection (${this.selectedNodes.size} nodes)`;
+                } else {
+                    button.disabled = true;
+                    button.textContent = '💡 Find Implicit Connection';
+                }
+            }
+
+            async findImplicitConnection() {
+                if (this.selectedNodes.size < 2) {
+                    this.showMessage('⚠️ Please select at least 2 nodes to find implicit connections.', 'warning');
+                    return;
+                }
+
+                this.showLoading(true);
+                this.showMessage('🧠 Analyzing implicit connections between selected nodes...', 'info');
+
+                try {
+                    // Get content from selected nodes
+                    const selectedNodeData = this.getSelectedNodeData();
+
+                    // Call the ImplicitKnowledgeSkill via SOF
+                    const response = await fetch('/api/sof/execute', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            plan: ['ImplicitKnowledgeSkill'],
+                            input_query: 'Find implicit connections between selected knowledge chunks',
+                            explicit_knowledge_chunks: selectedNodeData.map(node => node.content)
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'success' && data.execution_report) {
+                        const implicitSummary = data.execution_report.intermediate_data?.implicit_knowledge_summary;
+
+                        if (implicitSummary) {
+                            // Create ghost link between selected nodes
+                            this.createGhostLink(selectedNodeData, implicitSummary);
+                            this.showMessage(`✅ Implicit connection discovered!`, 'success');
+                        } else {
+                            this.showMessage('⚠️ No clear implicit connection found between selected nodes.', 'warning');
+                        }
+                    } else {
+                        this.showMessage(`❌ Connection analysis failed: ${data.error || 'Unknown error'}`, 'error');
+                    }
+
+                } catch (error) {
+                    this.showMessage(`❌ Error: ${error.message}`, 'error');
+                } finally {
+                    this.showLoading(false);
+                    // Clear selection
+                    this.selectedNodes.clear();
+                    document.getElementById('findImplicitConnection').disabled = true;
+                    document.getElementById('findImplicitConnection').textContent = '💡 Find Implicit Connection';
+                }
+            }
+
+            getSelectedNodeData() {
+                const selectedData = [];
+
+                if (this.currentVisualizationData) {
+                    for (const point of this.currentVisualizationData) {
+                        const nodeId = point.memory_id || point.id || `point_${Date.now()}`;
+                        if (this.selectedNodes.has(nodeId)) {
+                            selectedData.push({
+                                id: nodeId,
+                                content: point.content || point.content_snippet || 'No content available',
+                                x: point.x,
+                                y: point.y
+                            });
+                        }
+                    }
+                }
+
+                return selectedData;
+            }
+
+            createGhostLink(nodeData, summary) {
+                // Create a visual ghost link between the selected nodes
+                const ghostLink = {
+                    id: `ghost_${Date.now()}`,
+                    nodes: nodeData,
+                    summary: summary,
+                    created_at: new Date().toISOString()
+                };
+
+                this.ghostLinks.push(ghostLink);
+
+                // Add visual representation
+                this.renderGhostLink(ghostLink);
+
+                console.log('Created ghost link:', ghostLink);
+            }
+
+            renderGhostLink(ghostLink) {
+                // Show the ghost link in the cluster info section
+                const clusterInfo = document.getElementById('clusterInfo');
+                clusterInfo.style.display = 'block';
+
+                const ghostLinkDiv = document.createElement('div');
+                ghostLinkDiv.className = 'ghost-link';
+                ghostLinkDiv.style.cssText = `
+                    background: rgba(255, 215, 0, 0.1);
+                    border: 2px dashed #ffd700;
+                    border-radius: 8px;
+                    padding: 10px;
+                    margin: 10px 0;
+                `;
+
+                ghostLinkDiv.innerHTML = `
+                    <h4>🔗 Ghost Link</h4>
+                    <p><strong>Connection:</strong> ${ghostLink.summary}</p>
+                    <p><strong>Nodes:</strong> ${ghostLink.nodes.length} connected</p>
+                    <small>Created: ${new Date(ghostLink.created_at).toLocaleString()}</small>
+                `;
+
+                clusterInfo.appendChild(ghostLinkDiv);
+            }
+
+            updateStatus(data) {
+                document.getElementById('clusterCount').textContent = data.clusters_found || 0;
+                document.getElementById('insightCount').textContent = data.insights_generated || 0;
+                document.getElementById('lastRun').textContent = this.formatTimestamp(data.timestamp);
+
+                // Update memory count if available
+                if (data.memory_count) {
+                    document.getElementById('memoryCount').textContent = data.memory_count;
+                }
+
+                // Display cluster summary if available
+                if (data.cluster_summary && data.cluster_summary.length > 0) {
+                    this.displayClusterSummary(data.cluster_summary);
+                }
+            }
+
+            displayClusterSummary(clusterSummary) {
+                const clusterInfo = document.getElementById('clusterInfo');
+                const clusterList = document.getElementById('clusterList');
+
+                // Clear existing content
+                clusterList.innerHTML = '';
+
+                // Create cluster cards
+                clusterSummary.forEach((cluster, index) => {
+                    const clusterCard = document.createElement('div');
+                    clusterCard.className = 'cluster-item clickable';
+
+                    clusterCard.innerHTML = `
+                        <div class="cluster-header">
+                            <div class="cluster-id">${cluster.name || `Cluster ${cluster.id}`}</div>
+                            <div class="cluster-score">${(cluster.coherence || cluster.score || 0).toFixed(3)}</div>
+                        </div>
+                        <div class="cluster-themes">
+                            ${cluster.memory_count || cluster.size || 0} memories
+                            ${cluster.themes ? ` • ${cluster.themes.slice(0, 3).join(', ')}` : ''}
+                        </div>
+                    `;
+
+                    // Make it clickable
+                    this.makeClusterClickable(clusterCard, cluster);
+
+                    clusterList.appendChild(clusterCard);
+                });
+
+                // Show cluster info section
+                clusterInfo.style.display = 'block';
+            }
+
+            showLoading(show) {
+                document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
+            }
+
+            showMessage(message, type) {
+                const container = document.getElementById('messageContainer');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `${type}-message`;
+                messageDiv.textContent = message;
+                
+                container.innerHTML = '';
+                container.appendChild(messageDiv);
+                
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    if (container.contains(messageDiv)) {
+                        container.removeChild(messageDiv);
+                    }
+                }, 5000);
+            }
+
+            formatTimestamp(timestamp) {
+                if (!timestamp) return '-';
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString();
+            }
+
+            async analyzeCluster() {
+                if (!this.currentVisualizationData || this.currentVisualizationData.length === 0) {
+                    this.showMessage('⚠️ No visualization data available. Please generate a visualization first.', 'warning');
+                    return;
+                }
+
+                this.showLoading(true);
+                this.showMessage('🔬 Analyzing clusters for hypothesis generation...', 'info');
+
+                try {
+                    // Identify clusters and select top nodes from each
+                    const clusterAnalysis = this.identifyClusterNodes();
+
+                    if (clusterAnalysis.length === 0) {
+                        this.showMessage('⚠️ No suitable clusters found for analysis.', 'warning');
+                        return;
+                    }
+
+                    // Process each cluster
+                    for (const cluster of clusterAnalysis) {
+                        await this.generateHypothesisNode(cluster);
+                    }
+
+                    this.showMessage(`✅ Cluster analysis complete! Generated ${clusterAnalysis.length} hypothesis nodes.`, 'success');
+
+                } catch (error) {
+                    this.showMessage(`❌ Cluster analysis failed: ${error.message}`, 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            identifyClusterNodes() {
+                // Group nodes by cluster_id
+                const clusters = {};
+
+                this.currentVisualizationData.forEach(point => {
+                    const clusterId = point.cluster_id;
+                    if (clusterId !== -1 && clusterId !== undefined) { // Exclude noise points
+                        if (!clusters[clusterId]) {
+                            clusters[clusterId] = [];
+                        }
+                        clusters[clusterId].push(point);
+                    }
+                });
+
+                // Select top 3-5 nodes from each cluster with sufficient size
+                const clusterAnalysis = [];
+                Object.keys(clusters).forEach(clusterId => {
+                    const clusterNodes = clusters[clusterId];
+                    if (clusterNodes.length >= 3) { // Only analyze clusters with 3+ nodes
+                        // Sort by some relevance metric (using timestamp as proxy)
+                        const sortedNodes = clusterNodes.sort((a, b) => {
+                            return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+                        });
+
+                        clusterAnalysis.push({
+                            clusterId: clusterId,
+                            nodes: sortedNodes.slice(0, 5), // Top 5 nodes
+                            totalNodes: clusterNodes.length
+                        });
+                    }
+                });
+
+                return clusterAnalysis;
+            }
+
+            async generateHypothesisNode(cluster) {
+                try {
+                    // Extract content from cluster nodes
+                    const nodeContents = cluster.nodes.map(node =>
+                        node.content || node.content_snippet || 'No content available'
+                    );
+
+                    // Call ImplicitKnowledgeSkill to generate hypothesis
+                    const response = await fetch('/api/sof/execute', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            plan: ['ImplicitKnowledgeSkill'],
+                            input_query: `Generate hypothesis for cluster ${cluster.clusterId}`,
+                            explicit_knowledge_chunks: nodeContents
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'success' && data.execution_report) {
+                        const implicitSummary = data.execution_report.intermediate_data?.implicit_knowledge_summary;
+
+                        if (implicitSummary) {
+                            // Create hypothesis node
+                            const hypothesisNode = {
+                                id: `hypothesis_${cluster.clusterId}_${Date.now()}`,
+                                clusterId: cluster.clusterId,
+                                hypothesis: implicitSummary,
+                                sourceNodes: cluster.nodes,
+                                created_at: new Date().toISOString(),
+                                type: 'hypothesis'
+                            };
+
+                            this.hypothesisNodes.push(hypothesisNode);
+                            this.renderHypothesisNode(hypothesisNode);
+                        }
+                    }
+
+                } catch (error) {
+                    console.error(`Failed to generate hypothesis for cluster ${cluster.clusterId}:`, error);
+                }
+            }
+
+            renderHypothesisNode(hypothesisNode) {
+                // Add hypothesis node to the cluster info display
+                const clusterInfo = document.getElementById('clusterInfo');
+                clusterInfo.style.display = 'block';
+
+                const hypothesisDiv = document.createElement('div');
+                hypothesisDiv.className = 'hypothesis-node';
+                hypothesisDiv.style.cssText = `
+                    background: rgba(138, 43, 226, 0.1);
+                    border: 2px solid #8a2be2;
+                    border-radius: 8px;
+                    padding: 10px;
+                    margin: 10px 0;
+                `;
+
+                hypothesisDiv.innerHTML = `
+                    <h4>🧬 Hypothesis Node (Cluster ${hypothesisNode.clusterId})</h4>
+                    <p><strong>Hypothesis:</strong> ${hypothesisNode.hypothesis}</p>
+                    <p><strong>Source Nodes:</strong> ${hypothesisNode.sourceNodes.length} nodes analyzed</p>
+                    <small>Generated: ${new Date(hypothesisNode.created_at).toLocaleString()}</small>
+                `;
+
+                clusterInfo.appendChild(hypothesisDiv);
+            }
+
+            clearCanvas() {
+                document.getElementById('visualizationContainer').style.display = 'none';
+                document.getElementById('clusterInfo').style.display = 'none';
+                document.getElementById('messageContainer').innerHTML = '';
+                this.ghostLinks = [];
+                this.hypothesisNodes = [];
+                this.selectedNodes.clear();
+                document.getElementById('findImplicitConnection').disabled = true;
+                document.getElementById('findImplicitConnection').textContent = '💡 Find Implicit Connection';
+                this.showMessage('🧹 Canvas cleared', 'info');
+            }
+
+            async refreshHistory() {
+                this.showMessage('📚 Refreshing synthesis history...', 'info');
+                await this.loadInitialStatus();
+                this.showMessage('✅ History refreshed', 'success');
+            }
+
+            showClusterDetails(clusterData) {
+                // Populate modal with cluster data
+                document.getElementById('clusterDetailTitle').textContent = `🔍 ${clusterData.name || `Cluster ${clusterData.id}`}`;
+                document.getElementById('clusterMemoryCount').textContent = clusterData.memory_count || clusterData.memories?.length || 0;
+                document.getElementById('clusterCoherence').textContent = (clusterData.coherence || clusterData.score || 0).toFixed(3);
+                document.getElementById('clusterConnections').textContent = clusterData.connections || 0;
+
+                // Populate memory list
+                const memoryList = document.getElementById('clusterMemoryList');
+                memoryList.innerHTML = '';
+
+                if (clusterData.memories && clusterData.memories.length > 0) {
+                    clusterData.memories.forEach(memory => {
+                        const memoryCard = document.createElement('div');
+                        memoryCard.className = 'memory-card';
+                        memoryCard.innerHTML = `
+                            <div class="memory-title">${memory.title || 'Memory'}</div>
+                            <div class="memory-content">${memory.content || memory.snippet || 'No content available'}</div>
+                            <div class="memory-meta">
+                                <span>Type: ${memory.type || 'Unknown'}</span>
+                                <span>Score: ${(memory.score || 0).toFixed(3)}</span>
+                            </div>
+                        `;
+                        memoryList.appendChild(memoryCard);
+                    });
+                } else {
+                    memoryList.innerHTML = '<div style="text-align: center; opacity: 0.7; padding: 20px;">No detailed memory data available</div>';
+                }
+
+                // Show modal
+                document.getElementById('clusterDetailModal').style.display = 'block';
+            }
+
+            closeClusterModal() {
+                document.getElementById('clusterDetailModal').style.display = 'none';
+            }
+
+            makeClusterClickable(clusterElement, clusterData) {
+                clusterElement.classList.add('clickable');
+                clusterElement.style.cursor = 'pointer';
+                clusterElement.addEventListener('click', () => {
+                    this.showClusterDetails(clusterData);
+                });
+            }
+        }
+
+        // Initialize Dream Canvas when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new DreamCanvas();
+        });
+    </script>
+</body>
+</html>

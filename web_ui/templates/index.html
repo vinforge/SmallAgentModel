@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAM - Multimodal AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .header-left {
+            text-align: left;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            margin: 0;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .memory-control-btn, .upload-btn, .dream-canvas-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .memory-control-btn:hover, .upload-btn:hover, .dream-canvas-btn:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+
+        .memory-control-btn {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.4);
+        }
+
+        .memory-control-btn:hover {
+            background: rgba(255,255,255,0.25);
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 5px;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: #4facfe;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 15px 20px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            border-bottom-left-radius: 5px;
+            max-width: 70%;
+            margin-bottom: 20px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #4facfe;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .upload-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .upload-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 2px dashed #4facfe;
+            border-radius: 10px;
+            padding: 40px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background: #f0f8ff;
+            border-color: #00f2fe;
+        }
+
+        .upload-area.dragover {
+            background: #e6f3ff;
+            border-color: #00f2fe;
+        }
+
+        .close-modal {
+            background: #f0f0f0;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .process-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .status-info {
+            background: #e8f4fd;
+            border-left: 4px solid #4facfe;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .model-status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 20px;
+            font-size: 12px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .model-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .model-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: #4ade80;
+        }
+
+        .status-indicator.offline {
+            background: #ef4444;
+            animation: none;
+        }
+
+        .status-indicator.checking {
+            background: #fbbf24;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .model-details {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .refresh-status {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-status:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Phase 6 Feedback Controls */
+        .feedback-controls {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 3px solid #007bff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .feedback-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .feedback-btn {
+            background: none;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .feedback-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .feedback-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .feedback-btn.positive.active {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .feedback-btn.negative.active {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .feedback-text {
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        .correction-input {
+            margin-top: 8px;
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 12px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .correction-submit {
+            margin-top: 6px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .correction-submit:hover {
+            background: #0056b3;
+        }
+
+        .feedback-submitted {
+            color: #28a745;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                height: 95vh;
+                margin: 10px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-left {
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header-right {
+                justify-content: center;
+            }
+
+            .memory-control-btn, .upload-btn {
+                font-size: 12px;
+                padding: 8px 16px;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>🤖 SAM</h1>
+                <p>Multimodal AI Assistant</p>
+            </div>
+            <div class="header-right">
+                <a href="http://localhost:8502" target="_blank" class="memory-control-btn" title="Secure Chat Interface">
+                    🔒 Secure Chat
+                </a>
+                <button class="memory-control-btn" title="Open Memory Control Center">
+                    🧠⚙️ Memory Center
+                </button>
+                <a href="/vetting" class="memory-control-btn" title="Content Vetting Dashboard">
+                    🛡️ Content Vetting
+                </a>
+                <a href="/dream-canvas" class="dream-canvas-btn" title="Dream Canvas - Cognitive Synthesis Visualization">
+                    🧠🎨 Dream Canvas
+                </a>
+                <button class="upload-btn">📄 Upload Document</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="chat-container" id="chatContainer">
+                <div class="message assistant">
+                    <div class="message-avatar">SAM</div>
+                    <div class="message-content">
+Hello! I'm SAM, your multimodal AI assistant. I can help you with:
+
+🧠 **Intelligent Conversations** - Ask me anything!
+📄 **Document Processing** - Upload PDFs, DOCX, Markdown, code files
+🔍 **Content Search** - Find information across your documents
+📊 **Analysis & Insights** - Get enrichment scores and content analysis
+🧠⚙️ **Memory Management** - Access the Memory Control Center for advanced memory operations
+
+**Quick Commands:**
+• `/status` - System status
+• `/search <query>` - Search content
+• `/help` - Show help
+
+**Memory Control Center:**
+The Memory Control Center auto-starts with SAM. Click the 🧠⚙️ Memory Center button above to access:
+• Interactive memory browsing and search
+• Memory editing and management tools
+• Visual memory graph and connections
+• Role-based access control
+
+How can I assist you today?
+                    </div>
+                </div>
+            </div>
+            
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" class="input-field" id="messageInput" placeholder="Type your message...">
+                <button class="send-btn" id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="upload-modal" id="uploadModal">
+        <div class="upload-modal-content">
+            <h3>📄 Upload Document</h3>
+            <p>Upload a document to process and add to SAM's knowledge base</p>
+            
+            <div class="upload-area" id="uploadArea">
+                <p>🔄 Click to select file or drag & drop</p>
+                <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                    Supported: PDF, DOCX, MD, HTML, TXT, PY, JS, JAVA, CPP, C
+                </p>
+            </div>
+
+            <input type="file" id="fileInput" style="display: none;" accept=".pdf,.docx,.md,.html,.htm,.txt,.py,.js,.java,.cpp,.c">
+
+            <div id="uploadStatus" style="margin: 15px 0;"></div>
+
+            <button class="process-btn" id="processBtn" style="display: none;">Process Document</button>
+            <button class="close-modal">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        function handleKeyPress(event) {
+            console.log('Key pressed:', event.key);
+            if (event.key === 'Enter') {
+                console.log('Enter key pressed, calling sendMessage()');
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            console.log('sendMessage() called');
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            console.log('Message:', message);
+
+            if (!message) {
+                console.log('Empty message, returning');
+                return;
+            }
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            input.value = '';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            // Disable send button
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+
+                if (data.error) {
+                    addMessage(`Error: ${data.error}`, 'assistant');
+                } else if (data.type === 'web_search_escalation') {
+                    // Phase 8.3: Handle web search escalation
+                    handleWebSearchEscalation(data);
+                } else {
+                    addMessage(data.response, 'assistant', data.message_id, data.has_thoughts, data.thought_blocks);
+                }
+
+            } catch (error) {
+                addMessage(`Error: ${error.message}`, 'assistant');
+            } finally {
+                hideTypingIndicator();
+                sendBtn.disabled = false;
+            }
+        }
+
+        function addMessage(content, sender, messageId = null, hasThoughts = false, thoughtBlocks = []) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender} chat-container`;
+            if (messageId) {
+                messageDiv.setAttribute('data-message-id', messageId);
+            }
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = sender === 'user' ? 'You' : 'SAM';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+
+            // Apply basic formatting to content
+            const htmlContent = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+                .replace(/\n/g, '<br>')                            // Line breaks
+                .replace(/- (.*?)(<br>|$)/g, '• $1$2');           // Bullet points
+
+            messageContent.innerHTML = htmlContent;
+
+            // Handle thought blocks for assistant messages
+            if (sender === 'assistant' && hasThoughts && thoughtBlocks && thoughtBlocks.length > 0) {
+                console.log('Adding thought blocks:', thoughtBlocks);
+
+                // Create thought toggle container
+                const thoughtContainer = document.createElement('div');
+                thoughtContainer.style.cssText = 'margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;';
+
+                // Create toggle button
+                const toggleButton = document.createElement('button');
+                    toggleButton.style.cssText = `
+                        background: #ffffff;
+                        border: 1px solid #dee2e6;
+                        border-radius: 6px;
+                        padding: 12px 16px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        color: #495057;
+                        width: 100%;
+                        text-align: left;
+                        transition: all 0.2s ease;
+                    `;
+
+                    // Calculate total token count from thought blocks
+                    const totalTokens = thoughtBlocks.reduce((total, block) => total + block.token_count, 0);
+
+                    toggleButton.innerHTML = `🧠 SAM's Thoughts (${totalTokens} tokens) ▶`;
+
+                    const thoughtContent = document.createElement('div');
+                    thoughtContent.style.cssText = `
+                        display: none;
+                        margin-top: 10px;
+                        padding: 15px;
+                        background: #ffffff;
+                        border: 1px solid #e9ecef;
+                        border-radius: 6px;
+                        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                        font-size: 13px;
+                        line-height: 1.6;
+                        color: #495057;
+                        white-space: pre-wrap;
+                    `;
+
+                    // Combine all thought blocks
+                    let allThoughts = '';
+                    thoughtBlocks.forEach((block, index) => {
+                        if (index > 0) allThoughts += '\n\n---\n\n';
+                        allThoughts += block.content;
+                    });
+
+                    thoughtContent.textContent = allThoughts;
+
+                    // Toggle functionality
+                    let isExpanded = false;
+                    toggleButton.addEventListener('click', () => {
+                        isExpanded = !isExpanded;
+                        thoughtContent.style.display = isExpanded ? 'block' : 'none';
+                        toggleButton.innerHTML = `🧠 SAM's Thoughts (${totalTokens} tokens) ${isExpanded ? '▼' : '▶'}`;
+                        toggleButton.style.backgroundColor = isExpanded ? '#f8f9fa' : '#ffffff';
+                    });
+
+                    // Hover effects
+                    toggleButton.addEventListener('mouseenter', () => {
+                        if (!isExpanded) toggleButton.style.backgroundColor = '#f8f9fa';
+                    });
+
+                    toggleButton.addEventListener('mouseleave', () => {
+                        if (!isExpanded) toggleButton.style.backgroundColor = '#ffffff';
+                    });
+
+                    thoughtContainer.appendChild(toggleButton);
+                    thoughtContainer.appendChild(thoughtContent);
+                    messageContent.appendChild(thoughtContainer);
+            }
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+
+            // Add feedback controls for assistant messages
+            if (sender === 'assistant' && messageId) {
+                const feedbackDiv = createFeedbackControls(messageId);
+                messageDiv.appendChild(feedbackDiv);
+            }
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // Process thoughts if this is an assistant message
+            if (sender === 'assistant' && window.thoughtToggleManager) {
+                setTimeout(() => {
+                    window.thoughtToggleManager.processNewMessage(messageDiv);
+                }, 100);
+            }
+        }
+
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        // Phase 8.3: Web Search Escalation Functions
+        function handleWebSearchEscalation(data) {
+            console.log('Handling web search escalation:', data);
+
+            // Create escalation message with interactive buttons
+            const escalationMessage = createWebSearchEscalationMessage(data);
+            addEscalationMessage(escalationMessage, data);
+        }
+
+        function createWebSearchEscalationMessage(data) {
+            const confidencePercent = (data.confidence_score * 100).toFixed(1);
+            const reasonsText = data.reasons.length > 0 ?
+                `\n\n**Why I'm suggesting this:**\n• ${data.reasons.join('\n• ')}` : '';
+
+            return `🤔 **I've checked my local knowledge...**
+
+${data.message}
+
+**Confidence in current knowledge:** ${confidencePercent}%${reasonsText}
+
+**Would you like me to search the web for more current information?**`;
+        }
+
+        function addEscalationMessage(content, escalationData) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant chat-container';
+            messageDiv.setAttribute('data-escalation-data', JSON.stringify(escalationData));
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = 'SAM';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+
+            // Apply basic formatting to content
+            const htmlContent = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>')
+                .replace(/• (.*?)(<br>|$)/g, '• $1$2');
+
+            messageContent.innerHTML = htmlContent;
+
+            // Add web search decision buttons
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
+                margin-top: 15px;
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+            `;
+
+            const searchButton = document.createElement('button');
+            searchButton.style.cssText = `
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+                border: none;
+                padding: 12px 20px;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                transition: transform 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            `;
+            searchButton.innerHTML = '🌐 Yes, Search Online';
+            searchButton.addEventListener('click', () => triggerWebSearch(escalationData));
+            searchButton.addEventListener('mouseenter', () => {
+                searchButton.style.transform = 'translateY(-2px)';
+            });
+            searchButton.addEventListener('mouseleave', () => {
+                searchButton.style.transform = 'translateY(0)';
+            });
+
+            const localButton = document.createElement('button');
+            localButton.style.cssText = `
+                background: rgba(79, 172, 254, 0.1);
+                color: #4facfe;
+                border: 2px solid rgba(79, 172, 254, 0.3);
+                padding: 12px 20px;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            `;
+            localButton.innerHTML = '📚 No, Answer with Current Knowledge';
+            localButton.addEventListener('click', () => answerWithLocalKnowledge(escalationData));
+            localButton.addEventListener('mouseenter', () => {
+                localButton.style.background = 'rgba(79, 172, 254, 0.2)';
+                localButton.style.transform = 'translateY(-2px)';
+            });
+            localButton.addEventListener('mouseleave', () => {
+                localButton.style.background = 'rgba(79, 172, 254, 0.1)';
+                localButton.style.transform = 'translateY(0)';
+            });
+
+            buttonContainer.appendChild(searchButton);
+            buttonContainer.appendChild(localButton);
+            messageContent.appendChild(buttonContainer);
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function triggerWebSearch(escalationData) {
+            console.log('Triggering web search:', escalationData);
+
+            // Disable the escalation buttons
+            const messageDiv = document.querySelector('[data-escalation-data]');
+            const buttons = messageDiv.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+            });
+
+            // Show search progress message
+            addMessage('🔍 **Searching the web and analyzing content...**\n\nThis may take a moment while I fetch and vet the information for security and quality.', 'assistant');
+
+            try {
+                const response = await fetch('/api/trigger-web-search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        search_query: escalationData.suggested_search_query || escalationData.original_query,
+                        original_query: escalationData.original_query
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'search_completed') {
+                    // Show success message with details
+                    const toolUsed = data.tool_used ? data.tool_used.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Web Search';
+                    const contentCount = data.content_count || 'some';
+
+                    addMessage(`✅ **Web search completed using ${toolUsed}!**\n\nI found ${contentCount} pieces of content and saved them to quarantine for security analysis.\n\n${data.message}`, 'assistant');
+
+                    // Simulate processing time and then re-query with new knowledge
+                    setTimeout(() => {
+                        addMessage('🧠 **Processing complete!** Let me now answer your original question with the new information...', 'assistant');
+
+                        // Re-send the original query to get an answer with new knowledge
+                        setTimeout(() => {
+                            reQueryWithNewKnowledge(escalationData.original_query);
+                        }, 1000);
+                    }, 2000);
+
+                } else if (data.status === 'search_initiated') {
+                    // Legacy support for old status
+                    addMessage('✅ **Web search completed!**\n\nI\'ve found and analyzed some content. Let me check the vetting results and then provide you with an updated answer.', 'assistant');
+
+                    setTimeout(() => {
+                        addMessage('🧠 **Processing complete!** Let me now answer your original question with the new information...', 'assistant');
+                        setTimeout(() => {
+                            reQueryWithNewKnowledge(escalationData.original_query);
+                        }, 1000);
+                    }, 2000);
+
+                } else {
+                    addMessage(`❌ **Web search failed:** ${data.error || 'Unknown error'}\n\n${data.fallback_message || 'Please try again or ask me to answer with my current knowledge.'}`, 'assistant');
+                }
+
+            } catch (error) {
+                console.error('Error triggering web search:', error);
+                addMessage(`❌ **Error during web search:** ${error.message}\n\nPlease try again or ask me to answer with my current knowledge.`, 'assistant');
+            }
+        }
+
+        async function answerWithLocalKnowledge(escalationData) {
+            console.log('Answering with local knowledge:', escalationData);
+
+            // Disable the escalation buttons
+            const messageDiv = document.querySelector('[data-escalation-data]');
+            const buttons = messageDiv.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+            });
+
+            // Show processing message
+            addMessage('📚 **Using my current knowledge to answer...**', 'assistant');
+
+            try {
+                // Force a response with current knowledge by sending a modified query
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: `Please answer this question using only your current knowledge (no web search needed): ${escalationData.original_query}`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    addMessage(`Error: ${data.error}`, 'assistant');
+                } else if (data.type === 'web_search_escalation') {
+                    // If it still wants to escalate, provide a basic fallback
+                    addMessage(`Based on my current knowledge: I have limited information about "${escalationData.original_query}". While I could search the web for more current details, you've chosen to proceed with my existing knowledge. I recommend uploading relevant documents or trying a more specific question that might match my training data better.`, 'assistant');
+                } else {
+                    addMessage(data.response, 'assistant', data.message_id, data.has_thoughts, data.thought_blocks);
+                }
+
+            } catch (error) {
+                console.error('Error getting local answer:', error);
+                addMessage(`Error: ${error.message}`, 'assistant');
+            }
+        }
+
+        async function reQueryWithNewKnowledge(originalQuery) {
+            console.log('Re-querying with new knowledge:', originalQuery);
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: originalQuery })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    addMessage(`Error: ${data.error}`, 'assistant');
+                } else if (data.type === 'web_search_escalation') {
+                    // If it still wants to escalate, something went wrong
+                    addMessage('🤔 It seems the new information hasn\'t been fully integrated yet. Please try asking your question again in a moment, or let me know if you\'d like me to search for additional sources.', 'assistant');
+                } else {
+                    addMessage(`🌐 **Updated answer with web information:**\n\n${data.response}`, 'assistant', data.message_id, data.has_thoughts, data.thought_blocks);
+                }
+
+            } catch (error) {
+                console.error('Error re-querying:', error);
+                addMessage(`Error: ${error.message}`, 'assistant');
+            }
+        }
+
+        // Phase 6 Feedback System Functions
+        function createFeedbackControls(messageId) {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = 'feedback-controls';
+            feedbackDiv.innerHTML = `
+                <span class="feedback-text">How was this response?</span>
+                <div class="feedback-buttons">
+                    <button class="feedback-btn positive" onclick="submitFeedback('${messageId}', 'positive')" title="Good response">
+                        👍 Helpful
+                    </button>
+                    <button class="feedback-btn negative" onclick="submitFeedback('${messageId}', 'negative')" title="Needs improvement">
+                        👎 Not helpful
+                    </button>
+                    <button class="feedback-btn" onclick="showCorrectionInput('${messageId}')" title="Provide specific feedback">
+                        ✏️ Suggest improvement
+                    </button>
+                </div>
+            `;
+            return feedbackDiv;
+        }
+
+        async function submitFeedback(messageId, type) {
+            const rating = type === 'positive' ? 0.8 : 0.2;
+
+            try {
+                const response = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message_id: messageId,
+                        rating: rating,
+                        feedback_type: type
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update feedback controls to show submitted state
+                    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                    const feedbackControls = messageDiv.querySelector('.feedback-controls');
+
+                    feedbackControls.innerHTML = `
+                        <span class="feedback-submitted">✅ Thank you for your feedback! SAM is learning from this.</span>
+                    `;
+
+                    // Show learning notification
+                    if (data.learning_applied) {
+                        addMessage(`🧠 **Learning Update:** I've noted your feedback and will adjust my responses accordingly. ${data.learning_insight || ''}`, 'assistant');
+                    }
+                } else {
+                    console.error('Feedback submission failed:', data.error);
+                }
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+            }
+        }
+
+        function showCorrectionInput(messageId) {
+            const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            const feedbackControls = messageDiv.querySelector('.feedback-controls');
+
+            feedbackControls.innerHTML = `
+                <span class="feedback-text">What could be improved?</span>
+                <textarea class="correction-input" id="correction-${messageId}" placeholder="Please describe what could be better about this response..."></textarea>
+                <button class="correction-submit" onclick="submitCorrection('${messageId}')">Submit Feedback</button>
+                <button class="feedback-btn" onclick="cancelCorrection('${messageId}')" style="margin-left: 8px;">Cancel</button>
+            `;
+        }
+
+        async function submitCorrection(messageId) {
+            const correctionText = document.getElementById(`correction-${messageId}`).value.trim();
+
+            if (!correctionText) {
+                alert('Please provide some feedback before submitting.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message_id: messageId,
+                        rating: 0.4, // Neutral rating for corrections
+                        feedback_type: 'correction',
+                        correction_text: correctionText
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                    const feedbackControls = messageDiv.querySelector('.feedback-controls');
+
+                    feedbackControls.innerHTML = `
+                        <span class="feedback-submitted">✅ Thank you for the detailed feedback! SAM is learning from your suggestions.</span>
+                    `;
+
+                    // Show learning notification with specific insights
+                    if (data.learning_applied) {
+                        addMessage(`🧠 **Learning Update:** I've analyzed your feedback: "${correctionText.substring(0, 100)}${correctionText.length > 100 ? '...' : ''}" and will improve my responses. ${data.learning_insight || ''}`, 'assistant');
+                    }
+                } else {
+                    console.error('Correction submission failed:', data.error);
+                    alert('Failed to submit feedback. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error submitting correction:', error);
+                alert('Error submitting feedback. Please try again.');
+            }
+        }
+
+        function cancelCorrection(messageId) {
+            const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            const feedbackDiv = createFeedbackControls(messageId);
+            const oldFeedbackControls = messageDiv.querySelector('.feedback-controls');
+            messageDiv.replaceChild(feedbackDiv, oldFeedbackControls);
+        }
+
+        function openMemoryControlCenter() {
+            // Try to open the Memory Control Center
+            const memoryUrl = 'http://localhost:8501';
+
+            // Check if the Memory Control Center is running
+            fetch(memoryUrl)
+                .then(response => {
+                    if (response.ok) {
+                        // If running, open it directly without chat messages
+                        window.open(memoryUrl, '_blank');
+                    } else {
+                        throw new Error('Memory Control Center not responding');
+                    }
+                })
+                .catch(error => {
+                    // If not running, try to open anyway (user might need to wait)
+                    window.open(memoryUrl, '_blank');
+
+                    // Only show message if there's an actual error accessing the service
+                    setTimeout(() => {
+                        fetch(memoryUrl)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Still not responding');
+                                }
+                            })
+                            .catch(() => {
+                                // Only show help message if it's still not working after a delay
+                                addMessage(`🧠 Memory Control Center is starting up...
+
+The Memory Control Center should auto-start with SAM. If the page doesn't load:
+
+**Option 1: Wait a moment**
+The service may still be starting up. Refresh the Memory Center tab in a few seconds.
+
+**Option 2: Manual start**
+If the auto-start failed, you can manually start it:
+\`python launch_memory_ui.py\`
+
+**Memory Control Center Features:**
+• 🔍 Interactive memory search and browsing
+• ✏️ Memory editing and management tools
+• 📊 Memory visualization and graph view
+• 🎭 Role-based access control
+• 💻 Advanced memory commands
+
+The Memory Control Center runs on port 8501 and should be accessible once SAM is fully started.`, 'assistant');
+                            });
+                    }, 3000); // Wait 3 seconds before showing help message
+                });
+        }
+
+        function openUploadModal() {
+            document.getElementById('uploadModal').style.display = 'flex';
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').style.display = 'none';
+            selectedFile = null;
+            document.getElementById('uploadStatus').innerHTML = '';
+            document.getElementById('processBtn').style.display = 'none';
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('uploadStatus').innerHTML = `
+                    <div style="color: #4facfe; font-weight: 600;">
+                        📄 Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </div>
+                `;
+                document.getElementById('processBtn').style.display = 'inline-block';
+            }
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) return;
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            document.getElementById('uploadStatus').innerHTML = `
+                <div style="color: #4facfe;">🔄 Processing document...</div>
+            `;
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('uploadStatus').innerHTML = `
+                        <div style="color: #e74c3c;">❌ Error: ${data.error}</div>
+                    `;
+                } else {
+                    // Enhanced display with knowledge consolidation confirmation
+                    let consolidationInfo = '';
+                    if (data.result.knowledge_consolidation) {
+                        const kc = data.result.knowledge_consolidation;
+                        const statusColor = kc.status === 'successful' ? '#27ae60' :
+                                          kc.status === 'partial' ? '#f39c12' : '#e74c3c';
+
+                        consolidationInfo = `
+                            <div style="margin-top: 10px; padding: 10px; background: rgba(39, 174, 96, 0.1); border-radius: 5px;">
+                                <div style="color: ${statusColor}; font-weight: 600;">
+                                    🧠 Knowledge Consolidation: ${kc.status.toUpperCase()}
+                                </div>
+                                <div style="font-size: 0.9em; margin-top: 5px;">
+                                    ${kc.learning_confirmation}
+                                </div>
+                                <div style="font-size: 0.8em; margin-top: 5px; color: #666;">
+                                    📝 Summary: ${kc.summary_created ? '✅' : '❌'} |
+                                    🔑 Concepts: ${kc.key_concepts_extracted} |
+                                    💾 Memory: ${kc.memory_chunks_stored} chunks
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    document.getElementById('uploadStatus').innerHTML = `
+                        <div style="color: #27ae60;">✅ Document processed successfully!</div>
+                        <div class="status-info">
+                            📄 Document ID: ${data.result.document_id}<br>
+                            🧩 Content Blocks: ${data.result.content_blocks}<br>
+                            📊 Enrichment Score: ${data.result.enrichment_score}<br>
+                            🎯 Priority: ${data.result.priority_level}<br>
+                            🎨 Content Types: ${data.result.content_types.join(', ')}<br>
+                            🔑 Key Concepts: ${data.result.key_concepts}
+                        </div>
+                        ${consolidationInfo}
+                    `;
+
+                    // Enhanced chat message with consolidation status
+                    let chatMessage = data.result.message || `The document "${data.filename}" has been successfully processed and I can now answer specific questions about its content!`;
+
+                    if (data.result.knowledge_consolidation && data.result.knowledge_consolidation.status === 'successful') {
+                        chatMessage += `\n\n${data.result.knowledge_consolidation.learning_confirmation}`;
+                    }
+
+                    addMessage(chatMessage, 'assistant');
+                }
+                
+            } catch (error) {
+                document.getElementById('uploadStatus').innerHTML = `
+                    <div style="color: #e74c3c;">❌ Error: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Add event listeners to avoid CSP issues with inline onclick
+        document.addEventListener('DOMContentLoaded', function() {
+            // Send button event listener
+            const sendBtn = document.getElementById('sendBtn');
+            if (sendBtn) {
+                sendBtn.addEventListener('click', sendMessage);
+            }
+
+            // Input field event listener for Enter key
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.addEventListener('keypress', handleKeyPress);
+            }
+
+            // Upload modal buttons
+            const uploadBtn = document.querySelector('.upload-btn');
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', openUploadModal);
+            }
+
+            const closeModalBtn = document.querySelector('.close-modal');
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', closeUploadModal);
+            }
+
+            const processBtn = document.getElementById('processBtn');
+            if (processBtn) {
+                processBtn.addEventListener('click', uploadFile);
+            }
+
+            // Memory control center button
+            const memoryBtn = document.querySelector('.memory-control-btn');
+            if (memoryBtn) {
+                memoryBtn.addEventListener('click', openMemoryControlCenter);
+            }
+
+            // File input change event
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.addEventListener('change', handleFileSelect);
+            }
+
+            // Upload area click event
+            const uploadAreaClick = document.getElementById('uploadArea');
+            if (uploadAreaClick) {
+                uploadAreaClick.addEventListener('click', function() {
+                    document.getElementById('fileInput').click();
+                });
+            }
+        });
+
+        // Drag and drop functionality
+        const uploadArea = document.getElementById('uploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                selectedFile = files[0];
+                document.getElementById('uploadStatus').innerHTML = `
+                    <div style="color: #4facfe; font-weight: 600;">
+                        📄 Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </div>
+                `;
+                document.getElementById('processBtn').style.display = 'inline-block';
+            }
+        });
+    </script>
+
+    <!-- Model Status Bar -->
+    <div class="model-status-bar" id="modelStatusBar">
+        <div class="model-info">
+            <div class="model-status">
+                <div class="status-indicator checking" id="statusIndicator"></div>
+                <span id="modelName">Checking model...</span>
+            </div>
+            <div class="model-details" id="modelDetails">
+                Verifying Ollama connection and model availability...
+            </div>
+        </div>
+        <button class="refresh-status" title="Refresh model status">
+            🔄 Refresh
+        </button>
+    </div>
+
+    <!-- Model Status JavaScript -->
+    <script>
+        let modelStatusInterval;
+
+        async function checkModelStatus() {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const modelName = document.getElementById('modelName');
+            const modelDetails = document.getElementById('modelDetails');
+
+            // Set checking state
+            statusIndicator.className = 'status-indicator checking';
+            modelName.textContent = 'Checking model...';
+            modelDetails.textContent = 'Verifying Ollama connection and model availability...';
+
+            try {
+                const response = await fetch('/api/model-status');
+                const data = await response.json();
+
+                if (data.status === 'online') {
+                    statusIndicator.className = 'status-indicator online';
+                    modelName.textContent = `🤖 ${data.model_name}`;
+                    modelDetails.textContent = `${data.model_type} | ${data.parameter_size} | ${data.quantization} | Learned: ${data.learned_knowledge_count} docs`;
+                } else {
+                    statusIndicator.className = 'status-indicator offline';
+                    modelName.textContent = '❌ Model Offline';
+                    modelDetails.textContent = data.error || 'Ollama model not available';
+                }
+
+            } catch (error) {
+                statusIndicator.className = 'status-indicator offline';
+                modelName.textContent = '❌ Connection Error';
+                modelDetails.textContent = `Failed to check model status: ${error.message}`;
+            }
+        }
+
+        // Check model status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkModelStatus();
+
+            // Set up periodic status checks every 30 seconds
+            modelStatusInterval = setInterval(checkModelStatus, 30000);
+
+            // Add event listener for refresh button
+            const refreshBtn = document.querySelector('.refresh-status');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', checkModelStatus);
+            }
+        });
+
+        // Clean up interval when page unloads
+        window.addEventListener('beforeunload', function() {
+            if (modelStatusInterval) {
+                clearInterval(modelStatusInterval);
+            }
+        });
+    </script>
+
+    <!-- Sprint 16: Thought Toggle JavaScript -->
+    <script src="{{ url_for('static', filename='js/thought_toggle.js') }}"></script>
+</body>
+</html>
