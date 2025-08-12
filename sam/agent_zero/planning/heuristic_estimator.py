@@ -44,30 +44,36 @@ class HeuristicEstimator:
     awareness and optimization strategies.
     """
     
-    def __init__(self, 
+    def __init__(self,
                  llm_interface=None,
                  context_manager: Optional[SAMContextManager] = None,
                  max_cost: int = 100,
-                 use_caching: bool = True):
+                 use_caching: bool = True,
+                 enforce_order: bool = False,
+                 scaffold_weight: float = 0.5):
         """
         Initialize the heuristic estimator.
-        
+
         Args:
             llm_interface: SAM's LLM interface for generating estimates
             context_manager: SAM context manager for enhanced estimates
             max_cost: Maximum cost to return (for failed estimates)
             use_caching: Whether to cache estimates for similar states
+            enforce_order: If True, penalize states that deviate from next expected procedure step
+            scaffold_weight: 0..1 blend toward remaining procedure steps as target cost
         """
         self.llm_interface = llm_interface
         self.context_manager = context_manager
         self.max_cost = max_cost
         self.use_caching = use_caching
-        
+        self.enforce_order = enforce_order
+        self.scaffold_weight = max(0.0, min(1.0, scaffold_weight))
+
         # Estimation cache for performance
         self._estimate_cache: Dict[str, HeuristicEstimate] = {}
         self._cache_hits = 0
         self._cache_misses = 0
-        
+
         logger.info("Initialized HeuristicEstimator")
     
     def estimate_cost_to_go(self, state: PlanningState) -> int:
@@ -118,22 +124,36 @@ class HeuristicEstimator:
         return estimate
     
     def _generate_llm_estimate(self, state: PlanningState) -> HeuristicEstimate:
-        """Generate heuristic estimate using LLM."""
-        
-        # Build context-aware prompt
-        prompt = self._build_heuristic_prompt(state)
-        
-        # Get LLM response
+        """Generate heuristic estimate using LLM, blended with procedure scaffold if available."""
+
+        # Baseline estimate
+        base = None
         if self.llm_interface:
             try:
+                prompt = self._build_heuristic_prompt(state)
                 response = self._call_llm(prompt)
-                return self._parse_llm_response(response, state)
+                base = self._parse_llm_response(response, state)
             except Exception as e:
                 logger.warning(f"LLM estimation failed: {e}")
-                return self._fallback_estimate(state)
+                base = self._fallback_estimate(state)
         else:
-            # Use fallback estimation when no LLM available
-            return self._fallback_estimate(state)
+            base = self._fallback_estimate(state)
+
+        # Blend with scaffold if available
+        try:
+            scaffold_cost_adj, context_factors = self._scaffold_adjustment(state)
+            if scaffold_cost_adj is not None:
+                blended = int(round((1.0 - self.scaffold_weight) * base.estimated_cost + self.scaffold_weight * scaffold_cost_adj))
+                return HeuristicEstimate(
+                    estimated_cost=blended,
+                    confidence=min(1.0, base.confidence + 0.1),
+                    reasoning=base.reasoning + " | scaffold_blend",
+                    context_factors=base.context_factors + context_factors,
+                    fallback_used=base.fallback_used,
+                )
+            return base
+        except Exception:
+            return base
     
     def _build_heuristic_prompt(self, state: PlanningState) -> str:
         """Build context-aware prompt for heuristic estimation."""
@@ -180,23 +200,23 @@ class HeuristicEstimator:
         return "\n".join(prompt_parts)
     
     def _get_context_info(self, state: PlanningState) -> str:
-        """Get context information for the prompt."""
+        """Get context information for the prompt, including procedure hints."""
         context_parts = []
-        
+
         # Document context
         if state.has_document_context():
             doc_count = len(state.document_context)
             context_parts.append(f"- Documents available: {doc_count}")
-        
+
         # Memory context
         if state.has_memory_context():
             memory_count = len(state.memory_context)
             context_parts.append(f"- Relevant memories: {memory_count}")
-        
+
         # Conversation context
         if state.has_conversation_context():
             context_parts.append("- Conversation context available")
-        
+
         # SAM context manager info
         if self.context_manager:
             summary = self.context_manager.get_context_summary()
@@ -204,7 +224,15 @@ class HeuristicEstimator:
                 context_parts.append(f"- SAM documents: {summary['documents']['count']}")
             if summary['memory']['relevant_memories_count'] > 0:
                 context_parts.append(f"- SAM memories: {summary['memory']['relevant_memories_count']}")
-        
+            # Procedure guidance hint
+            pc = self.context_manager.get_planning_context()
+            if pc.get('procedural_guidance'):
+                try:
+                    name = pc['procedural_guidance'].get('procedure', {}).get('name', 'procedure')
+                    context_parts.append(f"- Procedure guidance available: {name}")
+                except Exception:
+                    context_parts.append("- Procedure guidance available")
+
         return "\n".join(context_parts) if context_parts else "- No additional context available"
     
     def _call_llm(self, prompt: str) -> str:
@@ -222,27 +250,16 @@ class HeuristicEstimator:
             raise ValueError("Invalid LLM interface provided")
     
     def _parse_llm_response(self, response: str, state: PlanningState) -> HeuristicEstimate:
-        """Parse LLM response to extract cost estimate."""
-        
-        # Extract number from response
+        """Parse LLM response to extract cost estimate and blend with scaffold if set at call site."""
         import re
         numbers = re.findall(r'\b\d+\b', response.strip())
-        
         if numbers:
             try:
                 estimated_cost = int(numbers[0])
-                # Clamp to reasonable range
                 estimated_cost = max(0, min(estimated_cost, self.max_cost))
-                
-                # Determine confidence based on response clarity
                 confidence = self._assess_response_confidence(response)
-                
-                # Extract reasoning
                 reasoning = response.strip()
-                
-                # Identify context factors
                 context_factors = self._identify_context_factors(state)
-                
                 return HeuristicEstimate(
                     estimated_cost=estimated_cost,
                     confidence=confidence,
@@ -250,11 +267,8 @@ class HeuristicEstimator:
                     context_factors=context_factors,
                     fallback_used=False
                 )
-                
             except ValueError:
                 pass
-        
-        # If parsing failed, use fallback
         logger.warning(f"Failed to parse LLM response: {response}")
         return self._fallback_estimate(state)
     
@@ -292,19 +306,13 @@ class HeuristicEstimator:
         return factors
     
     def _fallback_estimate(self, state: PlanningState) -> HeuristicEstimate:
-        """Generate fallback estimate when LLM is unavailable."""
-        
+        """Generate fallback estimate when LLM is unavailable, with scaffold blending."""
+
         # Simple heuristic based on task complexity and progress
-        base_cost = 10  # Default base cost
-        
-        # Adjust based on action history (more actions = closer to completion)
+        base_cost = 10
         progress_factor = max(0, base_cost - len(state.action_history))
-        
-        # Adjust based on task description complexity
         task_words = len(state.task_description.split())
-        complexity_factor = min(5, task_words // 5)  # More words = more complex
-        
-        # Adjust based on available context (more context = easier)
+        complexity_factor = min(5, task_words // 5)
         context_factor = 0
         if state.has_document_context():
             context_factor -= 2
@@ -312,14 +320,24 @@ class HeuristicEstimator:
             context_factor -= 1
         if state.has_conversation_context():
             context_factor -= 1
-        
-        estimated_cost = max(0, progress_factor + complexity_factor + context_factor)
-        
+        est = max(0, progress_factor + complexity_factor + context_factor)
+
+        # Try scaffold adjustment
+        try:
+            scaffold_cost_adj, context_factors = self._scaffold_adjustment(state)
+            if scaffold_cost_adj is not None:
+                est = int(round((1.0 - self.scaffold_weight) * est + self.scaffold_weight * scaffold_cost_adj))
+                cf = self._identify_context_factors(state) + context_factors
+            else:
+                cf = self._identify_context_factors(state)
+        except Exception:
+            cf = self._identify_context_factors(state)
+
         return HeuristicEstimate(
-            estimated_cost=estimated_cost,
-            confidence=0.5,  # Medium confidence for fallback
-            reasoning=f"Fallback estimate based on progress and complexity",
-            context_factors=self._identify_context_factors(state),
+            estimated_cost=est,
+            confidence=0.5,
+            reasoning="Fallback estimate with optional scaffold",
+            context_factors=cf,
             fallback_used=True
         )
     
@@ -361,3 +379,42 @@ class HeuristicEstimator:
         self._cache_hits = 0
         self._cache_misses = 0
         logger.info("Cleared heuristic estimation cache")
+
+    def _scaffold_adjustment(self, state: PlanningState):
+        """
+        Compute a scaffold-adjusted target cost and context factors based on procedure guidance.
+        If enforce_order is enabled and current action history deviates strongly from expected next step,
+        increase the estimated cost; otherwise, use remaining steps as a target cost.
+        Returns (adjusted_cost: Optional[int], context_factors: List[str])
+        """
+        if not self.context_manager:
+            return None, []
+        pc = self.context_manager.get_planning_context()
+        guidance = pc.get('procedural_guidance')
+        if not guidance or not isinstance(guidance, dict):
+            return None, []
+        proc = guidance.get('procedure') or {}
+        steps = proc.get('steps') or []
+        # Determine how many steps are already represented in action_history (by tool name)
+        used_tools = set(state.action_history or [])
+        remaining = 0
+        next_tool = None
+        for s in steps:
+            t = s.get('tool')
+            if not t:
+                continue
+            if t not in used_tools:
+                remaining += 1
+                if not next_tool:
+                    next_tool = t
+        if remaining == 0:
+            return 0, ["procedure_completed"]
+        # Base adjusted target: remaining steps
+        adjusted = remaining
+        factors = [f"procedure_remaining_{remaining}"]
+        # Enforce order: if next expected tool differs from last suggested/used tool, add penalty
+        if self.enforce_order and next_tool:
+            if state.action_history and state.action_history[-1] != next_tool:
+                adjusted += 1
+                factors.append("order_penalty")
+        return adjusted, factors

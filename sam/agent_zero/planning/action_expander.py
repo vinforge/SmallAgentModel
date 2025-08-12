@@ -117,20 +117,53 @@ class ActionExpander:
         return candidates
     
     def _generate_action_candidates(self, state: PlanningState) -> List[ActionCandidate]:
-        """Generate action candidates using LLM and tool registry."""
-        
+        """Generate action candidates using LLM and tool registry.
+        If procedural_guidance is available in context, bias candidates to scaffold steps first.
+        """
+
         # Get available tools based on context
         available_tools = self._get_available_tools(state)
-        
+
         # Generate LLM-based action suggestions
         llm_suggestions = self._get_llm_action_suggestions(state, available_tools)
-        
+
+        # Extract scaffolded tools from procedural guidance (if present)
+        guidance = None
+        if self.context_manager:
+            ctx = self.context_manager.get_planning_context()
+            guidance = (ctx or {}).get('procedural_guidance')
+        scaffold_tools: List[str] = []
+        if guidance and isinstance(guidance, dict):
+            proc = guidance.get('procedure') or {}
+            steps = proc.get('steps') or []
+            for s in steps:
+                tool = s.get('tool')
+                if isinstance(tool, str):
+                    scaffold_tools.append(tool)
+
         # Combine and rank candidates
         candidates = self._create_action_candidates(state, available_tools, llm_suggestions)
-        
+
+        # If we have scaffold tools, inject them with higher confidence as initial candidates
+        if scaffold_tools:
+            tool_map = {t['name']: t for t in available_tools}
+            for tname in scaffold_tools:
+                if tname in tool_map:
+                    t = tool_map[tname]
+                    cand = ActionCandidate(
+                        action_name=tname,
+                        parameters=self._infer_parameters(state, t),
+                        description=t['description'],
+                        estimated_cost=t['cost_estimate'],
+                        confidence=0.95,  # bias towards scaffold
+                        prerequisites_met=t['can_execute'],
+                        reasoning="Procedure scaffold recommends this tool"
+                    )
+                    candidates.append(cand)
+
         # Filter and rank candidates
         filtered_candidates = self._filter_and_rank_candidates(state, candidates)
-        
+
         return filtered_candidates[:self.max_actions]
     
     def _get_available_tools(self, state: PlanningState) -> List[Dict[str, Any]]:

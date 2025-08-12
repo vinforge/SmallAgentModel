@@ -316,7 +316,7 @@ class DeepResearchStrategy:
         """Assess current research quality (TPV control)."""
         # Simple quality assessment - would be enhanced with sophisticated metrics
         total_papers = len(self.arxiv_papers)
-        unique_papers = len(set(p.get('id', '') for p in self.arxiv_papers))
+        unique_papers = len(set(p.get('arxiv_id', '') for p in self.arxiv_papers))
         recent_papers = len([p for p in self.arxiv_papers if self._is_recent_paper(p)])
 
         # Quality score based on coverage and recency

@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "scrape_table_to_csv",
+  "description": "Scrape table from page and save as CSV.",
+  "intent": {
+    "signature_text": "Extract a table from a web page and save to CSV",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "table"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [
+    { "name": "url", "type": "url" },
+    { "name": "out_path", "type": "path" }
+  ],
+  "steps": [
+    { "id": "fetch", "title": "Fetch page", "tool": "HttpGetTool", "args": { "url": "${url}" }, "save_as": "html" },
+    { "id": "extract", "title": "Extract table", "tool": "ArticleExtractorTool", "args": { "html": "${html}" }, "save_as": "table_csv" },
+    { "id": "write", "title": "Write CSV", "tool": "FileWriteTool", "args": { "path": "${out_path}", "content": "${table_csv}" } }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "file_exists(${out_path})" }]
+}
+

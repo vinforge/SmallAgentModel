@@ -162,12 +162,12 @@ class ConversationContext:
 class SAMContextManager:
     """
     Manages all SAM-specific context for planning operations.
-    
+
     This class provides a unified interface for accessing and managing
     document context, memory context, conversation context, and other
     SAM-specific information needed for planning.
     """
-    
+
     def __init__(self):
         """Initialize the context manager."""
         self.document_context = DocumentContext()
@@ -175,11 +175,12 @@ class SAMContextManager:
         self.conversation_context = ConversationContext()
         self._context_cache: Dict[str, Any] = {}
         self._last_updated = datetime.now()
-    
+        self.procedural_guidance: Optional[Dict[str, Any]] = None
+
     def update_from_session_state(self, session_state: Dict[str, Any]):
         """
         Update context from SAM's session state.
-        
+
         Args:
             session_state: Current session state from SAM
         """
@@ -187,25 +188,36 @@ class SAMContextManager:
         if 'uploaded_documents' in session_state:
             for filename, metadata in session_state['uploaded_documents'].items():
                 self.document_context.add_document(filename, metadata)
-        
+
         # Update conversation context
         if 'chat_history' in session_state:
             for message in session_state['chat_history']:
                 if isinstance(message, dict) and 'role' in message and 'content' in message:
                     self.conversation_context.add_message(message['role'], message['content'])
-        
+
         # Update memory context from session
         if 'relevant_memories' in session_state:
             for memory in session_state['relevant_memories']:
                 self.memory_context.add_relevant_memory(memory)
-        
+
         self._last_updated = datetime.now()
         logger.debug("Updated SAM context from session state")
-    
+
+    def set_procedural_guidance(self, procedure: Dict[str, Any], similarity: float):
+        """Set the current procedural guidance for planning.
+        Stores the distilled procedure and retrieval metadata.
+        """
+        self.procedural_guidance = {
+            'procedure': procedure,
+            'similarity': similarity,
+            'timestamp': datetime.now().isoformat(),
+        }
+        logger.info("Procedural guidance set for planning context")
+
     def get_planning_context(self) -> Dict[str, Any]:
         """
         Get context dictionary suitable for planning operations.
-        
+
         Returns:
             Dictionary with all context information
         """
@@ -217,6 +229,7 @@ class SAMContextManager:
                 'intent': self.conversation_context.user_intent,
                 'topics': self.conversation_context.conversation_topics
             } if self.conversation_context.conversation_history else None,
+            'procedural_guidance': self.procedural_guidance,
             'last_updated': self._last_updated.isoformat()
         }
     

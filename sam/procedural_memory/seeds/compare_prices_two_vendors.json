@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "compare_prices_two_vendors",
+  "description": "Compare product price across two vendors and summarize.",
+  "intent": {
+    "signature_text": "Compare a product price across vendors",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "comparison"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [
+    { "name": "product", "type": "string" },
+    { "name": "vendor_a", "type": "url", "required": false },
+    { "name": "vendor_b", "type": "url", "required": false }
+  ],
+  "steps": [
+    { "id": "search_a", "title": "Find product on vendor A", "tool": "WebSearchTool", "args": { "query": "${product} site:${vendor_a}" }, "save_as": "res_a" },
+    { "id": "search_b", "title": "Find product on vendor B", "tool": "WebSearchTool", "args": { "query": "${product} site:${vendor_b}" }, "save_as": "res_b" },
+    { "id": "summ", "title": "Summarize price difference", "tool": "SummarizeTool", "args": { "text": "Compare prices from A and B using search results." }, "save_as": "summary" }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "len(${summary}) > 0" }]
+}
+

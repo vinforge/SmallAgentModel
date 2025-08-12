@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "build_index_and_answer_query",
+  "description": "Index a site at shallow depth and answer a query.",
+  "intent": {
+    "signature_text": "Build site index (depth 1–2) then answer query",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "index"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [
+    { "name": "seed_url", "type": "url" },
+    { "name": "query", "type": "string" }
+  ],
+  "steps": [
+    { "id": "index", "title": "Build index", "tool": "CocoIndexTool", "args": { "seed_url": "${seed_url}", "depth": 2 }, "save_as": "index_id" },
+    { "id": "ask", "title": "Query index", "tool": "CocoQueryTool", "args": { "index_id": "${index_id}", "query": "${query}" }, "save_as": "passages" },
+    { "id": "summ", "title": "Summarize answer", "tool": "SummarizeTool", "args": { "text": "${passages}" }, "save_as": "answer" }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "len(${answer}) > 0" }]
+}
+

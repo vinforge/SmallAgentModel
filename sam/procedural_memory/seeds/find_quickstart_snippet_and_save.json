@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "find_quickstart_snippet_and_save",
+  "description": "Search a library quickstart snippet and save to file.",
+  "intent": {
+    "signature_text": "Find quickstart code snippet and save locally",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "dev"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [
+    { "name": "library", "type": "string" },
+    { "name": "out_path", "type": "path" }
+  ],
+  "steps": [
+    { "id": "search", "title": "Search for quickstart", "tool": "WebSearchTool", "args": { "query": "${library} quickstart" }, "save_as": "results" },
+    { "id": "summ", "title": "Extract code sample", "tool": "SummarizeTool", "args": { "text": "Extract minimal code snippet from results: ${results}" }, "save_as": "code" },
+    { "id": "write", "title": "Save to file", "tool": "FileWriteTool", "args": { "path": "${out_path}", "content": "${code}" } }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "file_exists(${out_path})" }]
+}
+

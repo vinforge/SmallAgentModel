@@ -369,3 +369,33 @@ class CryptoManager:
             bool: True if session key is set and ready for encryption/decryption
         """
         return self.session_key is not None and self.aesgcm is not None
+
+    # Convenience wrappers used by encrypted stores
+    def encrypt_data(self, plaintext: str) -> str:
+        """Encrypt text and return a JSON string with ciphertext, nonce, tag (hex-encoded)."""
+        res = self.encrypt(plaintext)
+        payload = {
+            'ciphertext': res.ciphertext.hex(),
+            'nonce': res.nonce.hex(),
+            'tag': res.tag.hex(),
+            'meta': res.metadata,
+        }
+        import json as _json
+        return _json.dumps(payload)
+
+    def decrypt_data(self, data: str) -> str:
+        """Decrypt JSON string produced by encrypt_data and return plaintext string."""
+        import json as _json
+        obj = data
+        if isinstance(data, str):
+            try:
+                obj = _json.loads(data)
+            except Exception:
+                raise ValueError("decrypt_data expects JSON string payload")
+        if not isinstance(obj, dict):
+            raise ValueError("decrypt_data expects JSON object")
+        ciphertext = bytes.fromhex(obj['ciphertext'])
+        nonce = bytes.fromhex(obj['nonce'])
+        tag = bytes.fromhex(obj['tag'])
+        dec = self.decrypt(ciphertext, nonce, tag)
+        return dec.plaintext.decode('utf-8')

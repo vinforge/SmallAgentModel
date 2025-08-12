@@ -42,7 +42,7 @@ def render_dream_canvas():
     """Main function to render the Dream Canvas interface."""
     st.subheader("🧠🎨 Dream Canvas - Cognitive Synthesis Visualization")
     st.markdown("*Interactive memory landscape with UMAP projections and cluster analysis*")
-    
+
     # Check if memory store is available
     try:
         from memory.memory_vectorstore import get_memory_store
@@ -53,17 +53,23 @@ def render_dream_canvas():
     except Exception as e:
         st.error(f"❌ Error accessing memory store: {e}")
         return
-    
+
+    # Initialize defaults for auto research controls
+    if 'auto_run_research_on_select' not in st.session_state:
+        st.session_state.auto_run_research_on_select = True
+    if 'auto_research_mode' not in st.session_state:
+        st.session_state.auto_research_mode = 'Deep'
+
     # Dream Canvas controls
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         visualization_mode = st.selectbox(
             "🎨 Visualization Mode",
             ["Cognitive Landscape", "Document Landscape", "Memory Clusters", "Temporal Flow", "Concept Networks"],
             help="Select the type of cognitive visualization"
         )
-    
+
     with col2:
         cluster_method = st.selectbox(
             "🔬 Clustering Method",
@@ -105,14 +111,14 @@ def render_dream_canvas():
             if st.button("✅ Got it!", key="close_clustering_info"):
                 st.session_state.show_clustering_info = False
                 st.rerun()
-    
+
     with col3:
         time_range = st.selectbox(
             "⏰ Time Range",
             ["All Time", "Last 30 Days", "Last 7 Days", "Last 24 Hours"],
             help="Filter memories by time period"
         )
-    
+
     # Advanced settings
     with st.expander("🔧 Advanced Settings"):
         col1, col2, col3 = st.columns(3)
@@ -324,10 +330,17 @@ def render_dream_canvas():
                         logger.info("Regenerating cognitive map after synthesis...")
                         updated_cognitive_map = generate_cognitive_map(
                             memory_store=memory_store,
-                            method="UMAP + HDBSCAN",  # Use default method
+                            method="UMAP + HDBSCAN",  # Match synthesis default
                             time_range="All Time",
                             n_components=2,
-                            min_cluster_size=3
+                            min_cluster_size=8,  # Match SynthesisConfig.min_cluster_size
+                            perplexity=30,
+                            n_neighbors=15,
+                            clustering_eps=0.3,  # Match SynthesisConfig.clustering_eps
+                            max_clusters=10,      # Match SynthesisConfig.max_clusters
+                            quality_threshold=0.5,  # Match SynthesisConfig.quality_threshold
+                            clustering_min_samples=3,  # Match SynthesisConfig.clustering_min_samples
+                            disable_kmeans_fallback=True  # Keep cluster IDs stable for insight mapping
                         )
                         st.session_state.cognitive_map = updated_cognitive_map
                         logger.info("Cognitive map updated with synthesis results")
@@ -337,7 +350,10 @@ def render_dream_canvas():
                     # Provide detailed feedback based on results
                     if result.insights_generated > 0:
                         st.success(f"✨ Synthesis complete! Generated **{result.insights_generated} insights** from **{result.clusters_found} clusters**.")
-                        st.info("💡 View insights in the 'Most Coherent Clusters' section below.")
+                        st.info("💡 To view them, expand a cluster in 'Most Coherent Clusters' and click 📚 Show Insights.")
+                        st.session_state.show_insight_archive = True
+                        st.session_state.auto_expand_first_insight_cluster = True
+                        st.rerun()
                     elif result.clusters_found > 0:
                         st.warning(f"⚠️ Found **{result.clusters_found} clusters** but generated **0 insights**. This may indicate:")
                         st.info("• Insight quality threshold is too high\n• LLM responses need improvement\n• Memory clusters lack sufficient content")
@@ -367,7 +383,19 @@ def render_dream_canvas():
                 st.session_state.show_insight_archive = True
                 st.rerun()
             st.caption("💡 Click to reveal insights")
-    
+
+        # Auto Research controls
+        st.markdown("---")
+        st.markdown("**🧪 Research Mode**")
+        auto_on = st.toggle("Auto-run research on select", key="auto_run_research_on_select", help="If on, selecting an insight's 🔬 checkbox starts research immediately")
+        if auto_on:
+            # Do not assign to st.session_state["auto_run_research_on_select"] here; widget manages it
+            st.session_state.auto_research_mode = st.radio("Mode", ["Deep", "Quick"], index=0, horizontal=True, key="auto_research_mode_selector")
+            st.session_state.deep_research_download_limit = st.number_input("Deep Research download limit (top-K)", min_value=1, max_value=10, value=int(st.session_state.get('deep_research_download_limit', 3)), step=1, help="Only the top-K papers will be downloaded and assessed per insight.")
+        else:
+            # Do not assign to st.session_state["auto_run_research_on_select"] here; widget manages it
+            pass
+
     # Check if we have focused synthesis visualization data
     if hasattr(st.session_state, 'dream_canvas_data') and st.session_state.dream_canvas_data:
         # Render focused synthesis visualization
@@ -411,7 +439,9 @@ def generate_cognitive_map(
     n_neighbors: int = 15,
     clustering_eps: float = 0.8,
     max_clusters: int = 50,
-    quality_threshold: float = 0.1
+    quality_threshold: float = 0.1,
+    clustering_min_samples: int = 2,
+    disable_kmeans_fallback: bool = False
 ) -> CognitiveMap:
     """Generate a cognitive map from real memory data using clustering and dimensionality reduction."""
 
@@ -432,8 +462,8 @@ def generate_cognitive_map(
 
         # Use user-configurable clustering parameters for rich document clustering
         clustering_service = ClusteringService(
-            eps=clustering_eps,  # User-configurable eps parameter
-            min_samples=2,  # Lower for more granular clusters
+            eps=clustering_eps,  # Keep eps consistent with synthesis
+            min_samples=clustering_min_samples,  # Keep min_samples consistent with synthesis
             min_cluster_size=min_cluster_size,  # User-configurable minimum size
             max_clusters=max_clusters,  # User-configurable maximum clusters
             quality_threshold=quality_threshold  # User-configurable quality threshold
@@ -445,8 +475,8 @@ def generate_cognitive_map(
         concept_clusters = clustering_service.find_concept_clusters(memory_store)
         logger.info(f"Found {len(concept_clusters)} concept clusters for visualization")
 
-        # If DBSCAN produces too few clusters, try K-Means for forced clustering
-        if len(concept_clusters) < 5 and max_clusters >= 10:
+        # If DBSCAN produces too few clusters, optionally try K-Means for forced clustering
+        if not disable_kmeans_fallback and len(concept_clusters) < 5 and max_clusters >= 10:
             logger.info("DBSCAN produced few clusters, trying K-Means for richer clustering...")
             concept_clusters = _try_kmeans_clustering(memory_store, min(max_clusters, 20), min_cluster_size, quality_threshold)
             logger.info(f"K-Means produced {len(concept_clusters)} clusters")
@@ -919,8 +949,24 @@ def _research_single_cluster_insight(insight_id: str, insight_data: Dict[str, An
             # Store research result for display
             _store_research_result(insight_id, result, keywords)
 
+            # Mark status on original insight if present in session
+            try:
+                for key, data in (st.session_state.get('cluster_insight_data') or {}).items():
+                    if key == insight_id:
+                        data['insight']['research_status'] = 'completed'
+                        break
+            except Exception:
+                pass
+
             logger.info(f"✅ Research completed for insight: {insight_id}")
         else:
+            try:
+                for key, data in (st.session_state.get('cluster_insight_data') or {}).items():
+                    if key == insight_id:
+                        data['insight']['research_status'] = 'failed'
+                        break
+            except Exception:
+                pass
             logger.warning(f"⚠️ Research failed for insight {insight_id}: {result['error']}")
 
     except Exception as e:
@@ -1053,6 +1099,21 @@ def _store_research_result(insight_id: str, result: Dict[str, Any], keywords: Li
         'status': 'completed'
     }
 
+    # Update belief/evidence using the downloaded paper
+    try:
+        # Find the original insight object by id
+        insight_record = (st.session_state.get('cluster_insight_data') or {}).get(insight_id)
+        if insight_record:
+            insight = insight_record.get('insight') or {}
+            evidence = _llm_assess_evidence(
+                insight.get('synthesized_text', insight.get('content', '')),
+                result.get('paper_metadata', {}),
+                result.get('local_path')
+            )
+            _apply_evidence_update(insight, evidence)
+    except Exception as _e:
+        logger.debug(f"Evidence update failed: {_e}")
+
 def _render_deep_research_results_for_insight(insight_id: str):
     """Render Deep Research results below an insight if available."""
     if 'deep_research_results' not in st.session_state:
@@ -1071,6 +1132,14 @@ def _render_deep_research_results_for_insight(insight_id: str):
     if result['success']:
         paper_metadata = result['paper_metadata']
 
+        # Update any matching insight's status to completed
+        try:
+            if 'deep_research_results' in st.session_state:
+                for key, data in st.session_state.deep_research_results.items():
+                    pass  # placeholder for mapping if needed
+        except Exception:
+            pass
+
         col1, col2 = st.columns([3, 1])
 
         with col1:
@@ -1085,8 +1154,9 @@ def _render_deep_research_results_for_insight(insight_id: str):
             st.success("✅ Downloaded & Ingested")
             st.caption(f"📊 Score: {result.get('relevance_score', 'N/A')}")
 
-        # Show paper summary
-        with st.expander("📋 Paper Summary", expanded=False):
+        # Show paper summary (avoid nested expanders)
+        show_summary_key = f"show_{insight_id}_paper_summary"
+        if st.checkbox("📋 Paper Summary", key=show_summary_key):
             summary = paper_metadata.get('summary', 'No summary available')
             st.markdown(summary[:500] + "..." if len(summary) > 500 else summary)
     else:
@@ -1428,13 +1498,13 @@ def render_landscape_view(cognitive_map: CognitiveMap, show_connections: bool, s
         hovertext=texts,
         name='Memory Clusters'
     ))
-    
+
     # Add connections if enabled
     if show_connections:
         for connection in cognitive_map.connections:
             source_cluster = next(c for c in cognitive_map.clusters if c.id == connection['source'])
             target_cluster = next(c for c in cognitive_map.clusters if c.id == connection['target'])
-            
+
             fig.add_trace(go.Scatter(
                 x=[source_cluster.center[0], target_cluster.center[0]],
                 y=[source_cluster.center[1], target_cluster.center[1]],
@@ -1548,12 +1618,12 @@ def render_landscape_view(cognitive_map: CognitiveMap, show_connections: bool, s
         paper_bgcolor='white',
         hovermode='closest'
     )
-    
+
     st.plotly_chart(fig, use_container_width=True)
 
 def render_cluster_view(cognitive_map: CognitiveMap):
     """Render cluster analysis view."""
-    
+
     # Cluster statistics
     cluster_data = []
     for cluster in cognitive_map.clusters:
@@ -1563,22 +1633,22 @@ def render_cluster_view(cognitive_map: CognitiveMap):
             'Coherence': cluster.coherence_score,
             'Color': cluster.color
         })
-    
+
     df = pd.DataFrame(cluster_data)
-    
+
     # Bar chart of cluster sizes
     fig = px.bar(
-        df, 
-        x='Cluster', 
+        df,
+        x='Cluster',
         y='Memories',
         color='Coherence',
         title="📊 Memory Cluster Analysis",
         color_continuous_scale='viridis'
     )
-    
+
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
-    
+
     # Cluster details table
     st.markdown("### 📋 Cluster Details")
     st.dataframe(df[['Cluster', 'Memories', 'Coherence']], use_container_width=True)
@@ -1586,14 +1656,14 @@ def render_cluster_view(cognitive_map: CognitiveMap):
 def render_temporal_view(cognitive_map: CognitiveMap):
     """Render temporal flow visualization."""
     st.info("🚧 Temporal Flow visualization coming soon!")
-    
+
     # Placeholder for temporal visualization
     # This would show how memories flow and connect over time
 
 def render_network_view(cognitive_map: CognitiveMap, show_connections: bool):
     """Render network graph visualization."""
     st.info("🚧 Concept Networks visualization coming soon!")
-    
+
     # Placeholder for network graph
     # This would show memories as nodes and connections as edges
 
@@ -1898,22 +1968,44 @@ def render_cognitive_insights(cognitive_map: CognitiveMap):
     st.markdown("#### 🏆 Most Coherent Clusters")
     top_clusters = sorted(cognitive_map.clusters, key=lambda x: x.coherence_score, reverse=True)[:3]
 
+    # Auto-expand the first cluster once after synthesis, if requested
+    auto_expand_first = st.session_state.get('auto_expand_first_insight_cluster', False)
+    if auto_expand_first:
+        # We will consume this flag after first render to avoid repeated auto-expands
+        st.session_state.auto_expand_first_insight_cluster = False
+
     for i, cluster in enumerate(top_clusters, 1):
         # Create cluster title with basic info
         cluster_title = f"{i}. {cluster.name} - {cluster.size} memories (coherence: {cluster.coherence_score:.2f})"
+
+        # Determine if this expander should be auto-expanded once
+        expanded_flag = (auto_expand_first and i == 1)
 
         # Add insight indicator if this cluster has generated insights
         insight_indicator = ""
         cluster_insights = []
         if hasattr(st.session_state, 'synthesis_results') and st.session_state.synthesis_results:
             insights = st.session_state.synthesis_results.get('insights', [])
-            cluster_insights = [ins for ins in insights if ins.get('cluster_id') == cluster.name or ins.get('cluster_id') == cluster.id]
+            # Robust matching between insight cluster IDs and visualization clusters
+            cluster_insights = []
+            for ins in insights:
+                cid = str(ins.get('cluster_id', ''))
+                if cid == cluster.id or cid == cluster.name or cluster.id.endswith(cid) or cid.endswith(cluster.id):
+                    cluster_insights.append(ins)
 
             if cluster_insights:
                 insight_indicator = f" ✨ ({len(cluster_insights)} insights)"
 
-        # Create expandable section for each cluster
-        with st.expander(f"🔍 {cluster_title}{insight_indicator}", expanded=False):
+        # Create expandable section for each cluster with status badges
+        status_badge = ""
+        if any(ins.get('research_status') in ('in_progress', 'completed') for ins in cluster_insights or []):
+            # If any insight has research status, show a badge summary
+            in_prog = sum(1 for ins in cluster_insights if ins.get('research_status') == 'in_progress')
+            done = sum(1 for ins in cluster_insights if ins.get('research_status') == 'completed')
+            if in_prog or done:
+                status_badge = f"  🧪[{in_prog} in progress] ✅[{done} done]"
+
+        with st.expander(f"🔍 {cluster_title}{insight_indicator}{status_badge}", expanded=expanded_flag):
             # Display detailed cluster information
             render_cluster_detailed_info(cluster, cluster_insights)
 
@@ -1946,7 +2038,26 @@ def render_cluster_detailed_info(cluster, cluster_insights):
             for i, insight in enumerate(cluster_insights, 1):
                 insight_id = f"{cluster.id}_insight_{i}"
 
-                with st.expander(f"💡 Insight {i}: {insight.get('title', 'Untitled')}", expanded=False):
+                # Research status badge and evidence summary for insight
+                status = insight.get('research_status', 'idle')
+                if status == 'in_progress':
+                    badge = " ⏳"
+                elif status == 'completed':
+                    badge = " ✅"
+                elif status == 'failed':
+                    badge = " ❌"
+                else:
+                    badge = ""
+
+                summary = _insight_evidence_summary(insight)
+                label = f"💡 Insight {i}: {insight.get('title', 'Untitled')}{badge}  ({summary})" if summary else f"💡 Insight {i}: {insight.get('title', 'Untitled')}{badge}"
+
+                show_insight_details_key = f"show_{insight_id}_details"
+                show_insight_details = st.checkbox(
+                    label,
+                    key=show_insight_details_key
+                )
+                if show_insight_details:
                     # Add checkbox for Deep Research selection
                     col1, col2 = st.columns([1, 10])
 
@@ -1969,6 +2080,31 @@ def render_cluster_detailed_info(cluster, cluster_insights):
                                 'cluster_id': cluster.id,
                                 'cluster_name': cluster.name
                             }
+
+                            # Auto-run research if enabled
+                            if st.session_state.get('auto_run_research_on_select', False):
+                                mode = st.session_state.get('auto_research_mode', 'Deep')
+                                try:
+                                    if mode == 'Deep':
+                                        # Use Deep Research engine in background
+                                        insight_text_for_research = insight.get('synthesized_text', insight.get('content', ''))
+                                        simple_insight = {
+                                            'content': insight_text_for_research,
+                                            'cluster_id': cluster.id,
+                                            'insight_id': insight_id
+                                        }
+                                        trigger_deep_research_engine([simple_insight])
+                                        insight['research_status'] = 'in_progress'
+                                        st.info("🧠 Deep Research started for this insight...")
+                                    else:
+                                        # Quick research via arXiv tool in background
+                                        import threading
+                                        data = {'insight': insight, 'cluster_name': cluster.name}
+                                        insight['research_status'] = 'in_progress'
+                                        threading.Thread(target=_research_single_cluster_insight, args=(insight_id, data), daemon=True).start()
+                                        st.info("🔎 Quick Research started for this insight...")
+                                except Exception as e:
+                                    logger.warning(f"Auto-run research failed: {e}")
                         else:
                             st.session_state.selected_cluster_insights.discard(insight_id)
                             if 'cluster_insight_data' in st.session_state and insight_id in st.session_state.cluster_insight_data:
@@ -1995,6 +2131,9 @@ def render_cluster_detailed_info(cluster, cluster_insights):
                             generated_at = insight.get('generated_at', '')
                             if generated_at:
                                 st.caption(f"🕐 Generated: {generated_at[:19]}")
+
+                        # Evidence & Belief (always visible)
+                        _render_evidence_and_belief(insight, insight_id)
 
                         # Show related paragraphs/source content if available
                         _render_insight_source_paragraphs(insight, insight_id)
@@ -2121,31 +2260,31 @@ def render_cluster_detailed_info(cluster, cluster_insights):
 
 def render_dream_canvas_placeholder():
     """Render placeholder when no cognitive map is available."""
-    
+
     st.markdown("### 🎨 Welcome to Dream Canvas")
-    
+
     st.markdown("""
-    **Dream Canvas** is your cognitive synthesis visualization tool that transforms your memory landscape 
+    **Dream Canvas** is your cognitive synthesis visualization tool that transforms your memory landscape
     into an interactive, visual representation of your knowledge and experiences.
-    
+
     #### 🌟 Features:
     - **Cognitive Landscape**: 2D/3D visualization of memory clusters
     - **Memory Clusters**: Automatic grouping of related memories
     - **Temporal Flow**: Time-based memory evolution
     - **Concept Networks**: Semantic relationship mapping
-    
+
     #### 🚀 Getting Started:
     1. Configure your visualization preferences above
     2. Click "🎨 Generate Dream Canvas" to create your cognitive map
     3. Explore your memory landscape interactively
-    
-    *Your memories will be processed using advanced dimensionality reduction and clustering algorithms 
+
+    *Your memories will be processed using advanced dimensionality reduction and clustering algorithms
     to reveal hidden patterns and connections in your knowledge.*
     """)
-    
+
     # Sample visualization
     st.markdown("#### 📊 Sample Cognitive Landscape")
-    
+
     # Create a sample plot
     np.random.seed(42)
     sample_data = pd.DataFrame({
@@ -2154,17 +2293,17 @@ def render_dream_canvas_placeholder():
         'cluster': np.random.choice(['Ideas', 'Knowledge', 'Experiences', 'Goals'], 50),
         'size': np.random.randint(5, 20, 50)
     })
-    
+
     fig = px.scatter(
-        sample_data, 
-        x='x', 
-        y='y', 
+        sample_data,
+        x='x',
+        y='y',
         color='cluster',
         size='size',
         title="Sample Memory Landscape",
         opacity=0.7
     )
-    
+
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -2232,12 +2371,38 @@ def render_synthesis_controls():
                         # Provide detailed feedback based on results
                         if result.insights_generated > 0:
                             st.success(f"✨ Synthesis complete! Generated {result.insights_generated} insights from {result.clusters_found} clusters.")
+                            st.info("💡 To view them, expand a cluster in 'Most Coherent Clusters' and click 📚 Show Insights.")
+                            # Prepare UI to show insights immediately
+                            st.session_state.show_insight_archive = True
+                            st.session_state.auto_expand_first_insight_cluster = True
                         elif result.clusters_found > 0:
                             st.warning(f"⚠️ Found {result.clusters_found} clusters but generated 0 insights. This may indicate:")
                             st.info("• Insight quality threshold is too high\n• LLM responses need improvement\n• Memory clusters lack sufficient content")
                             st.info("💡 Try running synthesis again or check the logs for more details.")
                         else:
                             st.warning("⚠️ No memory clusters found for synthesis. Try adding more conversations or documents to SAM's memory.")
+
+                        # Regenerate cognitive map with synthesis-aligned parameters for consistent cluster IDs
+                        try:
+                            logger.info("Regenerating cognitive map after synthesis (advanced controls)...")
+                            updated_cognitive_map = generate_cognitive_map(
+                                memory_store=memory_store,
+                                method="UMAP + HDBSCAN",
+                                time_range="All Time",
+                                n_components=2,
+                                min_cluster_size=8,
+                                perplexity=30,
+                                n_neighbors=15,
+                                clustering_eps=0.3,
+                                max_clusters=10,
+                                quality_threshold=0.5,
+                                clustering_min_samples=3,
+                                disable_kmeans_fallback=True
+                            )
+                            st.session_state.cognitive_map = updated_cognitive_map
+                            logger.info("Cognitive map updated with synthesis results (advanced controls)")
+                        except Exception as map_error:
+                            logger.warning(f"Failed to update cognitive map (advanced controls): {map_error}")
 
                         st.rerun()
 
@@ -2946,25 +3111,44 @@ def trigger_deep_research_engine(selected_insights):
                 for insight in selected_insights:
                     insight_text = insight.get('content', insight.get('insight', ''))
                     cluster_id = insight.get('cluster_id', 'Unknown')
+                    stable_insight_id = insight.get('insight_id')
 
-                    # Initialize Deep Research Strategy
-                    research_strategy = DeepResearchStrategy(insight_text)
+                    try:
+                        # Initialize Deep Research Strategy
+                        research_strategy = DeepResearchStrategy(insight_text)
 
-                    # Execute deep research
-                    result = research_strategy.execute_research()
+                        # Execute deep research
+                        result = research_strategy.execute_research()
+
+                        status_value = result.status.value if hasattr(result, 'status') else 'COMPLETED'
+                        arxiv_papers = result.arxiv_papers if hasattr(result, 'arxiv_papers') else []
+                        final_report = result.final_report if hasattr(result, 'final_report') else ''
+                        timestamp_val = result.timestamp if hasattr(result, 'timestamp') else datetime.now().isoformat()
+                        research_id_val = result.research_id if hasattr(result, 'research_id') else f"research_{int(time.time())}"
+                        original_insight_val = result.original_insight if hasattr(result, 'original_insight') else insight_text
+
+                    except Exception as e:
+                        logger.error(f"Deep research failed for insight_id={stable_insight_id}: {e}")
+                        status_value = 'FAILED'
+                        arxiv_papers = []
+                        final_report = ''
+                        timestamp_val = datetime.now().isoformat()
+                        research_id_val = f"research_{int(time.time())}"
+                        original_insight_val = insight_text
 
                     # Store result in session state
                     research_results.append({
-                        'research_id': result.research_id,
-                        'original_insight': result.original_insight,
+                        'research_id': research_id_val,
+                        'original_insight': original_insight_val,
                         'cluster_id': cluster_id,
-                        'final_report': result.final_report,
-                        'arxiv_papers': result.arxiv_papers,
-                        'status': result.status.value,
-                        'timestamp': result.timestamp,
-                        'quality_score': research_strategy._assess_research_quality(),
-                        'papers_analyzed': len(result.arxiv_papers),
-                        'iterations_completed': research_strategy.current_iteration
+                        'insight_id': stable_insight_id,
+                        'final_report': final_report,
+                        'arxiv_papers': arxiv_papers,
+                        'status': status_value,
+                        'timestamp': timestamp_val,
+                        'quality_score': research_strategy._assess_research_quality() if status_value != 'FAILED' else 0.0,
+                        'papers_analyzed': len(arxiv_papers),
+                        'iterations_completed': research_strategy.current_iteration if status_value != 'FAILED' else 0
                     })
 
                 # Store results in session state
@@ -2974,14 +3158,34 @@ def trigger_deep_research_engine(selected_insights):
                 st.session_state.deep_research_results.extend(research_results)
                 st.session_state.latest_deep_research = research_results
 
+                # Mark corresponding insights as completed/failed using stable insight_id and show toasts
+                try:
+                    completed_ids = {r.get('insight_id') for r in research_results if r.get('insight_id') and r.get('status') == 'COMPLETED'}
+                    failed_ids = {r.get('insight_id') for r in research_results if r.get('insight_id') and r.get('status') == 'FAILED'}
+
+                    for key, data in (st.session_state.get('cluster_insight_data') or {}).items():
+                        if key in completed_ids:
+                            insight_obj = data.get('insight') or {}
+                            insight_obj['research_status'] = 'completed'
+                            st.success(f"Research finished: {insight_obj.get('title', key)}")
+                        elif key in failed_ids:
+                            insight_obj = data.get('insight') or {}
+                            insight_obj['research_status'] = 'failed'
+                            st.error(f"Research failed: {insight_obj.get('title', key)}")
+                except Exception as _e:
+                    logger.debug(f"Could not set deep research completion status: {_e}")
+
                 # Add papers to vetting queue
                 try:
                     from sam.state.vetting_queue import get_vetting_queue_manager
                     vetting_manager = get_vetting_queue_manager()
 
                     total_papers_added = 0
+                    download_limit = int(st.session_state.get('deep_research_download_limit', 3))
                     for result in research_results:
-                        for paper in result['arxiv_papers']:
+                        # Only process top-K papers per insight
+                        papers = result['arxiv_papers'][:download_limit] if result.get('arxiv_papers') else []
+                        for paper in papers:
                             # Add paper to vetting queue with deep research context
                             paper_metadata = {
                                 'title': paper.get('title', 'Unknown Title'),
@@ -2996,8 +3200,45 @@ def trigger_deep_research_engine(selected_insights):
                                 }
                             }
 
-                            # Note: In a full implementation, we would download the paper
-                            # For now, we add the metadata to the queue
+                            # Download deep research paper to capture filename/local path
+                            local_path = None
+                            try:
+                                from sam.web_retrieval.tools.arxiv_tool import get_arxiv_tool
+                                arxiv_tool = get_arxiv_tool()
+                                # download expects arxiv_id and title in a dict like the search results
+                                dl = arxiv_tool._download_paper({
+                                    'arxiv_id': paper.get('arxiv_id'),
+                                    'title': paper.get('title')
+                                })
+                                if dl.get('success'):
+                                    local_path = dl.get('local_path')
+                            except Exception as _e:
+                                logger.debug(f"Deep Research download failed: {_e}")
+
+                            # Produce Evidence (LLM) and Bayesian update per paper for the matching insight
+                            try:
+                                stable_id = result.get('insight_id')
+                                if stable_id and 'cluster_insight_data' in st.session_state:
+                                    rec = st.session_state.cluster_insight_data.get(stable_id)
+                                    if rec:
+                                        insight_obj = rec.get('insight') or {}
+                                        ev = _llm_assess_evidence(
+                                            insight_obj.get('synthesized_text', insight_obj.get('content', '')),
+                                            {
+                                                'title': paper.get('title'),
+                                                'summary': paper.get('summary'),
+                                                'arxiv_id': paper.get('arxiv_id'),
+                                                'published': paper.get('published'),
+                                                'categories': paper.get('categories'),
+                                                'pdf_url': paper.get('pdf_url'),
+                                                'selection_score': paper.get('selection_score')
+                                            },
+                                            local_path
+                                        )
+                                        _apply_evidence_update(insight_obj, ev)
+                            except Exception as _e:
+                                logger.debug(f"Deep Research evidence update failed: {_e}")
+
                             total_papers_added += 1
 
                     # Update session state with completion info
@@ -3044,33 +3285,282 @@ def trigger_deep_research_engine(selected_insights):
 def generate_research_query(insight_text):
     """Generate an optimized research query from an insight."""
     try:
-        # Extract key terms from insight
         import re
+        text = (insight_text or '')
+        # Extract longer alphabetic tokens as keywords
+        terms = re.findall(r'\b[a-zA-Z]{4,}\b', text)
+        # Deduplicate preserving order
+        seen = set()
+        keywords = []
+        for t in terms:
+            tl = t.lower()
+            if tl not in seen:
+                seen.add(tl)
+                keywords.append(t)
+            if len(keywords) >= 8:
+                break
+        if keywords:
+            return ' '.join(keywords)
+        return text.strip()[:120]
+    except Exception:
+        return (insight_text or '')[:120]
 
-        # Remove common stop words and extract meaningful terms
-        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'}
+# --- Evidence & Belief Helpers ---
 
-        # Extract words (remove punctuation, convert to lowercase)
-        words = re.findall(r'\b[a-zA-Z]+\b', insight_text.lower())
+def _init_insight_belief_fields(insight: Dict[str, Any]):
+    """Ensure belief/evidence fields exist on the insight object."""
+    try:
+        if 'prior_confidence' not in insight:
+            insight['prior_confidence'] = float(insight.get('confidence_score', 0.5) or 0.5)
+        if 'belief_score' not in insight:
+            insight['belief_score'] = float(insight['prior_confidence'])
+        if 'evidence_log' not in insight:
+            insight['evidence_log'] = []
+    except Exception:
+        pass
 
-        # Filter out stop words and short words
-        meaningful_words = [word for word in words if word not in stop_words and len(word) > 3]
 
-        # Take top 5 most meaningful terms
-        key_terms = meaningful_words[:5]
+def _compute_paper_quality(paper_metadata: Dict[str, Any]) -> float:
+    """Heuristic quality score in [0,1]. Prefer selection_score if available."""
+    try:
+        sel = paper_metadata.get('selection_score')
+        if sel is not None:
+            # Assume selection_score roughly in 0..10 range; normalize conservatively
+            return max(0.0, min(1.0, float(sel) / 10.0))
+        # Fallback
+        return 0.7
+    except Exception:
+        return 0.7
 
-        # Create research query
-        if key_terms:
-            query = ' '.join(key_terms)
+
+def _assess_paper_against_insight(insight_text: str, paper_metadata: Dict[str, Any], local_path: Optional[str] = None) -> Dict[str, Any]:
+    """Quick heuristic stance/strength assessment and evidence packaging."""
+    import re
+    from pathlib import Path
+    text = (insight_text or '').lower()
+    title = (paper_metadata.get('title') or '').lower()
+    summary = (paper_metadata.get('summary') or '').lower()
+
+    # Simple keyword extraction
+    words = re.findall(r'\b[a-z]{4,}\b', text)
+    top_terms = list(dict.fromkeys(words))[:10]
+
+    overlap = sum(1 for t in top_terms if t in title or t in summary)
+    contradict_terms = ['not', 'fails', 'fail', 'contradict', 'against', 'however']
+    has_contradiction = any(ct in summary for ct in contradict_terms)
+
+    # Stance + strength
+    if has_contradiction and overlap >= 1:
+        stance = 'contradict'
+        strength = min(1.0, 0.4 + 0.1 * overlap)
+    elif overlap >= 2:
+        stance = 'support'
+        strength = min(1.0, 0.3 + 0.1 * overlap)
+    else:
+        stance = 'neutral'
+        strength = 0.2
+
+    quality = _compute_paper_quality(paper_metadata)
+
+    # Build evidence record with links
+    arxiv_id = paper_metadata.get('arxiv_id')
+    pdf_url = paper_metadata.get('pdf_url')
+    file_name = None
+    if local_path:
+        try:
+            file_name = Path(local_path).name
+        except Exception:
+            file_name = None
+
+    return {
+        'source': {
+            'paper_title': paper_metadata.get('title'),
+            'arxiv_id': arxiv_id,
+            'pdf_url': pdf_url,
+            'local_path': local_path,
+            'filename': file_name,
+            'published': paper_metadata.get('published'),
+            'categories': paper_metadata.get('categories')
+        },
+        'stance': stance,
+        'strength': float(strength),
+        'quality': float(quality),
+        'excerpt': '',
+        'rationale': 'Heuristic assessment based on keyword overlap.'
+    }
+
+
+def _bayesian_update_belief(insight: Dict[str, Any], evidence: Dict[str, Any], k: float = 1.5):
+    """Update belief_score using Bayesian odds and a likelihood ratio from evidence."""
+    import math
+    _init_insight_belief_fields(insight)
+    p = float(insight.get('belief_score', insight.get('prior_confidence', 0.5) or 0.5))
+    p = max(1e-6, min(1 - 1e-6, p))  # clamp
+
+    stance = evidence.get('stance', 'neutral')
+    strength = float(evidence.get('strength', 0.2) or 0.2)
+    quality = float(evidence.get('quality', 0.7) or 0.7)
+
+    sign = 0
+    if stance == 'support':
+        sign = +1
+    elif stance == 'contradict':
+        sign = -1
+
+    LR = math.exp(sign * k * strength * quality)
+    odds = p / (1 - p)
+    new_odds = odds * LR
+    posterior = new_odds / (1 + new_odds)
+
+
+def _insight_evidence_summary(insight: Dict[str, Any]) -> str:
+    """Return compact summary: Δbelief and counts S/C."""
+    try:
+        prior = float(insight.get('prior_confidence', insight.get('confidence_score', 0.5) or 0.5))
+        belief = float(insight.get('belief_score', prior))
+        delta = belief - prior
+        ev = insight.get('evidence_log', []) or []
+        s = sum(1 for e in ev if e.get('stance') == 'support')
+        c = sum(1 for e in ev if e.get('stance') == 'contradict')
+        arrow = '↑' if delta > 1e-6 else ('↓' if delta < -1e-6 else '→')
+        return f"{arrow}{delta:+.2f} • S:{s} C:{c}"
+    except Exception:
+        return ""
+
+
+def _llm_assess_evidence(insight_text: str, paper_metadata: Dict[str, Any], local_path: Optional[str] = None) -> Dict[str, Any]:
+    """Use LLM to assess stance, strength, excerpt, rationale from abstract/title/context and top sections."""
+    try:
+        from services.response_generator_service import get_response_generator_service, GenerationConfig
+        rg = get_response_generator_service()
+        # Try to load top sections if the paper has been ingested (by filename)
+        top_sections = []
+        try:
+            if local_path:
+                from memory.memory_vectorstore import get_memory_store
+                m = get_memory_store()
+                fname = local_path.split('/')[-1]
+                where = {"filename": {"$eq": fname}}
+                # Use enhanced retrieval if available; fallback to search_memories
+                try:
+                    results = m.enhanced_search_memories(insight_text, max_results=3, where_filter=where)
+                    top_sections = [r.chunk.content for r in results] if results else []
+                except Exception:
+                    basic = m.search_memories(insight_text, max_results=3, where_filter=where)
+                    top_sections = [r.chunk.content for r in basic] if basic else []
+        except Exception:
+            pass
+
+        title = paper_metadata.get('title', '')
+        abstract = paper_metadata.get('summary', '')
+        arxiv_id = paper_metadata.get('arxiv_id', '')
+        sections_text = "\n\n".join(top_sections[:3]) if top_sections else ""
+
+        prompt = (
+            "You are an evidence assessor. Given an insight and a paper (title + abstract + top sections), "
+            "decide if the paper supports, contradicts, or is neutral to the insight. "
+            "Return strict JSON with keys: stance (support|contradict|neutral), strength (0..1), "
+            "excerpt (<=280 chars from the abstract or section), rationale (<=200 chars).\n\n"
+            f"Insight:\n{insight_text}\n\n"
+            f"Paper Title: {title}\nArXiv: {arxiv_id}\nAbstract:\n{abstract}\n\n"
+            f"Top Sections (truncated):\n{sections_text[:1200]}\n\n"
+            "JSON:"
+        )
+
+        cfg = GenerationConfig(temperature=0.2, max_tokens=400)
+        raw = rg.generate_response(prompt, cfg)
+
+        import json
+        parsed = json.loads(raw.strip()) if raw else {}
+        stance = parsed.get('stance', 'neutral')
+        strength = float(parsed.get('strength', 0.3) or 0.3)
+        excerpt = parsed.get('excerpt', '')
+        rationale = parsed.get('rationale', '')
+
+    except Exception:
+        # Fallback to heuristic
+        assessed = _assess_paper_against_insight(insight_text, paper_metadata, local_path)
+        # Ensure excerpt/rationale keys exist
+        assessed.setdefault('excerpt', '')
+        assessed.setdefault('rationale', 'Heuristic fallback')
+        return assessed
+
+    # Build evidence dict with links
+    ev = {
+        'source': {
+            'paper_title': paper_metadata.get('title'),
+            'arxiv_id': paper_metadata.get('arxiv_id'),
+            'pdf_url': paper_metadata.get('pdf_url'),
+            'local_path': local_path,
+            'filename': (local_path.split('/')[-1] if local_path else None),
+            'published': paper_metadata.get('published'),
+            'categories': paper_metadata.get('categories')
+        },
+        'stance': stance,
+        'strength': float(max(0.0, min(1.0, strength))),
+        'quality': float(_compute_paper_quality(paper_metadata)),
+        'excerpt': excerpt,
+        'rationale': rationale
+    }
+    return ev
+
+
+def _apply_evidence_update(insight: Dict[str, Any], evidence: Dict[str, Any]):
+    """Apply Bayesian update and show a 'Belief updated' toast with delta."""
+    try:
+        prev = float(insight.get('belief_score', insight.get('prior_confidence', 0.5) or 0.5))
+        _bayesian_update_belief(insight, evidence)
+        new = float(insight.get('belief_score', prev))
+        delta = new - prev
+        arrow = '↑' if delta > 1e-6 else ('↓' if delta < -1e-6 else '→')
+        st.info(f"Belief updated {arrow}{delta:+.2f}")
+    except Exception as _e:
+        logger.debug(f"Belief update toast failed: {_e}")
+
+    insight['belief_score'] = float(max(0.0, min(1.0, posterior)))
+    # Append evidence
+    try:
+        insight.setdefault('evidence_log', []).append(evidence)
+    except Exception:
+        pass
+
+
+def _render_evidence_and_belief(insight: Dict[str, Any], insight_id: str):
+    """Always-visible Evidence & Belief section under each insight."""
+    _init_insight_belief_fields(insight)
+
+    st.markdown("---")
+    st.markdown("**📐 Evidence & Belief**")
+
+    prior = insight.get('prior_confidence', 0.5)
+    belief = insight.get('belief_score', prior)
+    st.caption(f"Belief: {belief:.2f} (prior {prior:.2f})")
+
+    evidence_log = insight.get('evidence_log', [])
+    if not evidence_log:
+        st.caption("No evidence yet. New research will populate here.")
+        return
+
+    # Small, focused list of recent evidence
+    for ev in evidence_log[-3:][::-1]:
+        src = ev.get('source', {})
+        title = src.get('paper_title') or 'Unknown Title'
+        arxiv_id = src.get('arxiv_id') or 'N/A'
+        pdf_url = src.get('pdf_url')
+        filename = src.get('filename')
+
+        header = f"{title} (arXiv:{arxiv_id})"
+        if pdf_url:
+            st.markdown(f"- [{header}]({pdf_url})" + (f" — file: `{filename}`" if filename else ""))
         else:
-            # Fallback to first few words of insight
-            query = ' '.join(insight_text.split()[:5])
+            st.markdown(f"- {header}" + (f" — file: `{filename}`" if filename else ""))
 
-        return query
+        stance = ev.get('stance', 'neutral')
+        strength = ev.get('strength', 0.0)
+        st.caption(f"Stance: {stance} • Strength: {strength:.2f}")
 
-    except Exception as e:
-        # Fallback to simple truncation
-        return insight_text[:50]
+
+
 
 def render_deep_research_results():
     """Display Deep Research results and reports."""
@@ -3656,7 +4146,8 @@ def _render_insight_source_paragraphs(insight: Dict[str, Any], insight_id: str):
             if source_chunks:
                 # Display actual source chunks if available
                 for i, chunk in enumerate(source_chunks[:5], 1):
-                    with st.expander(f"📄 Source {i}: {chunk.get('source', 'Unknown')}", expanded=False):
+                    show_chunk_key = f"show_{insight_id}_source_{i}"
+                    if st.checkbox(f"📄 Source {i}: {chunk.get('source', 'Unknown')}", key=show_chunk_key):
                         content = chunk.get('content', '')
                         if content:
                             st.markdown(f"**Content:**\n\n{content}")
@@ -3677,15 +4168,14 @@ def _render_insight_source_paragraphs(insight: Dict[str, Any], insight_id: str):
                     if cluster_memories:
                         st.markdown("**📋 Related Cluster Content:**")
                         for i, memory in enumerate(cluster_memories[:3], 1):
-                            with st.expander(f"📄 Memory {i}: {memory.get('source', 'Unknown')}", expanded=False):
+                            show_mem_key = f"show_{insight_id}_memory_{i}"
+                            if st.checkbox(f"📄 Memory {i}: {memory.get('source', 'Unknown')}", key=show_mem_key):
                                 content = memory.get('content', '')
                                 if content:
-                                    # Truncate very long content
                                     if len(content) > 1000:
                                         content = content[:1000] + "..."
                                     st.markdown(f"**Content:**\n\n{content}")
 
-                                    # Show metadata
                                     if memory.get('memory_type'):
                                         st.caption(f"Type: {memory.get('memory_type')}")
                                     if memory.get('timestamp'):

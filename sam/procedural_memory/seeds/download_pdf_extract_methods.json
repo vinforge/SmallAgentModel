@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "download_pdf_extract_methods",
+  "description": "Download a PDF and extract Methods section.",
+  "intent": {
+    "signature_text": "Extract Methods from PDF",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["pdf", "extraction"],
+    "domain": "documents"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [{ "name": "pdf_url", "type": "url" }],
+  "steps": [
+    { "id": "get", "title": "Download PDF", "tool": "HttpGetTool", "args": { "url": "${pdf_url}" }, "save_as": "pdf_bytes" },
+    { "id": "extract", "title": "Extract Methods", "tool": "SummarizeTool", "args": { "text": "Extract the 'Methods' section from this PDF content: ${pdf_bytes}" }, "save_as": "methods" }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "len(${methods}) > 0" }]
+}
+

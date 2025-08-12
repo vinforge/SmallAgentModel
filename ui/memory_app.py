@@ -7003,7 +7003,10 @@ def render_dpo_analytics_tab(dpo_manager, feedback_handler, user_id):
 
     # Get comprehensive stats
     user_stats = dpo_manager.get_user_stats(user_id)
-    feedback_stats = feedback_handler.get_statistics()
+    # Use the DPO-aware stats method from the feedback handler
+    feedback_stats = {}
+    if hasattr(feedback_handler, 'get_dpo_statistics'):
+        feedback_stats = feedback_handler.get_dpo_statistics(user_id)
 
     # Quality distribution
     preferences = dpo_manager.episodic_store.get_dpo_preferences(user_id, 0.0, False, 1000)

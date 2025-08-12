@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "find_publication_date",
+  "description": "Extract publication date from a blog post URL.",
+  "intent": {
+    "signature_text": "Find publication date of a blog post from URL",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "metadata"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed", "author_model": "spec" },
+  "slots": [{ "name": "url", "type": "url" }],
+  "steps": [
+    { "id": "get", "title": "Fetch page", "tool": "HttpGetTool", "args": { "url": "${url}" }, "save_as": "html" },
+    { "id": "extract", "title": "Extract text", "tool": "ArticleExtractorTool", "args": { "html": "${html}" }, "save_as": "text" },
+    { "id": "date", "title": "Regex publication date", "tool": "SummarizeTool", "args": { "text": "Find publication date in: ${text}" }, "save_as": "publication_date" }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "${publication_date} != None" }]
+}
+

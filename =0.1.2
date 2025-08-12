@@ -1,0 +1,91 @@
+Collecting trl
+  Using cached trl-0.21.0-py3-none-any.whl.metadata (11 kB)
+Collecting peft
+  Using cached peft-0.17.0-py3-none-any.whl.metadata (14 kB)
+Requirement already satisfied: datasets in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (4.0.0)
+Collecting evaluate
+  Using cached evaluate-0.4.5-py3-none-any.whl.metadata (9.5 kB)
+Collecting rouge-score
+  Using cached rouge_score-0.1.2.tar.gz (17 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting accelerate>=1.4.0 (from trl)
+  Downloading accelerate-1.10.0-py3-none-any.whl.metadata (19 kB)
+Collecting transformers>=4.55.0 (from trl)
+  Downloading transformers-4.55.0-py3-none-any.whl.metadata (39 kB)
+Requirement already satisfied: numpy>=1.17 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (1.26.4)
+Requirement already satisfied: packaging>=20.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (23.2)
+Requirement already satisfied: psutil in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (5.9.8)
+Requirement already satisfied: pyyaml in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (6.0.1)
+Requirement already satisfied: torch>=1.13.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (2.7.1)
+Requirement already satisfied: tqdm in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (4.66.4)
+Requirement already satisfied: safetensors in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (0.5.3)
+Requirement already satisfied: huggingface_hub>=0.25.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from peft) (0.32.4)
+Requirement already satisfied: filelock in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from datasets) (3.14.0)
+Requirement already satisfied: pyarrow>=15.0.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from datasets) (20.0.0)
+Requirement already satisfied: dill<0.3.9,>=0.3.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from datasets) (0.3.8)
+Requirement already satisfied: pandas in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from datasets) (2.3.1)
+Requirement already satisfied: requests>=2.32.2 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from datasets) (2.32.4)
+Requirement already satisfied: xxhash in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from datasets) (3.5.0)
+Requirement already satisfied: multiprocess<0.70.17 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from datasets) (0.70.16)
+Requirement already satisfied: fsspec<=2025.3.0,>=2023.1.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (2025.3.0)
+Requirement already satisfied: aiohttp!=4.0.0a0,!=4.0.0a1 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (3.12.13)
+Requirement already satisfied: absl-py in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from rouge-score) (2.1.0)
+Requirement already satisfied: nltk in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from rouge-score) (3.9.1)
+Requirement already satisfied: six>=1.14.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from rouge-score) (1.16.0)
+Requirement already satisfied: aiohappyeyeballs>=2.5.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (2.6.1)
+Requirement already satisfied: aiosignal>=1.1.2 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (1.3.1)
+Requirement already satisfied: attrs>=17.3.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (23.2.0)
+Requirement already satisfied: frozenlist>=1.1.1 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (1.4.1)
+Requirement already satisfied: multidict<7.0,>=4.5 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (6.0.5)
+Requirement already satisfied: propcache>=0.2.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (0.3.2)
+Requirement already satisfied: yarl<2.0,>=1.17.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (1.20.1)
+Requirement already satisfied: idna>=2.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from yarl<2.0,>=1.17.0->aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2025.3.0,>=2023.1.0->datasets) (2.10)
+Requirement already satisfied: typing-extensions>=3.7.4.3 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from huggingface_hub>=0.25.0->peft) (4.14.1)
+Requirement already satisfied: hf-xet<2.0.0,>=1.1.2 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from huggingface_hub>=0.25.0->peft) (1.1.3)
+Requirement already satisfied: charset_normalizer<4,>=2 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from requests>=2.32.2->datasets) (3.4.2)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from requests>=2.32.2->datasets) (2.5.0)
+Requirement already satisfied: certifi>=2017.4.17 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from requests>=2.32.2->datasets) (2025.7.14)
+Requirement already satisfied: sympy>=1.13.3 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from torch>=1.13.0->peft) (1.14.0)
+Requirement already satisfied: networkx in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from torch>=1.13.0->peft) (3.5)
+Requirement already satisfied: jinja2 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from torch>=1.13.0->peft) (3.1.6)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from sympy>=1.13.3->torch>=1.13.0->peft) (1.3.0)
+Collecting huggingface_hub>=0.25.0 (from peft)
+  Downloading huggingface_hub-0.34.4-py3-none-any.whl.metadata (14 kB)
+Requirement already satisfied: regex!=2019.12.17 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from transformers>=4.55.0->trl) (2024.5.15)
+Requirement already satisfied: tokenizers<0.22,>=0.21 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from transformers>=4.55.0->trl) (0.21.1)
+Requirement already satisfied: MarkupSafe>=2.0 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from jinja2->torch>=1.13.0->peft) (2.1.5)
+Requirement already satisfied: click in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from nltk->rouge-score) (8.2.1)
+Requirement already satisfied: joblib in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from nltk->rouge-score) (1.4.2)
+Requirement already satisfied: python-dateutil>=2.8.2 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from pandas->datasets) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from pandas->datasets) (2025.2)
+Requirement already satisfied: tzdata>=2022.7 in /Users/vinsoncornejo/anaconda3/envs/autogen/lib/python3.11/site-packages (from pandas->datasets) (2024.1)
+Downloading trl-0.21.0-py3-none-any.whl (511 kB)
+Downloading peft-0.17.0-py3-none-any.whl (503 kB)
+Downloading evaluate-0.4.5-py3-none-any.whl (84 kB)
+Downloading accelerate-1.10.0-py3-none-any.whl (374 kB)
+Downloading transformers-4.55.0-py3-none-any.whl (11.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.3/11.3 MB 51.4 MB/s  0:00:00
+Downloading huggingface_hub-0.34.4-py3-none-any.whl (561 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 561.5/561.5 kB 22.9 MB/s  0:00:00
+Building wheels for collected packages: rouge-score
+  Building wheel for rouge-score (setup.py): started
+  Building wheel for rouge-score (setup.py): finished with status 'done'
+  Created wheel for rouge-score: filename=rouge_score-0.1.2-py3-none-any.whl size=24932 sha256=7e30144188412594e36d3bf1176902c43b855c386d4b6aee782595d7066bdbd1
+  Stored in directory: /Users/vinsoncornejo/Library/Caches/pip/wheels/1e/19/43/8a442dc83660ca25e163e1bd1f89919284ab0d0c1475475148
+Successfully built rouge-score
+Installing collected packages: rouge-score, huggingface_hub, accelerate, transformers, trl, peft, evaluate
+  Attempting uninstall: huggingface_hub
+    Found existing installation: huggingface-hub 0.32.4
+    Uninstalling huggingface-hub-0.32.4:
+      Successfully uninstalled huggingface-hub-0.32.4
+  Attempting uninstall: accelerate
+    Found existing installation: accelerate 0.34.2
+    Uninstalling accelerate-0.34.2:
+      Successfully uninstalled accelerate-0.34.2
+  Attempting uninstall: transformers
+    Found existing installation: transformers 4.52.4
+    Uninstalling transformers-4.52.4:
+      Successfully uninstalled transformers-4.52.4
+
+Successfully installed accelerate-1.10.0 evaluate-0.4.5 huggingface_hub-0.34.4 peft-0.17.0 rouge-score-0.1.2 transformers-4.55.0 trl-0.21.0

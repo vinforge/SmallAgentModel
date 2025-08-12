@@ -620,7 +620,17 @@ class SAMPlannerIntegration:
         if not self.planner:
             raise ValueError("Planner not initialized. Call create_planner() first.")
 
-        # Get current SAM context
+        # Retrieve procedural memory and inject guidance before planning
+        try:
+            from sam.procedural_memory.retrieval import retrieve_top1, inject_into_context
+            payload = retrieve_top1(task_description)
+            if payload:
+                inject_into_context(self.context_manager, payload)
+        except Exception:
+            # Do not fail planning if retrieval fails
+            pass
+
+        # Get current SAM context (now may include procedural_guidance)
         initial_context = self.context_manager.get_planning_context()
 
         # Execute planning

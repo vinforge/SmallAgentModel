@@ -608,37 +608,20 @@ def render_main_sam_application():
     sam_initialized = st.session_state.get('sam_initialized', False)
     is_unlocked = st.session_state.security_manager.is_unlocked()
 
-    # Only initialize if security manager is unlocked and SAM not yet initialized
+    # Auto-initialize SAM components once unlocked (no manual button)
     if not sam_initialized and is_unlocked:
-        # Prominent initialization section
-        st.markdown("---")
-        st.markdown("### 🚀 **Unlock Full SAM AI Capabilities**")
-        st.markdown("**Current Status:** Basic interface loaded - AI features require initialization")
-
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.markdown("**🎯 Click below to enable:**")
-            st.markdown("• 🤖 Advanced AI Chat • 📚 Document Intelligence • 🧠 Memory Integration • 🔍 Smart Search")
-
-            if st.button("🚀 Initialize Full SAM AI Components", type="primary", use_container_width=True, help="Enable all AI features and unlock SAM's full potential"):
-                with st.spinner("🔧 Initializing SAM AI components... This may take a moment."):
-                    try:
-                        initialize_secure_sam()
-                        st.session_state.sam_initialized = True
-                        st.success("✅ SAM AI components initialized successfully!")
-                        st.balloons()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Failed to initialize SAM: {e}")
-                        logger.error(f"SAM initialization failed: {e}")
-                        import traceback
-                        st.code(traceback.format_exc())
-                        st.warning("⚠️ Continuing with basic interface...")
-                        st.session_state.sam_initialized = False
-
-        st.markdown("---")
-        st.session_state.sam_initialized = False
-
+        with st.spinner("🔧 Initializing SAM AI components... This may take a moment."):
+            try:
+                initialize_secure_sam()
+                st.session_state.sam_initialized = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Failed to initialize SAM: {e}")
+                logger.error(f"SAM initialization failed: {e}")
+                import traceback
+                st.code(traceback.format_exc())
+                st.warning("⚠️ Continuing with basic interface...")
+                st.session_state.sam_initialized = False
     # Check if Memory Control Center should be shown FIRST (before SAM initialization)
     if st.session_state.get('show_memory_control_center', False):
         # Add a button to return to normal interface
@@ -761,7 +744,7 @@ def initialize_secure_sam():
             encryption_activated = st.session_state.secure_memory_store.activate_encryption()
             if encryption_activated:
                 logger.info("✅ Encryption activated for existing memory store")
-    
+
     # Initialize embedding manager
     if 'embedding_manager' not in st.session_state:
         try:
@@ -1022,10 +1005,13 @@ def render_messages_from_sam_alert():
 
                 # Action button for insights
                 if st.button("🧠 View New Insights", key="view_insights_alert", use_container_width=True):
-                    # Clear the flag and navigate to Memory Analytics
+                    # Clear the flag and navigate directly to Dream Canvas insights
                     orchestrator.clear_new_insights_flag()
                     st.session_state.show_memory_control_center = True
-                    st.session_state.memory_page_override = "📊 Memory Analytics"
+                    st.session_state.memory_page_override = "🧠🎨 Dream Canvas"
+                    # Prepare Dream Canvas to immediately show insights
+                    st.session_state.show_insight_archive = True
+                    st.session_state.auto_expand_first_insight_cluster = True
                     st.rerun()
 
             # Pending vetting notification
@@ -2549,6 +2535,23 @@ This summary was generated from the uploaded document content."""
             elif message["role"] == "assistant":
                 render_feedback_system(i)
 
+
+                # Debug panel: show learning adjustments applied to this response
+                try:
+                    dbg = st.session_state.get('last_learning_debug', {})
+                    with st.expander("🧪 Use learned corrections – debug", expanded=False):
+                        used = dbg.get('used_learned_corrections', False)
+                        applied = dbg.get('applied_adjustments', [])
+                        insights_count = dbg.get('insights_count', 0)
+                        st.markdown(f"**Used learned corrections:** {'✅ Yes' if used else '❌ No'}")
+                        if applied:
+                            st.markdown("**Applied adjustments:** " + ", ".join(applied))
+                        else:
+                            st.markdown("**Applied adjustments:** none")
+                        st.markdown(f"**Learning insights referenced:** {insights_count}")
+                except Exception:
+                    pass
+
     # Document upload reminder
     st.markdown("💡 **Tip**: Upload documents using the '📁 Upload Documents to Chat' section above for instant analysis and discussion!")
 
@@ -2791,19 +2794,19 @@ This summary was generated from the uploaded document content."""
 def render_document_interface():
     """Render the document upload and processing interface."""
     st.header("📚 Secure Document Processing")
-    
+
     # File upload
     uploaded_file = st.file_uploader(
         "Upload a document for SAM to learn from",
         type=['pdf', 'txt', 'docx', 'md'],
         help="Uploaded documents will be encrypted and processed securely"
     )
-    
+
     if uploaded_file is not None:
         with st.spinner("🔐 Processing document securely..."):
             try:
                 result = process_secure_document(uploaded_file)
-                
+
                 if result['success']:
                     st.success("✅ Document processed successfully!")
 
@@ -2884,10 +2887,10 @@ def render_document_interface():
                         st.json(result)
                 else:
                     st.error(f"❌ Document processing failed: {result.get('error', 'Unknown error')}")
-                    
+
             except Exception as e:
                 st.error(f"❌ Document processing error: {e}")
-    
+
     # Enhanced Document Library with Discussion Features
     st.subheader("📖 Enhanced Document Library")
     st.markdown("*Explore and discuss your uploaded documents with SAM*")
@@ -3154,7 +3157,7 @@ def render_document_interface():
                     insights_prompt = "What are the most valuable insights and key takeaways from all my documents combined?"
                     st.session_state.document_discussion_prompt = insights_prompt
                     st.rerun()
-            
+
     except Exception as e:
         st.warning(f"Could not load document statistics: {e}")
 
@@ -3185,6 +3188,8 @@ def render_integrated_memory_control_center():
         from memory.memory_reasoning import get_memory_reasoning_engine
         from config.agent_mode import get_mode_controller
 
+        from ui.memory_app import render_personalized_tuner as render_personalized_tuner_standalone
+
         # Initialize components
         memory_store = get_memory_store()
         command_processor = get_command_processor()
@@ -3213,6 +3218,7 @@ def render_integrated_memory_control_center():
             "📁 Bulk Ingestion",
             "🔑 API Key Manager",
             "🧠🎨 Dream Canvas",
+            "🧠 Personalized Tuner",
             "🏆 Memory Ranking",
             "📊 Memory Analytics",
             "🧠⚡ SLP Analytics",
@@ -3275,6 +3281,9 @@ def render_integrated_memory_control_center():
             render_api_key_manager()
         elif memory_page == "🧠🎨 Dream Canvas":
             render_dream_canvas_integrated()
+        elif memory_page == "🧠 Personalized Tuner":
+            # Reuse the standalone tuner UI inside the integrated control center
+            render_personalized_tuner_standalone()
         elif memory_page == "🏆 Memory Ranking":
             render_memory_ranking_integrated()
         elif memory_page == "📊 Memory Analytics":
@@ -3317,7 +3326,7 @@ def render_basic_memory_interface():
     st.subheader("🔍 Basic Memory Search")
     st.markdown("*For advanced memory management, use the Memory Control Center above*")
     search_query = st.text_input("Search your encrypted memories...")
-    
+
     if search_query:
         with st.spinner("🔍 Searching encrypted memories..."):
             try:
@@ -3372,7 +3381,7 @@ def render_basic_memory_interface():
             except Exception as e:
                 logger.error(f"Memory search failed: {e}")
                 st.error(f"❌ Memory search failed: {e}")
-    
+
     # Memory statistics
     st.subheader("📊 Memory Statistics")
     try:
@@ -3935,36 +3944,36 @@ def render_vetting_interface():
 def render_security_dashboard():
     """Render the security dashboard."""
     st.header("🛡️ Security Dashboard")
-    
+
     # Get security status
     try:
         security_status = st.session_state.secure_memory_store.get_security_status()
         session_info = st.session_state.security_manager.get_session_info()
-        
+
         # Security overview
         st.subheader("🔐 Security Overview")
-        
+
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             status_color = "🟢" if security_status['encryption_active'] else "🔴"
             st.metric("Encryption Status", f"{status_color} {'Active' if security_status['encryption_active'] else 'Inactive'}")
-        
+
         with col2:
             st.metric("Application State", session_info['state'].title())
-        
+
         with col3:
             st.metric("Session Time", f"{session_info['time_remaining']}s")
-        
+
         with col4:
             st.metric("Failed Attempts", f"{session_info['failed_attempts']}/{session_info['max_attempts']}")
-        
+
         # Detailed security information
         with st.expander("🔍 Detailed Security Information"):
             st.json(security_status)
-        
+
         # Security actions
         st.subheader("🔧 Security Actions")
-        
+
         col1, col2 = st.columns(2)
         with col1:
             if st.button("⏱️ Extend Session", use_container_width=True, key="dashboard_extend_session_button"):
@@ -3977,7 +3986,7 @@ def render_security_dashboard():
                 st.session_state.security_manager.lock_application()
                 st.success("Application locked!")
                 st.rerun()
-                
+
     except Exception as e:
         st.error(f"❌ Could not load security dashboard: {e}")
 
@@ -5025,38 +5034,58 @@ def enhance_response_with_feedback_learning(prompt: str) -> dict:
         return {}
 
 def apply_feedback_enhancements(response: str, context: dict) -> str:
-    """Apply feedback-driven enhancements to a response."""
+    """Apply feedback-driven enhancements to a response and record debug info."""
     try:
         if not context or not response:
             return response
 
         enhanced_response = response
         adjustments = context.get('response_adjustments', {})
+        applied = []
 
         # Apply style adjustments based on user preferences
         if adjustments.get('preferred_style') == 'formal':
             enhanced_response = make_response_more_formal(enhanced_response)
+            applied.append('preferred_style=formal')
         elif adjustments.get('preferred_style') == 'casual':
             enhanced_response = make_response_more_casual(enhanced_response)
+            applied.append('preferred_style=casual')
 
         # Apply length adjustments
         if adjustments.get('preferred_length') == 'shorter':
             enhanced_response = make_response_shorter(enhanced_response)
+            applied.append('preferred_length=shorter')
         elif adjustments.get('preferred_length') == 'longer':
             enhanced_response = make_response_longer(enhanced_response)
+            applied.append('preferred_length=longer')
 
         # Add examples if user prefers them
         if adjustments.get('wants_examples'):
             enhanced_response = add_examples_to_response(enhanced_response)
+            applied.append('wants_examples')
 
         # Add sources if user prefers them
         if adjustments.get('wants_sources'):
             enhanced_response = add_source_attribution(enhanced_response)
+            applied.append('wants_sources')
 
-        # Add learning insights as a subtle note
+        # Add learning insights as a subtle note (tracked only)
         insights = context.get('learning_insights', [])
         if insights and len(insights) > 0:
             logger.info(f"Applied {len(insights)} learning insights to response")
+
+        # Record debug info in session state for UI panel
+        try:
+            if 'last_learning_debug' not in st.session_state:
+                st.session_state.last_learning_debug = {}
+            st.session_state.last_learning_debug = {
+                'used_learned_corrections': bool(applied or insights),
+                'applied_adjustments': applied,
+                'insights_count': len(insights),
+                'adjustments': adjustments,
+            }
+        except Exception:
+            pass
 
         return enhanced_response
 
@@ -10555,6 +10584,11 @@ def generate_final_response(user_question: str, force_local: bool = False) -> st
         except Exception as e:
             logger.warning(f"Failed to complete cognitive distillation reasoning trace: {e}")
 
+        # Apply feedback-driven enhancements to the final response
+        try:
+            final_response = apply_feedback_enhancements(final_response, response_context)
+        except Exception as e:
+            logger.warning(f"Feedback enhancement failed at final stage: {e}")
         return final_response
 
     except Exception as e:
@@ -11051,7 +11085,7 @@ def process_secure_document(uploaded_file) -> dict:
         else:
             # For other file types, you'd use appropriate parsers
             text_content = f"Document: {uploaded_file.name} (Binary content - {len(content)} bytes)"
-        
+
         # PHASE 1: Save file temporarily for multimodal processing
         import tempfile
         import os
@@ -11222,7 +11256,7 @@ temp_path: {temp_file_path if temp_file_path else 'N/A'}"""
                     logger.debug(f"Cleaned up temporary file: {temp_file_path}")
                 except Exception as e:
                     logger.warning(f"Could not clean up temporary file: {e}")
-        
+
     except Exception as e:
         logger.error(f"Document processing failed: {e}")
         return {

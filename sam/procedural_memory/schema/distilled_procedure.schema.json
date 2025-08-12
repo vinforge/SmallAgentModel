@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sam.ai/schemas/distilled_procedure.json",
+  "title": "Distilled Procedure",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "name",
+    "semver",
+    "intent",
+    "slots",
+    "steps",
+    "success_criteria"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["1.0"] },
+    "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "intent": {
+      "type": "object",
+      "required": ["signature_text", "embedding_model"],
+      "properties": {
+        "signature_text": { "type": "string" },
+        "embedding_model": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "domain": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "scope": { "type": "string", "enum": ["user", "team", "global"] },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "origin": { "type": "string", "enum": ["auto_distill_success", "auto_adjustment", "human_seed"] },
+        "author_model": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$" },
+          "type": { "type": "string", "enum": ["string", "number", "boolean", "url", "path", "datetime", "enum", "json"] },
+          "enum": { "type": "array", "items": { "type": "string" } },
+          "description": { "type": "string" },
+          "required": { "type": "boolean", "default": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assertion" }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "postconditions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assertion" }
+    },
+    "success_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/assertion" }
+    },
+    "tools_required": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "times_used": { "type": "integer", "minimum": 0 },
+        "success_count": { "type": "integer", "minimum": 0 },
+        "failure_count": { "type": "integer", "minimum": 0 },
+        "last_used_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "deprecation": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["active", "deprecated", "archived"], "default": "active" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "x_ext": { "type": "object", "description": "Reserved for forward-compatible extensions." }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "step": {
+      "type": "object",
+      "required": ["id", "title", "tool", "args"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
+        "title": { "type": "string" },
+        "tool": { "type": "string" },
+        "args": {
+          "type": "object",
+          "description": "Arguments may include template placeholders like ${slot_name}.",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "null" },
+              { "type": "array", "items": { "type": ["string", "number", "boolean", "null"] } },
+              { "type": "object" }
+            ]
+          }
+        },
+        "condition": {
+          "type": "string",
+          "description": "A simple boolean expression over slots/variables, e.g., ${use_rss} == true"
+        },
+        "save_as": {
+          "type": "string",
+          "description": "Variable name to store primary output for later steps",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+        },
+        "expects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/assertion" }
+        },
+        "retries": { "type": "integer", "minimum": 0, "default": 0 },
+        "on_fail": {
+          "type": "object",
+          "properties": {
+            "policy": { "type": "string", "enum": ["continue", "retry", "fallback", "abort"], "default": "retry" },
+            "fallback_to_step_id": { "type": "string" },
+            "message": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "assertion": {
+      "type": "object",
+      "required": ["type", "expr"],
+      "properties": {
+        "type": { "type": "string", "enum": ["pre", "post", "expect", "success"] },
+        "expr": { "type": "string", "description": "Boolean expression over variables/slots/observations" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

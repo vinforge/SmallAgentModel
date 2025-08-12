@@ -1,0 +1,15 @@
+{
+  "tasks": [
+    { "id": 1, "file": "fetch_and_summarize.json", "name": "Fetch and summarize article" },
+    { "id": 2, "file": "find_publication_date.json", "name": "Find publication date" },
+    { "id": 3, "file": "find_rss_or_recent_posts.json", "name": "Find RSS or recent posts" },
+    { "id": 4, "file": "build_index_and_answer_query.json", "name": "Build index and answer query" },
+    { "id": 5, "file": "compare_prices_two_vendors.json", "name": "Compare prices across vendors" },
+    { "id": 6, "file": "download_pdf_extract_methods.json", "name": "Download PDF and extract Methods" },
+    { "id": 7, "file": "scrape_table_to_csv.json", "name": "Scrape table to CSV" },
+    { "id": 8, "file": "find_company_email.json", "name": "Find company email" },
+    { "id": 9, "file": "find_quickstart_snippet_and_save.json", "name": "Find quickstart snippet and save" },
+    { "id": 10, "file": "resilient_fetch_title_and_intro.json", "name": "Resilient fetch title and intro" }
+  ]
+}
+

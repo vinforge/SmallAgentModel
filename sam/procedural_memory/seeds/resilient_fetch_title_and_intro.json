@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "resilient_fetch_title_and_intro",
+  "description": "Resiliently fetch a JS-heavy page and return title and first paragraph.",
+  "intent": {
+    "signature_text": "Fetch page (HTTP fallback to headless) and extract title/intro",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "resiliency"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [{ "name": "url", "type": "url" }],
+  "steps": [
+    { "id": "http", "title": "Try HTTP", "tool": "HttpGetTool", "args": { "url": "${url}" }, "save_as": "html", "on_fail": { "policy": "fallback", "fallback_to_step_id": "headless" } },
+    { "id": "headless", "title": "Headless render fallback", "tool": "HeadlessBrowserTool", "args": { "url": "${url}" }, "save_as": "html" },
+    { "id": "extract", "title": "Extract title and first paragraph", "tool": "ArticleExtractorTool", "args": { "html": "${html}" }, "save_as": "title_intro" }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "${title_intro} != None" }]
+}
+

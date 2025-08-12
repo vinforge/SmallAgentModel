@@ -15,7 +15,12 @@ evaluate>=0.4.0,<1.0.0               # Model evaluation metrics
 rouge-score>=0.1.2,<1.0.0            # ROUGE metrics for text evaluation
 
 # Memory optimization for training
-deepspeed>=0.12.0,<1.0.0             # DeepSpeed for memory-efficient training (optional)
+# deepspeed>=0.12.0,<1.0.0           # DeepSpeed for memory-efficient training (optional - disabled on macOS due to compatibility issues)
 
 # Note: Core dependencies (transformers, torch, accelerate) are already in requirements.txt
 # This file contains only the additional dependencies needed for DPO fine-tuning
+#
+# Installation Notes:
+# - DeepSpeed is disabled on macOS due to compatibility issues
+# - All essential DPO functionality works without DeepSpeed
+# - For macOS users: pip install trl peft datasets evaluate rouge-score tensorboard

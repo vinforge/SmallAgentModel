@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "find_rss_or_recent_posts",
+  "description": "Discover a site's RSS/Atom feed; otherwise list recent posts.",
+  "intent": {
+    "signature_text": "Identify RSS/Atom feed and list latest items or fallback to recent posts",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "feeds"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [{ "name": "url", "type": "url" }],
+  "steps": [
+    { "id": "try_rss", "title": "Try RSSReader", "tool": "RSSReaderTool", "args": { "url": "${url}" }, "save_as": "items" },
+    { "id": "fallback_index", "title": "Fallback: index then query", "tool": "CocoIndexTool", "args": { "seed_url": "${url}", "depth": 1 }, "save_as": "index_id" },
+    { "id": "query_index", "title": "Query for recent posts", "tool": "CocoQueryTool", "args": { "index_id": "${index_id}", "query": "recent posts" }, "save_as": "items" }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "len(${items}) > 0" }]
+}
+

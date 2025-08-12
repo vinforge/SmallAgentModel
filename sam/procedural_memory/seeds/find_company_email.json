@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "find_company_email",
+  "description": "Find a company's contact email and source link.",
+  "intent": {
+    "signature_text": "Find contact email on a website",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "contact"],
+    "domain": "browsing"
+  },
+  "provenance": { "origin": "human_seed" },
+  "slots": [{ "name": "site_url", "type": "url" }],
+  "steps": [
+    { "id": "search", "title": "Search for contact page", "tool": "WebSearchTool", "args": { "query": "contact email site:${site_url}" }, "save_as": "results" },
+    { "id": "summ", "title": "Extract email and page link", "tool": "SummarizeTool", "args": { "text": "Find contact email and the page URL from results: ${results}" }, "save_as": "contact_info" }
+  ],
+  "success_criteria": [{ "type": "success", "expr": "${contact_info} != None" }]
+}
+

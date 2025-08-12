@@ -61,8 +61,8 @@ class EncryptedChromaStore:
         try:
             self.collection = self.client.get_collection(name=collection_name)
             logger.info(f"✅ Connected to existing encrypted collection: {collection_name}")
-        except ValueError:
-            # Collection doesn't exist, create it
+        except Exception:
+            # Collection doesn't exist or cannot be fetched, create it
             self.collection = self.client.create_collection(
                 name=collection_name,
                 metadata={"encrypted": True, "created_at": time.time()}

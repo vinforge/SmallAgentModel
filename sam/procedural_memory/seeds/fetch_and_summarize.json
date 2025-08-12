@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "semver": "0.1.0",
+  "name": "fetch_article_and_summarize",
+  "description": "Given a URL, fetch the page, extract main text, summarize to N bullets.",
+  "intent": {
+    "signature_text": "Summarize an article from a given URL",
+    "embedding_model": "text-embedding-3-large",
+    "tags": ["web", "summarization"],
+    "domain": "browsing"
+  },
+  "scope": "user",
+  "provenance": { "origin": "human_seed", "author_model": "spec" },
+  "slots": [
+    { "name": "url", "type": "url", "description": "Target page URL" },
+    { "name": "bullet_count", "type": "number", "description": "Number of bullets", "required": false }
+  ],
+  "preconditions": [
+    { "type": "pre", "expr": "is_reachable(${url})", "message": "URL must be reachable" }
+  ],
+  "steps": [
+    {
+      "id": "fetch",
+      "title": "Fetch page",
+      "tool": "HttpGetTool",
+      "args": { "url": "${url}", "timeout_ms": 15000 },
+      "save_as": "html",
+      "expects": [{ "type": "expect", "expr": "status_code == 200" }],
+      "retries": 1,
+      "on_fail": { "policy": "fallback", "fallback_to_step_id": "fetch_headless" }
+    },
+    {
+      "id": "fetch_headless",
+      "title": "Render in browser if static fetch fails",
+      "tool": "HeadlessBrowserTool",
+      "args": { "url": "${url}" },
+      "save_as": "html"
+    },
+    {
+      "id": "extract",
+      "title": "Extract main content",
+      "tool": "ArticleExtractorTool",
+      "args": { "html": "${html}" },
+      "save_as": "text",
+      "expects": [{ "type": "expect", "expr": "len(${text}) > 500" }]
+    },
+    {
+      "id": "summarize",
+      "title": "Summarize to bullets",
+      "tool": "SummarizeTool",
+      "args": { "text": "${text}", "bullets": "${bullet_count}" },
+      "save_as": "summary"
+    }
+  ],
+  "postconditions": [{ "type": "post", "expr": "len(${summary}) > 0" }],
+  "success_criteria": [{ "type": "success", "expr": "len(${summary}) > 0" }],
+  "tools_required": ["HttpGetTool", "HeadlessBrowserTool", "ArticleExtractorTool", "SummarizeTool"],
+  "deprecation": { "status": "active" }
+}
+
