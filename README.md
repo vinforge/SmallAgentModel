@@ -27,6 +27,7 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
 ## 🚀 **Quick Start**
 
 ### **Prerequisites**
+
 - **Python 3.10+** (tested with Python 3.12)
 - **4GB+ RAM** recommended
 - **Modern web browser**
@@ -39,12 +40,14 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
 #### **🪟 Windows / 🍎 macOS**
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/vinforge/SmallAgentModel.git
    cd SmallAgentModel
    ```
 
 2. **Install dependencies (choose one):**
+
    ```bash
    # Core/runtime only
    pip install -r requirements.txt
@@ -59,18 +62,23 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
    ```
 
 3. **Set up AI models (first time only):**
+
    ```bash
    python setup_models.py
    ```
+
    *Downloads DeepSeek-R1 Qwen 8B model (~4.3GB) and sentence-transformers for document processing*
 
 4. **Set up your Master Password:**
+
    ```bash
    python setup_encryption.py
    ```
+
    *This will also offer to set up models if you skipped step 3*
 
 5. **Start SAM:**
+
    ```bash
    python start_sam.py
    ```
@@ -80,51 +88,61 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
 **⚠️ Modern Linux systems require virtual environments due to PEP 668 restrictions.**
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/vinforge/SmallAgentModel.git
    cd SmallAgentModel
    ```
 
 2. **Create and activate virtual environment:**
+
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
 
 3. **Upgrade pip and install core dependencies:**
+
    ```bash
    pip install --upgrade pip
    pip install streamlit==1.42.0 cryptography>=41.0.0,<43.0.0 numpy pandas requests "PyPDF2>=3.0.0,<4.0.0"
    ```
 
 4. **Install optional packages for enhanced PDF processing:**
+
    ```bash
    pip install langchain faiss-cpu
    ```
+
    *Note: If these fail, SAM will use fallback PDF processing (still functional)*
 
 5. **Set up AI models:**
+
    ```bash
    python setup_models.py
    ```
 
 6. **Set up encryption:**
+
    ```bash
    python setup_encryption.py
    ```
 
 7. **Start SAM:**
+
    ```bash
    python start_sam.py
    ```
 
 **💡 To restart SAM later:**
+
 ```bash
 source .venv/bin/activate
 python start_sam.py
 ```
 
 #### **🌐 Access SAM**
+
 - Navigate to `http://localhost:8502`
 - Enter your Master Password
 - Start chatting with SAM!
@@ -136,11 +154,13 @@ python start_sam.py
 ### **PEP 668 "Externally Managed Environment" Error**
 
 If you see this error:
-```
+
+```text
 error: externally-managed-environment
 ```
 
 **Solution**: Use a virtual environment (required on modern Linux):
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -150,6 +170,7 @@ pip install streamlit==1.42.0 cryptography numpy pandas requests
 ### **Missing python3-venv**
 
 If virtual environment creation fails:
+
 ```bash
 sudo apt update
 sudo apt install python3-venv python3-dev build-essential
@@ -158,6 +179,7 @@ sudo apt install python3-venv python3-dev build-essential
 ### **Permission Issues**
 
 Never use `sudo pip install` - always use virtual environments:
+
 ```bash
 # ❌ Don't do this
 sudo pip install streamlit
@@ -172,13 +194,17 @@ pip install streamlit
 
 ## 📚 **Documentation**
 
+
+
 ### **Essential Guides**
+
 - [📖 Master Password Setup Guide](docs/MASTER_PASSWORD_SETUP_GUIDE.md) - Complete setup instructions
 - [🚀 Quick Start Guide](docs/QUICK_START.md) - Get up and running fast
 - [🔧 Installation Guide](docs/SETUP_GUIDE.md) - Detailed installation instructions
 - [🐳 Docker Deployment](docs/DOCKER_DEPLOYMENT_GUIDE.md) - Run SAM in Docker
 
 ### **Advanced Features**
+
 - [📁 Bulk Document Ingestion](docs/BULK_INGESTION_GUIDE.md) - Process multiple documents
 - [🔑 API Key Management](docs/API_KEY_MANAGER_GUIDE.md) - Manage external API keys
 - [🛡️ Security Features](docs/ENCRYPTION_SETUP_GUIDE.md) - Advanced security configuration
@@ -196,6 +222,7 @@ SAM is designed with **privacy-first** principles:
 - **📝 Audit Trail**: Complete logging of all security operations
 
 ### **What's Encrypted?**
+
 - All conversation history
 - Uploaded documents and their content
 - Memory and knowledge storage
