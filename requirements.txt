@@ -48,8 +48,6 @@ selenium>=4.15.0,<5.0.0
 # Vector Database & ML
 faiss-cpu>=1.7.4,<2.0.0
 chromadb>=0.4.0,<1.0.0
-transformers>=4.30.0,<5.0.0
-torch>=2.0.0,<3.0.0
 scikit-learn>=1.3.0,<2.0.0
 
 # Hybrid Linear Attention Support (SAM 2.0)
@@ -70,10 +68,6 @@ argon2-cffi>=23.1.0,<24.0.0
 
 # Database Features
 sqlalchemy>=2.0.0,<3.0.0
-
-# Development Tools (optional)
-pytest>=7.4.0,<8.0.0
-black>=23.7.0,<24.0.0
 
 # SAM Model Foundry Dependencies
 transformers>=4.40.0,<5.0.0

@@ -1,19 +1,22 @@
 # SAM (Small Agent Model) Makefile
 # Sprint 13: Deployment and Development Automation
 
-.PHONY: help install start stop status clean test docker-build docker-run backup restore
+.PHONY: help install install-all install-dpo install-dev start stop status clean test docker-build docker-run backup restore
 
 # Default target
 help:
 	@echo "🤖 SAM (Small Agent Model) - Available Commands"
 	@echo "================================================"
 	@echo "Development:"
-	@echo "  install     - Install dependencies"
-	@echo "  start       - Start SAM locally"
-	@echo "  stop        - Stop SAM processes"
-	@echo "  status      - Show system status"
-	@echo "  test        - Run tests"
-	@echo "  clean       - Clean temporary files"
+	@echo "  install       - Install core/runtime dependencies"
+	@echo "  install-all   - Install core + DPO add-ons"
+	@echo "  install-dpo   - Install DPO add-ons (plus core)"
+	@echo "  install-dev   - Install dev tools (pytest, black)"
+	@echo "  start         - Start SAM locally"
+	@echo "  stop          - Stop SAM processes"
+	@echo "  status        - Show system status"
+	@echo "  test          - Run tests"
+	@echo "  clean         - Clean temporary files"
 	@echo ""
 	@echo "Docker:"
 	@echo "  docker-build - Build Docker image"
@@ -40,6 +43,22 @@ install:
 	@echo "📦 Installing SAM dependencies..."
 	pip install -r requirements.txt
 	@echo "✅ Dependencies installed"
+
+
+install-all:
+	@echo "📦 Installing SAM core + DPO dependencies..."
+	pip install -r requirements_all.txt
+	@echo "✅ All dependencies installed"
+
+install-dpo:
+	@echo "📦 Installing SAM DPO add-ons..."
+	pip install -r requirements.txt -r requirements_dpo.txt
+	@echo "✅ DPO add-ons installed"
+
+install-dev:
+	@echo "🛠 Installing development tools..."
+	pip install -r requirements_dev.txt
+	@echo "✅ Dev tools installed"
 
 start:
 	@echo "🚀 Starting SAM..."

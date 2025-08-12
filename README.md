@@ -44,9 +44,18 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
    cd SmallAgentModel
    ```
 
-2. **Install dependencies:**
+2. **Install dependencies (choose one):**
    ```bash
+   # Core/runtime only
    pip install -r requirements.txt
+
+   # Core + DPO add-ons
+   pip install -r requirements.txt -r requirements_dpo.txt
+   # or
+   pip install -r requirements_all.txt
+
+   # Dev tools (linters/tests)
+   pip install -r requirements_dev.txt
    ```
 
 3. **Set up AI models (first time only):**
