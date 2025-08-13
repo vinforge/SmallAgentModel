@@ -855,8 +855,8 @@ def _find_pdf_file_path(source: str, filename: str) -> str:
     except Exception:
         return None
 
-def _render_cluster_deep_research_controls():
-    """Render Deep Research controls for selected cluster insights."""
+def _render_cluster_deep_research_controls(cluster_id: str):
+    """Render Deep Research controls for selected cluster insights (unique keys per cluster)."""
     if 'selected_cluster_insights' not in st.session_state or not st.session_state.selected_cluster_insights:
         return
 
@@ -868,11 +868,20 @@ def _render_cluster_deep_research_controls():
     col1, col2, col3 = st.columns([2, 2, 1])
 
     with col1:
-        if st.button(f"🚀 Start Deep Research", type="primary", help=f"Research {selected_count} selected insights"):
+        if st.button(
+            "🚀 Start Deep Research",
+            key=f"start_deep_research_{cluster_id}",
+            type="primary",
+            help=f"Research {selected_count} selected insights"
+        ):
             _execute_cluster_deep_research()
 
     with col2:
-        if st.button("🗑️ Clear Selection", help="Clear all selected insights"):
+        if st.button(
+            "🗑️ Clear Selection",
+            key=f"clear_selection_{cluster_id}",
+            help="Clear all selected insights"
+        ):
             st.session_state.selected_cluster_insights.clear()
             if 'cluster_insight_data' in st.session_state:
                 st.session_state.cluster_insight_data.clear()
@@ -2141,8 +2150,8 @@ def render_cluster_detailed_info(cluster, cluster_insights):
                         # Show Deep Research results if available
                         _render_deep_research_results_for_insight(insight_id)
 
-            # Deep Research controls
-            _render_cluster_deep_research_controls()
+            # Deep Research controls (pass cluster id for unique keys)
+            _render_cluster_deep_research_controls(cluster.id)
 
             # Add button to hide insights
             if st.button("🔽 Hide Insights", key=f"hide_insights_{cluster.id}"):

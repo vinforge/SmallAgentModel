@@ -172,7 +172,8 @@ class V2StorageManager:
                       text_content: str,
                       token_embeddings: np.ndarray,
                       fde_vector: np.ndarray,
-                      metadata: Optional[Dict[str, Any]] = None) -> bool:
+                      metadata: Optional[Dict[str, Any]] = None,
+                      chunk_metadata: Optional[List[Dict[str, Any]]] = None) -> bool:
         """
         Store a document in the v2 storage system.
         
@@ -222,7 +223,16 @@ class V2StorageManager:
             metadata_path = doc_path / "metadata.json"
             with open(metadata_path, 'w') as f:
                 json.dump(record.to_dict(), f, indent=2)
-            
+
+            # Optionally save enriched chunk metadata for grounding/citations
+            if chunk_metadata:
+                chunk_meta_path = doc_path / "chunk_metadata.json"
+                with open(chunk_meta_path, 'w') as cf:
+                    json.dump({
+                        'document_id': document_id,
+                        'chunks': chunk_metadata
+                    }, cf, indent=2)
+
             # Store FDE vector in ChromaDB
             self.collection.add(
                 embeddings=[fde_vector.tolist()],
@@ -259,10 +269,13 @@ class V2StorageManager:
             
             with open(metadata_path, 'r') as f:
                 data = json.load(f)
-            
+                # Backward-compat: chunk_metadata may be absent
+                data.setdefault('metadata', {})
+                # no-op here; we store chunk_metadata alongside metadata.json separately
+
             record = V2DocumentRecord.from_dict(data)
             logger.debug(f"📂 Document retrieved: {document_id}")
-            
+
             return record
             
         except Exception as e:

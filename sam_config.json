@@ -39,7 +39,7 @@
   "models_directory": "models",
   "cache_directory": "cache",
   "retrieval_pipeline": {
-    "version": "v1_chunking",
+    "version": "v2_muvera",
     "v1_settings": {
       "chunk_size": 1000,
       "chunk_overlap": 200,

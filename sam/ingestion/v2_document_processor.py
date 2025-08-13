@@ -204,38 +204,58 @@ class V2DocumentProcessor:
             return False, "", f"DOCX extraction failed: {str(e)}"
     
     def _create_chunks(self, text: str) -> List[str]:
-        """Create text chunks for processing."""
+        """Create text chunks for processing (text only)."""
+        return [c for c, _, _ in self._create_chunks_with_spans(text)]
+
+    def _create_chunks_with_spans(self, text: str) -> List[tuple]:
+        """
+        Create text chunks along with their [start, end) character spans in the full text.
+        Returns list of tuples: (chunk_text, start_idx, end_idx)
+        """
         if len(text) <= self.chunk_size:
-            return [text]
-        
-        chunks = []
+            return [(text, 0, len(text))]
+
+        chunks_with_spans: List[tuple] = []
         start = 0
-        
+
         while start < len(text):
-            end = start + self.chunk_size
-            
+            end = min(start + self.chunk_size, len(text))
+
             # Try to break at sentence boundaries
             if end < len(text):
                 # Look for sentence endings within the last 100 characters
                 search_start = max(start, end - 100)
                 sentence_end = -1
-                
-                for i in range(end, search_start, -1):
-                    if text[i] in '.!?':
+
+                # Ensure indices are within bounds
+                for i in range(end - 1, search_start - 1, -1):
+                    ch = text[i]
+                    if ch in '.!?':
                         sentence_end = i + 1
                         break
-                
+
                 if sentence_end > 0:
                     end = sentence_end
-            
-            chunk = text[start:end].strip()
+
+            raw_chunk = text[start:end]
+            chunk = raw_chunk.strip()
+            # Adjust start/end to trimmed positions to keep spans accurate
+            # Compute left and right trims
+            left_trim = len(raw_chunk) - len(raw_chunk.lstrip())
+            right_trim = len(raw_chunk) - len(raw_chunk.rstrip())
+            adj_start = start + left_trim
+            adj_end = end - right_trim
+
             if chunk:
-                chunks.append(chunk)
-            
+                chunks_with_spans.append((chunk, adj_start, adj_end))
+
             # Move start position with overlap
-            start = end - self.chunk_overlap if end < len(text) else end
-        
-        return chunks
+            if end < len(text):
+                start = max(adj_end - self.chunk_overlap, adj_end)
+            else:
+                start = adj_end
+
+        return chunks_with_spans
     
     def process_document(self, 
                         file_path: str,
@@ -300,10 +320,65 @@ class V2DocumentProcessor:
             
             logger.info(f"📄 Extracted {len(text_content)} characters")
             
-            # Create chunks
-            chunks = self._create_chunks(text_content)
-            logger.info(f"🧩 Created {len(chunks)} chunks")
-            
+            # Create chunks with spans
+            chunks_with_spans = self._create_chunks_with_spans(text_content)
+            chunks = [c for c, _, _ in chunks_with_spans]
+            logger.info(f"🧩 Created {len(chunks)} chunks with char spans")
+
+            # Derive simple page mapping using PyPDF2 (best-effort, optional)
+            page_maps = []  # list of dicts: {page_number, start_idx, end_idx}
+            try:
+                import PyPDF2
+                # Attempt to rebuild per-page text to align spans
+                with open(file_path, 'rb') as pf:
+                    page_texts = []
+                    if hasattr(PyPDF2, 'PdfReader'):
+                        reader = PyPDF2.PdfReader(pf)
+                        for page in reader.pages:
+                            page_texts.append((page.extract_text() or "") + "\n")
+                    else:
+                        reader = PyPDF2.PdfFileReader(pf)
+                        for i in range(reader.numPages):
+                            page = reader.getPage(i)
+                            page_texts.append((page.extractText() or "") + "\n")
+                    # Build doc-wide index mapping
+                    offset = 0
+                    for i, ptxt in enumerate(page_texts, start=1):
+                        plen = len(ptxt)
+                        page_maps.append({
+                            'page_number': i,
+                            'start_idx': offset,
+                            'end_idx': offset + plen
+                        })
+                        offset += plen
+            except Exception:
+                # If PyPDF2 mapping fails, leave page_maps empty
+                pass
+
+            # Build enriched chunk metadata list
+            enriched_chunks_meta: List[Dict[str, Any]] = []
+            total_chunks = len(chunks)
+            for idx, (chunk_text, start_idx, end_idx) in enumerate(chunks_with_spans):
+                # Compute page spans this chunk overlaps
+                page_spans = []
+                if page_maps:
+                    for pm in page_maps:
+                        overlap_start = max(start_idx, pm['start_idx'])
+                        overlap_end = min(end_idx, pm['end_idx'])
+                        if overlap_start < overlap_end:
+                            page_spans.append({
+                                'page_number': pm['page_number'],
+                                'page_char_start': overlap_start - pm['start_idx'],
+                                'page_char_end': overlap_end - pm['start_idx']
+                            })
+                enriched_chunks_meta.append({
+                    'chunk_index': idx,
+                    'total_chunks': total_chunks,
+                    'doc_char_start': start_idx,
+                    'doc_char_end': end_idx,
+                    'page_spans': page_spans
+                })
+
             # Process the full document with multi-vector embeddings
             embedding_result = self.embedder.embed_document(text_content, doc_id=document_id)
             if not embedding_result:
@@ -369,7 +444,8 @@ class V2DocumentProcessor:
                         'compression_ratio': fde_result.compression_ratio,
                         'processing_time': fde_result.processing_time
                     }
-                }
+                },
+                chunk_metadata=enriched_chunks_meta
             )
             
             if not storage_success:

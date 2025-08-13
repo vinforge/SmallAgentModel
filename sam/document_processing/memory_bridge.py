@@ -73,9 +73,13 @@ class DocumentMemoryBridge:
                 if not chunk_content.strip():
                     continue
                 
+                # Ensure a document_id is present for downstream citations
+                derived_doc_id = base_metadata.get('document_id') or Path(pdf_name).stem
+
                 chunk_metadata = {
                     **base_metadata,
                     'document_name': pdf_name,
+                    'document_id': derived_doc_id,
                     'chunk_index': i,
                     'content_type': 'pdf_document',
                     'source_type': 'uploaded_document',
@@ -149,7 +153,8 @@ class DocumentMemoryBridge:
                         bridge_success = self.store_document_in_memory(pdf_name, chunks, {
                             'original_filename': filename,
                             'session_id': session_id,
-                            'processing_method': 'proven_pdf_with_bridge'
+                            'processing_method': 'proven_pdf_with_bridge',
+                            'document_id': Path(filename or pdf_path).stem
                         })
                         
                         if bridge_success:

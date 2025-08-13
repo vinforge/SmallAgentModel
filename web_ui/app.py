@@ -58,7 +58,57 @@ except ImportError as e:
     require_unlock = lambda f: f
     optional_security = lambda f: f
     get_secure_memory_store = None
+
+# Simple PDF viewer route (serves original file and accepts page param for front-end to anchor)
+@app.route('/viewer')
+@optional_security
+def viewer():
+    try:
+        doc_id = request.args.get('doc')
+        page = request.args.get('page')  # optional
+        if not doc_id:
+            return jsonify({'error': 'Missing doc parameter'}), 400
+        # Load v2 metadata to locate original file
+        meta_path = Path('uploads') / doc_id / 'metadata.json'
+        if not meta_path.exists():
+            return jsonify({'error': f'metadata not found for {doc_id}'}), 404
+        meta = json.loads(meta_path.read_text())
+        file_path = meta.get('file_path') or ''
+        if not file_path or not os.path.exists(file_path):
+            # Fallback to uploads path if file was moved
+            candidate = Path('uploads') / doc_id / meta.get('filename', '')
+            if candidate.exists():
+                file_path = str(candidate)
+            else:
+                return jsonify({'error': 'Original file not found'}), 404
+        # For now, serve the raw file; a front-end can use the page param to anchor.
+        directory = os.path.dirname(file_path)
+        filename = os.path.basename(file_path)
+        resp = send_from_directory(directory, filename)
+        # Hint header for page param that a client-side PDF viewer could use
+        if page:
+            resp.headers['X-Viewer-Page'] = str(page)
+        return resp
+    except Exception as e:
+        logger.error(f"Viewer error: {e}")
+        return jsonify({'error': str(e)}), 500
+
     create_security_routes = lambda app: None
+
+@app.route('/view')
+@optional_security
+def view_document():
+    try:
+        doc_id = request.args.get('doc')
+        page = request.args.get('page', type=int, default=1)
+        if not doc_id:
+            return jsonify({'error': 'Missing doc parameter'}), 400
+        # Reuse the raw file via /viewer; the template uses PDF.js to render and handle paging
+        return render_template('pdf_viewer.html', doc_id=doc_id, page=page)
+    except Exception as e:
+        logger.error(f"View error: {e}")
+        return jsonify({'error': str(e)}), 500
+
     inject_security_context = lambda: {}
     vetting_bp = None
 
@@ -70,7 +120,7 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {
-    'txt', 'md', 'pdf', 'docx', 'html', 'htm', 
+    'txt', 'md', 'pdf', 'docx', 'html', 'htm',
     'py', 'js', 'java', 'cpp', 'c'
 }
 
@@ -508,18 +558,18 @@ def chat():
     try:
         data = request.get_json()
         message = data.get('message', '').strip()
-        
+
         if not message:
             return jsonify({'error': 'Empty message'}), 400
-        
+
         # Initialize session if needed
         if 'conversation_id' not in session:
             session['conversation_id'] = str(uuid.uuid4())
-        
+
         # Check for special commands
         if message.startswith('/'):
             return handle_command(message)
-        
+
         # Generate response using SAM
         response_data = generate_sam_response(message)
 
@@ -563,7 +613,7 @@ def chat():
                 'has_thoughts': False,
                 'thought_blocks': []
             })
-        
+
     except Exception as e:
         logger.error(f"Error in chat: {e}")
         return jsonify({'error': str(e)}), 500
@@ -573,14 +623,14 @@ def handle_command(command):
     try:
         cmd_parts = command[1:].split()
         cmd = cmd_parts[0].lower()
-        
+
         if cmd == 'status':
             stats = get_system_status()
             return jsonify({
                 'response': f"📊 **System Status**\n\n{format_status(stats)}",
                 'type': 'status'
             })
-        
+
         elif cmd == 'search' and len(cmd_parts) > 1:
             query = ' '.join(cmd_parts[1:])
             results = search_multimodal_content(query)
@@ -588,7 +638,7 @@ def handle_command(command):
                 'response': format_search_results(results),
                 'type': 'search'
             })
-        
+
         elif cmd == 'summarize' and len(cmd_parts) > 1:
             topic = ' '.join(cmd_parts[1:])
             summary_result = generate_smart_summary(topic)
@@ -616,7 +666,7 @@ def handle_command(command):
                 'response': f"Unknown command: {cmd}. Type `/help` for available commands.",
                 'type': 'error'
             })
-            
+
     except Exception as e:
         logger.error(f"Error handling command: {e}")
         return jsonify({'error': str(e)}), 500
@@ -1240,6 +1290,12 @@ def generate_enhanced_document_response(message, document_memories):
                     source = getattr(memory, 'source', 'unknown')
                     similarity = getattr(memory, 'similarity_score', 0.0)
 
+                # Extract metadata robustly
+                if hasattr(memory, 'chunk'):
+                    mem_metadata = getattr(memory.chunk, 'metadata', {}) or {}
+                else:
+                    mem_metadata = getattr(memory, 'metadata', {}) or {}
+
                 # Extract clean source name
                 clean_source = extract_clean_source_name(source)
                 sources.add(clean_source)
@@ -1248,14 +1304,39 @@ def generate_enhanced_document_response(message, document_memories):
                 confidence_scores.append(similarity)
 
                 # Store detailed source information for citations
-                source_details.append({
+                citation_note = None
+                anchor_candidate = None
+                try:
+                    from sam.utils.citation_utils import try_format_citation_for_chunk
+                    citation_note = try_format_citation_for_chunk(content, mem_metadata)
+                    if citation_note:
+                        # Try to prepare an anchor URL if the UI has a viewer
+                        # Example formats: /viewer?doc={document_id}&page={n} or /view_document/{id}?page={n}
+                        doc_id = mem_metadata.get('document_id')
+                        if doc_id:
+                            import re as _re
+                            m = _re.search(r"p\.\s*(\d+)", citation_note)
+                            if m:
+                                page_num = m.group(1)
+                                anchor_candidate = f"/view?doc={doc_id}&page={page_num}"
+                except Exception:
+                    citation_note = None
+
+                sd = {
                     'name': clean_source,
                     'similarity': similarity,
-                    'content_preview': content[:100] + "..." if len(content) > 100 else content
-                })
+                    'content_preview': content[:100] + "..." if len(content) > 100 else content,
+                    'citation': citation_note
+                }
+                if anchor_candidate:
+                    sd['anchor_candidate'] = anchor_candidate
+                source_details.append(sd)
 
                 # Add content with citation marker
-                context_parts.append(f"[Source: {clean_source}] {content}")
+                if citation_note:
+                    context_parts.append(f"[Source: {clean_source} {citation_note}] {content}")
+                else:
+                    context_parts.append(f"[Source: {clean_source}] {content}")
 
             context_text = "\n\n".join(context_parts)
 
@@ -1966,10 +2047,10 @@ def search_multimodal_content(query):
     try:
         if not multimodal_pipeline:
             return []
-        
+
         results = multimodal_pipeline.search_multimodal_content(query, top_k=5)
         return results
-        
+
     except Exception as e:
         logger.error(f"Error searching content: {e}")
         return []
@@ -1982,17 +2063,17 @@ def get_system_status():
             'vector_store_status': 'Connected' if vector_manager else 'Not available',
             'multimodal_pipeline_status': 'Available' if multimodal_pipeline else 'Not available'
         }
-        
+
         if vector_manager:
             vector_stats = vector_manager.get_stats()
             status['total_chunks'] = vector_stats.get('total_chunks', 0)
-        
+
         if multimodal_pipeline:
             processing_stats = multimodal_pipeline.get_processing_stats()
             status.update(processing_stats)
-        
+
         return status
-        
+
     except Exception as e:
         logger.error(f"Error getting status: {e}")
         return {'error': str(e)}
@@ -2012,22 +2093,22 @@ def format_search_results(results):
     """Format search results for display."""
     if not results:
         return "No results found."
-    
+
     lines = [f"🔍 **Found {len(results)} results:**\n"]
-    
+
     for i, result in enumerate(results, 1):
         similarity = result.get('similarity_score', 0)
         content_type = result.get('content_type', 'unknown')
         is_multimodal = result.get('is_multimodal', False)
-        
+
         lines.append(f"**{i}.** {content_type.title()} Content (Score: {similarity:.3f})")
         if is_multimodal:
             lines.append("   🎨 Multimodal content")
-        
+
         preview = result.get('text', '')[:150]
         lines.append(f"   📝 {preview}...")
         lines.append("")
-    
+
     return "\n".join(lines)
 
 def get_help_text():
