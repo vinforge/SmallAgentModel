@@ -142,8 +142,14 @@ class AnswerSynthesizer:
             for i, attribution in enumerate(synthesized.source_attributions[:5], 1):
                 source_icon = self._get_source_icon(attribution.source_type)
                 confidence_bar = self._create_confidence_bar(attribution.confidence)
+                # Optional clickable anchor if provided
+                anchor = attribution.metadata.get('anchor_candidate') if hasattr(attribution, 'metadata') and isinstance(attribution.metadata, dict) else None
+                if anchor:
+                    name_part = f"[{attribution.source_name}]({anchor})"
+                else:
+                    name_part = attribution.source_name
                 response_parts.append(
-                    f"{i}. {source_icon} **{attribution.source_name}** {confidence_bar}\n"
+                    f"{i}. {source_icon} **{name_part}** {confidence_bar}\n"
                     f"   _{attribution.content_preview[:100]}..._"
                 )
         

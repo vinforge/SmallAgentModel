@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document Viewer</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #0b0e14; color: #eaeef2; }
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px; background: #101521; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 0 rgba(255,255,255,0.06); }
+    .toolbar button, .toolbar input { background: #1a2233; color: #eaeef2; border: 1px solid #2a3550; border-radius: 6px; padding: 6px 10px; }
+    .toolbar input { width: 60px; text-align: center; }
+    .container { display: flex; justify-content: center; padding: 12px; }
+    #viewer { background: #0f1422; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .hint { padding: 8px 12px; font-size: 12px; color: #9fb0ca; }
+    a { color: #8ab4f8; }
+  </style>
+  <!-- PDF.js from CDN -->
+  <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.js"></script>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="prev">◀ Prev</button>
+    <button id="next">Next ▶</button>
+    <span>Page</span>
+    <input id="page_num" type="number" min="1" value="1"/>
+    <span id="page_count">/ ?</span>
+    <span class="hint">Use /view?doc={{ doc_id }}&page={{ page or 1 }}</span>
+  </div>
+  <div class="container">
+    <canvas id="viewer"></canvas>
+  </div>
+
+  <script>
+    (function(){
+      const params = new URLSearchParams(window.location.search);
+      const docId = params.get('doc') || '{{ doc_id|e }}';
+      const startPage = parseInt(params.get('page') || '{{ page or 1 }}', 10) || 1;
+      const pdfUrl = `/viewer?doc=${encodeURIComponent(docId)}`;
+
+      const canvas = document.getElementById('viewer');
+      const ctx = canvas.getContext('2d');
+      const pageNumInput = document.getElementById('page_num');
+      const pageCountEl = document.getElementById('page_count');
+      const btnPrev = document.getElementById('prev');
+      const btnNext = document.getElementById('next');
+
+      let pdfDoc = null;
+      let pageNum = startPage;
+      let pageRendering = false;
+      let pageNumPending = null;
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.js';
+
+      function renderPage(num) {
+        pageRendering = true;
+        pdfDoc.getPage(num).then(function(page) {
+          const viewport = page.getViewport({ scale: 1.6 });
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          const renderContext = { canvasContext: ctx, viewport: viewport };
+          const renderTask = page.render(renderContext);
+
+          renderTask.promise.then(function () {
+            pageRendering = false;
+            pageNumInput.value = num;
+            if (pageNumPending !== null) {
+              renderPage(pageNumPending);
+              pageNumPending = null;
+            }
+          });
+        });
+      }
+
+      function queueRenderPage(num) {
+        if (pageRendering) {
+          pageNumPending = num;
+        } else {
+          renderPage(num);
+        }
+      }
+
+      function onPrevPage() {
+        if (pageNum <= 1) return;
+        pageNum--; queueRenderPage(pageNum);
+      }
+
+      function onNextPage() {
+        if (pageNum >= pdfDoc.numPages) return;
+        pageNum++; queueRenderPage(pageNum);
+      }
+
+      btnPrev.addEventListener('click', onPrevPage);
+      btnNext.addEventListener('click', onNextPage);
+      pageNumInput.addEventListener('change', function() {
+        let p = parseInt(this.value, 10) || 1;
+        p = Math.min(Math.max(1, p), pdfDoc.numPages);
+        pageNum = p; queueRenderPage(pageNum);
+      });
+
+      pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+        pdfDoc = pdf;
+        pageCountEl.textContent = `/ ${pdfDoc.numPages}`;
+        pageNum = Math.min(Math.max(1, startPage), pdfDoc.numPages);
+        pageNumInput.value = pageNum;
+        renderPage(pageNum);
+      }).catch(err => {
+        console.error('PDF load error', err);
+        document.body.insertAdjacentHTML('beforeend', `<div class="hint">Failed to load PDF: ${err}</div>`);
+      });
+    })();
+  </script>
+</body>
+</html>
+

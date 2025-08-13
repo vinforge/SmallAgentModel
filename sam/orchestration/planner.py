@@ -525,16 +525,21 @@ class DynamicPlanner:
 
         # Enhanced tool selection logic (matching the Tool Selection Guide)
 
-        # Financial data queries - use FinancialDataTool
-        if any(term in query_lower for term in [
+        # Guard: avoid financial tool for document summarization/analysis queries
+        doc_summarization_context = any(t in query_lower for t in [
+            "summarize", "summary of", ".pdf", "document", "paper", "report"
+        ])
+
+        # Financial data queries - use FinancialDataTool (stricter triggers)
+        if (not doc_summarization_context) and any(term in query_lower for term in [
             "market cap", "market capitalization", "stock price", "share price",
             "financial data", "revenue", "earnings", "valuation", "worth",
-            "cost", "price", "value", "trading", "current price", "today",
+            "cost", "price", "trading", "current price",
             "stock", "shares", "equity", "investment", "finance", "financial"
         ]):
             if "FinancialDataTool" in self._registered_skills:
                 plan.append("FinancialDataTool")
-                reasoning_parts.append("Added FinancialDataTool for financial data lookup")
+                reasoning_parts.append("Added FinancialDataTool for financial data lookup (strict match)")
 
         # News queries - use NewsApiTool
         elif any(term in query_lower for term in [
