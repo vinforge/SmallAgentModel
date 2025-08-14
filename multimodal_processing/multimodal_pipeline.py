@@ -576,14 +576,24 @@ Content Type: {content_block.content_type}
         """
         try:
             for chunk_metadata in table_result.enhanced_chunks:
+                # Ensure standard metadata for citations and traceability
+                meta = dict(chunk_metadata or {})
+                # Inject document_id if missing (derive from current parsed document if available)
+                if 'document_id' not in meta or not meta.get('document_id'):
+                    # Try to use a nearby value in the result; fall back to filename stem
+                    meta['document_id'] = getattr(table_result, 'document_id', None) or Path(file_path).stem
+                # Add consistent content/source typing
+                meta.setdefault('content_type', 'table_chunk')
+                meta.setdefault('source_type', 'bulk_ingestion')
+
                 # Create memory chunk with table metadata
                 chunk_id = self.memory_store.add_memory(
-                    content=chunk_metadata.get('content', ''),
+                    content=meta.get('content', ''),
                     memory_type=MemoryType.DOCUMENT,
                     source=str(file_path),
-                    tags=['table', 'structured_data'] + chunk_metadata.get('tags', []),
-                    importance_score=chunk_metadata.get('confidence_score', 0.5),
-                    metadata=chunk_metadata
+                    tags=['table', 'structured_data'] + meta.get('tags', []),
+                    importance_score=meta.get('confidence_score', 0.5),
+                    metadata=meta
                 )
 
                 logger.debug(f"Stored table chunk: {chunk_id}")
