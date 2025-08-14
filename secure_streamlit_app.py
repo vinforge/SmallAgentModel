@@ -282,7 +282,12 @@ def generate_enhanced_analysis_prompt(filename: str) -> str:
 
     file_ext = Path(filename).suffix.lower() if filename else ""
 
-    base_prompt = f"""Conduct a comprehensive deep analysis of '{filename}' using your advanced analytical capabilities and knowledge synthesis.
+    # ENHANCED: Include explicit document reference for better retrieval
+    base_prompt = f"""🔍 Deep Analysis: {filename}
+
+IMPORTANT: Please analyze the uploaded document '{filename}' that is stored in your knowledge base. This document was successfully uploaded and should be available for analysis.
+
+Conduct a comprehensive deep analysis of '{filename}' using your advanced analytical capabilities and knowledge synthesis.
 
 🧠 **ANALYTICAL FRAMEWORK**:
 
@@ -307,7 +312,10 @@ def generate_enhanced_analysis_prompt(filename: str) -> str:
 - **Immediate Applications**: How to use this information now
 - **Long-term Impact**: Broader implications and future considerations
 - **Decision Support**: How this informs strategic choices
-- **Risk Assessment**: Potential challenges or limitations"""
+- **Risk Assessment**: Potential challenges or limitations
+
+## 📋 **Document Context**
+Please reference the specific content from '{filename}' in your analysis. If you cannot find this document in your knowledge base, please indicate this clearly and suggest troubleshooting steps."""
 
     # Add document-type specific analysis
     if file_ext in ['.pdf', '.docx']:
@@ -1038,21 +1046,14 @@ def render_messages_from_sam_alert():
                 st.rerun()
 
         else:
-            # No notifications - show subtle indicator
-            st.markdown("""
-            <div style="
-                background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
-                color: #2d5a3d;
-                padding: 0.5rem;
-                border-radius: 0.5rem;
-                text-align: center;
-                margin-bottom: 1rem;
-                font-size: 0.9rem;
-            ">
-                ✉️ <strong>Messages from SAM</strong><br>
-                <small>All caught up! 🎉</small>
-            </div>
-            """, unsafe_allow_html=True)
+            # No notifications - show clickable button to navigate to Archived Insights
+            if st.button("💡 **Emergent Insights**",
+                        help="Click to view archived insights from synthesis runs",
+                        use_container_width=True):
+                # Navigate to Memory Control Center with Archived Insights page
+                st.session_state.show_memory_control_center = True
+                st.session_state.memory_page_override = "📚 Archived Insights"
+                st.rerun()
 
     except Exception as e:
         # Fallback display if components not available
@@ -3218,6 +3219,7 @@ def render_integrated_memory_control_center():
             "📁 Bulk Ingestion",
             "🔑 API Key Manager",
             "🧠🎨 Dream Canvas",
+            "📚 Archived Insights",  # NEW: Archived Insights page
             "🧠 Personalized Tuner",
             "🏆 Memory Ranking",
             "📊 Memory Analytics",
@@ -3281,6 +3283,8 @@ def render_integrated_memory_control_center():
             render_api_key_manager()
         elif memory_page == "🧠🎨 Dream Canvas":
             render_dream_canvas_integrated()
+        elif memory_page == "📚 Archived Insights":
+            render_archived_insights_integrated()
         elif memory_page == "🧠 Personalized Tuner":
             # Reuse the standalone tuner UI inside the integrated control center
             render_personalized_tuner_standalone()
@@ -13773,6 +13777,43 @@ def render_dream_canvas_integrated():
     except Exception as e:
         st.error(f"❌ Dream Canvas integration failed: {e}")
         logger.error(f"Dream Canvas integration error: {e}")
+
+def render_archived_insights_integrated():
+    """Render Archived Insights integrated into the main SAM interface."""
+    try:
+        st.header("📚 Archived Insights")
+        st.markdown("*Browse and search your collection of emergent insights from synthesis runs*")
+
+        # Import and render the insight archive
+        try:
+            from ui.insight_archive_ui import render_insight_archive
+
+            # Add integration notice
+            st.info("🌟 **Archived Insights Integration**: Access all your synthesized insights from previous Dream Canvas runs!")
+
+            # Render the Archived Insights interface
+            render_insight_archive()
+
+        except ImportError as e:
+            st.error(f"❌ Archived Insights components not available: {e}")
+            st.info("💡 **Alternative**: You can access Archived Insights through the Memory Control Center")
+
+            # Provide fallback instructions
+            st.markdown("### 🔧 Alternative Access Methods:")
+            st.markdown("1. **Memory Control Center**: `python -m streamlit run ui/memory_app.py --server.port 8503`")
+            st.markdown("2. **Direct Access**: Navigate to 'Archived Insights' in the main navigation menu")
+
+        except Exception as e:
+            st.error(f"❌ Error loading Archived Insights: {e}")
+            logger.error(f"Archived Insights integration error: {e}")
+
+            # Provide basic fallback
+            st.markdown("### 📚 Basic Insight Archive (Fallback)")
+            st.info("The full Archived Insights interface is temporarily unavailable. Please try refreshing the page or contact support.")
+
+    except Exception as e:
+        st.error(f"❌ Archived Insights integration failed: {e}")
+        logger.error(f"Archived Insights integration error: {e}")
 
 
 # Basic interface functions for when SAM is not fully initialized

@@ -34,6 +34,7 @@ from ui.memory_commands import MemoryCommandProcessor, get_command_processor
 from ui.role_memory_filter import RoleBasedMemoryFilter, get_role_filter
 from ui.bulk_ingestion_ui import render_bulk_ingestion
 from ui.api_key_manager import render_api_key_manager
+from ui.insight_archive_ui import render_insight_archive
 from memory.memory_vectorstore import get_memory_store
 from memory.memory_reasoning import get_memory_reasoning_engine
 from config.agent_mode import get_mode_controller
@@ -373,6 +374,7 @@ def main():
                 "📁 Bulk Ingestion",
                 "🔑 API Key Manager",
                 "🧠🎨 Dream Canvas",
+                "📚 Archived Insights",  # NEW: Archived Insights page
                 "Memory Browser",
                 "Memory Editor",
                 "Memory Graph",
@@ -469,6 +471,8 @@ def main():
         render_api_key_manager()
     elif page == "🧠🎨 Dream Canvas":
         render_dream_canvas()
+    elif page == "📚 Archived Insights":
+        render_archived_insights()
     elif page == "Memory Browser":
         render_memory_browser()
     elif page == "Memory Editor":
@@ -2695,6 +2699,15 @@ def render_dream_canvas():
 
     except Exception as e:
         st.error(f"Error loading Dream Canvas: {e}")
+        import traceback
+        st.error(f"Details: {traceback.format_exc()}")
+
+def render_archived_insights():
+    """Render the Archived Insights interface."""
+    try:
+        render_insight_archive()
+    except Exception as e:
+        st.error(f"Error loading Archived Insights: {e}")
         import traceback
         st.error(f"Details: {traceback.format_exc()}")
 

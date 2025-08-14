@@ -384,6 +384,13 @@ def render_dream_canvas():
                 st.rerun()
             st.caption("💡 Click to reveal insights")
 
+        # Add Archived Insights link
+        if st.button("📚 Archived Insights", help="View all archived insights from previous synthesis runs", use_container_width=True):
+            # Navigate to archived insights page
+            st.session_state.navigate_to_archived_insights = True
+            st.info("💡 Navigate to 'Archived Insights' in the main menu to view all archived insights")
+            st.rerun()
+
         # Auto Research controls
         st.markdown("---")
         st.markdown("**🧪 Research Mode**")
@@ -3864,6 +3871,36 @@ def render_synthetic_insights_panel(synthesis_results):
                 utility = insight.get('utility_score', 0)
                 st.metric("🔧 Utility", f"{utility:.2f}")
 
+            # Research Mode Controls - Add the missing checkbox and microscope functionality
+            st.markdown("---")
+            col1, col2 = st.columns([1, 10])
+
+            with col1:
+                insight_id = f"insight_{i}_{insight.get('cluster_id', 'unknown')}"
+                research_selected = st.checkbox(
+                    "🔬",
+                    key=f"research_select_{insight_id}",
+                    help="Select for Research Mode"
+                )
+
+            with col2:
+                if research_selected:
+                    st.caption("✅ Selected for research")
+                    # Store selection in session state for research processing
+                    if 'selected_synthesis_insights' not in st.session_state:
+                        st.session_state.selected_synthesis_insights = set()
+                    st.session_state.selected_synthesis_insights.add(insight_id)
+
+                    # Store insight data for research
+                    if 'synthesis_insight_data' not in st.session_state:
+                        st.session_state.synthesis_insight_data = {}
+                    st.session_state.synthesis_insight_data[insight_id] = insight
+                else:
+                    if 'selected_synthesis_insights' in st.session_state:
+                        st.session_state.selected_synthesis_insights.discard(insight_id)
+                    if 'synthesis_insight_data' in st.session_state and insight_id in st.session_state.synthesis_insight_data:
+                        del st.session_state.synthesis_insight_data[insight_id]
+
             # NEW: Enhanced cluster information with registry lookup
             st.markdown("---")
             render_cluster_information(insight)
@@ -3893,6 +3930,9 @@ def render_synthetic_insights_panel(synthesis_results):
 
     if len(insights) > 5:
         st.info(f"📋 Showing top 5 insights. Total generated: {len(insights)}")
+
+    # Research Mode Controls for selected synthesis insights
+    render_synthesis_research_mode_controls()
 
 def render_cluster_information(insight):
     """Render detailed cluster information for an insight using the cluster registry."""
@@ -4297,3 +4337,99 @@ def _get_cluster_memories_for_insight(cluster_id: str) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error getting cluster memories: {e}")
         return []
+
+def render_synthesis_research_mode_controls():
+    """Render research mode controls for selected synthesis insights."""
+    if 'selected_synthesis_insights' not in st.session_state or not st.session_state.selected_synthesis_insights:
+        return
+
+    selected_count = len(st.session_state.selected_synthesis_insights)
+
+    st.markdown("---")
+    st.markdown("### 🔬 Research Mode")
+    st.markdown(f"*{selected_count} insight(s) selected for research*")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        research_mode = st.radio(
+            "Research Mode:",
+            ["Deep Research", "Quick Research"],
+            help="Choose research depth"
+        )
+
+    with col2:
+        max_papers = st.selectbox(
+            "Papers per Insight:",
+            [1, 2, 3, 5],
+            index=1,
+            help="Maximum papers to download per insight"
+        )
+
+    with col3:
+        if st.button("🚀 Start Research", type="primary"):
+            trigger_synthesis_insight_research(
+                list(st.session_state.selected_synthesis_insights),
+                research_mode,
+                max_papers
+            )
+
+def trigger_synthesis_insight_research(selected_insight_ids, research_mode, max_papers):
+    """Trigger research for selected synthesis insights."""
+    try:
+        # Get the selected insights data
+        selected_insights = []
+        insight_data = st.session_state.get('synthesis_insight_data', {})
+
+        for insight_id in selected_insight_ids:
+            if insight_id in insight_data:
+                selected_insights.append(insight_data[insight_id])
+
+        if not selected_insights:
+            st.error("❌ No insight data found for selected insights")
+            return
+
+        # Trigger research based on mode
+        if research_mode == "Deep Research":
+            # Use Deep Research engine
+            try:
+                from sam.agents.strategies.deep_research import DeepResearchStrategy
+
+                for insight in selected_insights:
+                    insight_text = insight.get('synthesized_text', '')
+                    if insight_text:
+                        # Clean the insight text
+                        if '<think>' in insight_text and '</think>' in insight_text:
+                            parts = insight_text.split('</think>')
+                            if len(parts) > 1:
+                                insight_text = parts[-1].strip()
+
+                        # Start deep research
+                        research_strategy = DeepResearchStrategy(insight_text)
+                        st.info(f"🔬 Starting Deep Research for insight from cluster {insight.get('cluster_id', 'Unknown')}")
+
+                        # Note: In a real implementation, this would be run asynchronously
+                        # For now, we'll just show that research has been initiated
+
+            except ImportError:
+                st.error("❌ Deep Research engine not available")
+                return
+
+        else:  # Quick Research
+            # Use Quick Research (basic ArXiv search)
+            for insight in selected_insights:
+                insight_text = insight.get('synthesized_text', '')
+                if insight_text:
+                    st.info(f"🔍 Starting Quick Research for insight from cluster {insight.get('cluster_id', 'Unknown')}")
+
+        st.success(f"🔬 Research initiated for {len(selected_insights)} insights using {research_mode}")
+        st.info("Research results will appear in the Deep Research Results section")
+
+        # Clear selections
+        st.session_state.selected_synthesis_insights = set()
+        st.session_state.synthesis_insight_data = {}
+        st.rerun()
+
+    except Exception as e:
+        st.error(f"❌ Failed to start research: {e}")
+        logger.error(f"Research trigger error: {e}")

@@ -348,6 +348,41 @@ class InsightArchive:
             logger.error(f"❌ Failed to search insights: {e}")
             return []
 
+    def get_insight_by_id(self, archive_id: str) -> Optional[ArchivedInsight]:
+        """Get a specific insight by its archive ID."""
+        try:
+            with sqlite3.connect(self.archive_path) as conn:
+                cursor = conn.execute('''
+                    SELECT * FROM insights WHERE archive_id = ?
+                ''', (archive_id,))
+                row = cursor.fetchone()
+
+            if row:
+                return ArchivedInsight(
+                    archive_id=row[0],
+                    insight_id=row[1],
+                    cluster_id=row[2],
+                    synthesized_text=row[3],
+                    confidence_score=row[4],
+                    novelty_score=row[5],
+                    utility_score=row[6],
+                    quality_score=row[7],
+                    source_count=row[8],
+                    source_documents=json.loads(row[9]),
+                    synthesis_run_id=row[10],
+                    archived_at=row[11],
+                    generated_at=row[12],
+                    tags=json.loads(row[13]),
+                    category=row[14],
+                    summary=row[15],
+                    metadata=json.loads(row[16])
+                )
+            return None
+
+        except Exception as e:
+            logger.error(f"❌ Failed to get insight by ID: {e}")
+            return None
+
     def get_archive_stats(self) -> Dict[str, Any]:
         """Get statistics about the insight archive."""
         try:

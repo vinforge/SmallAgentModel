@@ -164,32 +164,56 @@ class SAMProvenPDFIntegration:
     def is_pdf_query(self, query: str) -> bool:
         """
         Detect if a query is asking about an uploaded PDF.
-        
+
         Args:
             query: User query
-            
+
         Returns:
             True if query appears to be about a PDF
         """
         query_lower = query.lower()
-        
+
+        # ENHANCED: Check for Deep Analysis patterns first (high priority)
+        deep_analysis_patterns = [
+            '🔍 deep analysis', 'deep analysis:', 'analyze', 'analysis',
+            'comprehensive analysis', 'detailed analysis', 'in-depth analysis',
+            'thorough analysis', 'examine', 'review', 'breakdown'
+        ]
+
+        for pattern in deep_analysis_patterns:
+            if pattern in query_lower:
+                return True
+
+        # ENHANCED: Check for arXiv and academic paper patterns
+        import re
+        arxiv_patterns = [
+            r'\b\d{4}\.\d{5}v?\d*\.?pdf?\b',  # arXiv patterns like "2305.18290v3.pdf"
+            r'\b\d{4}\.\d{5}v?\d*\b',        # arXiv without extension
+            r'arxiv:\s*\d{4}\.\d{5}',        # "arxiv:2305.18290"
+        ]
+
+        for pattern in arxiv_patterns:
+            if re.search(pattern, query_lower):
+                return True
+
         # Check for PDF-related keywords
         pdf_indicators = [
             'pdf', 'document', 'file', 'upload', 'paper',
             'summarize', 'summary', 'what is this about',
-            'what does this', 'content of', 'main topic'
+            'what does this', 'content of', 'main topic',
+            'uploaded', 'discuss', 'explain', 'describe'
         ]
-        
+
         # Check for specific file extensions
-        file_extensions = ['.pdf', '.docx', '.doc']
-        
-        # Check for arXiv patterns
-        arxiv_patterns = ['arxiv:', '2507.', '2506.', 'v1.pdf']
-        
+        file_extensions = ['.pdf', '.docx', '.doc', '.txt', '.md']
+
+        # Legacy arXiv patterns (keeping for compatibility)
+        legacy_arxiv_patterns = ['arxiv:', '2507.', '2506.', 'v1.pdf', 'v2.pdf', 'v3.pdf']
+
         return (
             any(indicator in query_lower for indicator in pdf_indicators) or
             any(ext in query_lower for ext in file_extensions) or
-            any(pattern in query_lower for pattern in arxiv_patterns)
+            any(pattern in query_lower for pattern in legacy_arxiv_patterns)
         )
     
     def get_integration_status(self) -> Dict[str, Any]:

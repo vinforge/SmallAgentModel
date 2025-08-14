@@ -270,15 +270,151 @@ class EnhancedResponseGenerator:
         return key_info[:5]  # Top 5 most relevant pieces
     
     def _calculate_relevance_to_query(self, content: str, query: str) -> float:
-        """Calculate relevance of content to query."""
-        query_words = set(query.lower().split())
-        content_words = set(content.lower().split())
-        
-        # Simple word overlap calculation
+        """Calculate relevance of content to query with enhanced scoring."""
+        try:
+            query_lower = query.lower().strip()
+            content_lower = content.lower().strip()
+
+            if not query_lower or not content_lower:
+                return 0.0
+
+            # 1. EXACT MATCH SCORING (highest priority)
+            if query_lower in content_lower:
+                # Calculate position bonus (earlier matches score higher)
+                position = content_lower.find(query_lower)
+                position_bonus = max(0, 1 - (position / len(content_lower)))
+                return min(1.0, 0.9 + (position_bonus * 0.1))
+
+            # 2. FILENAME DETECTION AND SCORING
+            filename_score = self._calculate_filename_relevance(query_lower, content_lower)
+            if filename_score > 0:
+                return filename_score
+
+            # 3. DEEP ANALYSIS QUERY DETECTION
+            deep_analysis_score = self._calculate_deep_analysis_relevance(query_lower, content_lower)
+            if deep_analysis_score > 0:
+                return deep_analysis_score
+
+            # 4. WORD OVERLAP SCORING (improved)
+            word_overlap_score = self._calculate_word_overlap_score(query_lower, content_lower)
+
+            # 5. SEMANTIC SIMILARITY (if available)
+            semantic_score = self._calculate_semantic_similarity(query_lower, content_lower)
+
+            # Combine scores with weights
+            final_score = max(
+                word_overlap_score * 0.6 + semantic_score * 0.4,
+                word_overlap_score,
+                semantic_score
+            )
+
+            return min(final_score, 1.0)
+
+        except Exception as e:
+            # Fallback to basic word overlap
+            query_words = set(query.lower().split())
+            content_words = set(content.lower().split())
+            overlap = len(query_words.intersection(content_words))
+            total_query_words = len(query_words)
+            return overlap / total_query_words if total_query_words > 0 else 0.0
+
+    def _calculate_filename_relevance(self, query: str, content: str) -> float:
+        """Calculate relevance for filename-based queries."""
+        # Extract potential filenames from query
+        import re
+
+        # Look for PDF patterns like "2305.18290v3.pdf" or "2305.18290v3"
+        arxiv_patterns = [
+            r'\b\d{4}\.\d{5}v?\d*\.?pdf?\b',  # arXiv patterns
+            r'\b\d{4}\.\d{5}v?\d*\b',        # arXiv without extension
+        ]
+
+        for pattern in arxiv_patterns:
+            matches = re.findall(pattern, query)
+            for match in matches:
+                # Remove .pdf extension for comparison
+                clean_match = match.replace('.pdf', '').replace('.', r'\.')
+                if re.search(clean_match, content):
+                    return 0.95  # Very high relevance for filename matches
+
+        # Look for general filename patterns
+        filename_patterns = [
+            r'\b\w+\.(?:pdf|docx?|txt|md)\b',  # General file extensions
+        ]
+
+        for pattern in filename_patterns:
+            matches = re.findall(pattern, query)
+            for match in matches:
+                clean_match = match.replace('.', r'\.')
+                if re.search(clean_match, content, re.IGNORECASE):
+                    return 0.9  # High relevance for filename matches
+
+        return 0.0
+
+    def _calculate_deep_analysis_relevance(self, query: str, content: str) -> float:
+        """Calculate relevance for deep analysis queries."""
+        deep_analysis_indicators = [
+            'deep analysis', 'analyze', 'analysis', 'comprehensive analysis',
+            'detailed analysis', 'in-depth analysis', 'thorough analysis'
+        ]
+
+        # Check if this is a deep analysis query
+        is_deep_analysis = any(indicator in query for indicator in deep_analysis_indicators)
+
+        if is_deep_analysis:
+            # For deep analysis queries, any document content is potentially relevant
+            # Score based on content richness and structure
+            content_indicators = [
+                'abstract', 'introduction', 'methodology', 'results', 'conclusion',
+                'discussion', 'analysis', 'findings', 'research', 'study'
+            ]
+
+            indicator_count = sum(1 for indicator in content_indicators if indicator in content)
+            base_score = min(0.8, 0.3 + (indicator_count * 0.1))
+
+            # Boost for longer, more substantial content
+            length_bonus = min(0.2, len(content) / 10000)  # Up to 0.2 bonus for long content
+
+            return min(1.0, base_score + length_bonus)
+
+        return 0.0
+
+    def _calculate_word_overlap_score(self, query: str, content: str) -> float:
+        """Calculate improved word overlap score."""
+        query_words = set(query.split())
+        content_words = set(content.split())
+
+        if not query_words:
+            return 0.0
+
+        # Basic overlap
         overlap = len(query_words.intersection(content_words))
-        total_query_words = len(query_words)
-        
-        return overlap / total_query_words if total_query_words > 0 else 0.0
+        basic_score = overlap / len(query_words)
+
+        # Boost for important words (longer words are often more meaningful)
+        important_words = [word for word in query_words if len(word) > 4]
+        if important_words:
+            important_overlap = len(set(important_words).intersection(content_words))
+            important_score = important_overlap / len(important_words)
+            # Weight important words more heavily
+            final_score = (basic_score * 0.6) + (important_score * 0.4)
+        else:
+            final_score = basic_score
+
+        return min(final_score, 1.0)
+
+    def _calculate_semantic_similarity(self, query: str, content: str) -> float:
+        """Calculate semantic similarity if embedding model is available."""
+        try:
+            # Try to use embedding-based similarity if available
+            # This is a placeholder for semantic similarity calculation
+            # In practice, you would use sentence transformers or similar
+
+            # For now, return 0 to rely on other scoring methods
+            return 0.0
+
+        except Exception:
+            return 0.0
     
     def _generate_natural_response(self, 
                                   query: str,

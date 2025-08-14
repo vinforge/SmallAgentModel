@@ -924,11 +924,39 @@ def is_document_query(message):
             logger.info(f"🧮 Mathematical pattern detected in '{message}' - NOT treating as document query")
             return False
 
-    # Document query indicators
+    # ENHANCED: Check for Deep Analysis patterns first (high priority)
+    deep_analysis_patterns = [
+        r'🔍\s*deep\s*analysis',  # "🔍 Deep Analysis"
+        r'deep\s*analysis.*\.pdf',  # "Deep Analysis: filename.pdf"
+        r'analyze.*\.pdf',  # "analyze filename.pdf"
+        r'comprehensive\s*analysis',  # "comprehensive analysis"
+        r'detailed\s*analysis',  # "detailed analysis"
+    ]
+
+    for pattern in deep_analysis_patterns:
+        if re.search(pattern, message_lower):
+            logger.info(f"🔍 Deep Analysis pattern detected in '{message}' - treating as document query")
+            return True
+
+    # ENHANCED: Check for arXiv and academic paper patterns
+    arxiv_patterns = [
+        r'\b\d{4}\.\d{5}v?\d*\.?pdf?\b',  # arXiv patterns like "2305.18290v3.pdf"
+        r'\b\d{4}\.\d{5}v?\d*\b',        # arXiv without extension
+        r'arxiv:\s*\d{4}\.\d{5}',        # "arxiv:2305.18290"
+    ]
+
+    for pattern in arxiv_patterns:
+        if re.search(pattern, message_lower):
+            logger.info(f"📄 arXiv pattern detected in '{message}' - treating as document query")
+            return True
+
+    # ENHANCED: Document query indicators with better coverage
     document_indicators = [
         'summary of', 'summarize', 'what is in', 'content of',
         'document', '.pdf', '.docx', '.md', '.txt',
-        'file', 'paper', 'report'
+        'file', 'paper', 'report', 'uploaded', 'upload',
+        'analyze', 'analysis', 'review', 'examine',
+        'explain', 'describe', 'discuss', 'breakdown'
     ]
 
     # Person/entity query indicators that might be in uploaded documents
@@ -940,6 +968,7 @@ def is_document_query(message):
 
     # Check for document indicators first
     if any(indicator in message_lower for indicator in document_indicators):
+        logger.info(f"📄 Document indicator detected in '{message}' - treating as document query")
         return True
 
     # Check for person/entity queries that might be answered from uploaded documents
