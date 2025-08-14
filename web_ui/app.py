@@ -1127,14 +1127,38 @@ def generate_enhanced_document_response(message, document_memories):
         # Phase 3.2: Use enhanced search with hybrid ranking
         try:
             if hasattr(memory_store, 'enhanced_search_memories'):
+                # If we have a last uploaded document in this session, prefer filtering to that doc
+                where_filter = None
+                try:
+                    doc_id_hint = session.get('last_uploaded_doc_id')
+                    if doc_id_hint:
+                        where_filter = {'document_id': doc_id_hint}
+                        logger.info(f"Applying session doc filter for enhanced search: {doc_id_hint}")
+                except Exception:
+                    where_filter = None
+
                 relevant_memories = memory_store.enhanced_search_memories(
                     query=message,
                     max_results=10,
-                    initial_candidates=20
+                    initial_candidates=20,
+                    where_filter=where_filter
                 )
                 logger.info(f"Enhanced document search returned {len(relevant_memories)} ranked results")
             else:
-                relevant_memories = memory_store.search_memories(message, max_results=10, min_similarity=0.2)
+                # Apply doc filter if we have a session-scoped last uploaded doc
+                try:
+                    doc_id_hint = session.get('last_uploaded_doc_id')
+                except Exception:
+                    doc_id_hint = None
+                if doc_id_hint and hasattr(memory_store, 'enhanced_search_memories'):
+                    relevant_memories = memory_store.enhanced_search_memories(
+                        query=message,
+                        max_results=10,
+                        initial_candidates=20,
+                        where_filter={'document_id': doc_id_hint}
+                    )
+                else:
+                    relevant_memories = memory_store.search_memories(message, max_results=10, min_similarity=0.2)
                 logger.info(f"Fallback document search returned {len(relevant_memories)} results")
         except Exception as e:
             logger.warning(f"Enhanced document search failed, using fallback: {e}")
@@ -1219,7 +1243,20 @@ def generate_enhanced_document_response(message, document_memories):
             if words:
                 broader_query = ' '.join(words)
                 logger.info(f"Trying broader search with: {broader_query}")
-                relevant_memories = memory_store.search_memories(broader_query, max_results=10, min_similarity=0.15)  # Increased threshold
+                # Re-run broader search with session doc filter when available
+                try:
+                    doc_id_hint = session.get('last_uploaded_doc_id')
+                except Exception:
+                    doc_id_hint = None
+                if doc_id_hint and hasattr(memory_store, 'enhanced_search_memories'):
+                    relevant_memories = memory_store.enhanced_search_memories(
+                        query=broader_query,
+                        max_results=10,
+                        initial_candidates=20,
+                        where_filter={'document_id': doc_id_hint}
+                    )
+                else:
+                    relevant_memories = memory_store.search_memories(broader_query, max_results=10, min_similarity=0.15)  # Increased threshold
 
                 # Apply stricter relevance filtering for broader search
                 document_relevant = []
@@ -1565,8 +1602,20 @@ def generate_general_document_response(message):
                 )
                 logger.info(f"Enhanced search returned {len(memories)} ranked results")
             else:
-                # Fallback to regular search
-                memories = memory_store.search_memories(message, max_results=5)
+                # Fallback to regular search, but prefer session doc filter if available
+                try:
+                    doc_id_hint = session.get('last_uploaded_doc_id')
+                except Exception:
+                    doc_id_hint = None
+                if doc_id_hint and hasattr(memory_store, 'enhanced_search_memories'):
+                    memories = memory_store.enhanced_search_memories(
+                        query=message,
+                        max_results=5,
+                        initial_candidates=20,
+                        where_filter={'document_id': doc_id_hint}
+                    )
+                else:
+                    memories = memory_store.search_memories(message, max_results=5)
                 logger.info(f"Fallback search returned {len(memories)} results")
         except Exception as e:
             logger.warning(f"Enhanced search failed, using fallback: {e}")
@@ -1897,6 +1946,13 @@ def process_uploaded_file(file_path):
 
         if result:
             logger.info(f"Document processed successfully: {result.get('document_id', 'unknown')}")
+
+            # Remember the most recent uploaded document in the session for routing/filtering
+            try:
+                session['last_uploaded_doc_id'] = result.get('document_id')
+                session['last_uploaded_filename'] = Path(file_path).name
+            except Exception:
+                pass
 
             response_data = {
                 'document_id': result['document_id'],
