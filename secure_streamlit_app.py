@@ -5620,6 +5620,9 @@ def extract_sources_from_result(result: Dict[str, Any]) -> List[str]:
         sources = []
         data = result.get('data', {})
 
+        # Check if this is guidance content (not actual search results)
+        is_guidance = data.get('is_guidance', False)
+
         # Extract from cocoindex chunks (Phase 8.5)
         chunks = data.get('chunks', [])
         for chunk in chunks:
@@ -5643,20 +5646,28 @@ def extract_sources_from_result(result: Dict[str, Any]) -> List[str]:
 
         # Extract from simple web search results (simple_web_search format)
         simple_results = data.get('results', [])
-        for result in simple_results:
-            url = result.get('url', '')
-            source = result.get('source', '')
-            title = result.get('title', '')
+        for result_item in simple_results:
+            url = result_item.get('url', '')
+            source = result_item.get('source', '')
+            title = result_item.get('title', '')
+            result_type = result_item.get('type', '')
 
-            # Add URL if available
-            if url and url not in sources:
-                sources.append(url)
-            # Add source name if no URL but has source
-            elif source and source not in sources:
-                sources.append(source)
-            # Add title as fallback if no URL or source
-            elif title and title not in sources:
-                sources.append(title)
+            # For guidance results, indicate they are curated resources
+            if is_guidance or result_type == 'guidance':
+                if url and url not in sources:
+                    # Mark guidance sources clearly
+                    domain = _extract_domain_from_url(url)
+                    sources.append(f"{domain} (curated resource)")
+            else:
+                # For actual search results, use normal attribution
+                if url and url not in sources:
+                    sources.append(url)
+                # Add source name if no URL but has source
+                elif source and source not in sources:
+                    sources.append(source)
+                # Add title as fallback if no URL or source
+                elif title and title not in sources:
+                    sources.append(title)
 
         # Extract from URL extraction
         url = data.get('url', '')
@@ -5668,6 +5679,19 @@ def extract_sources_from_result(result: Dict[str, Any]) -> List[str]:
     except Exception as e:
         logger.error(f"Failed to extract sources: {e}")
         return []
+
+def _extract_domain_from_url(url: str) -> str:
+    """Extract domain name from URL for source attribution."""
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        # Remove www. prefix if present
+        if domain.startswith('www.'):
+            domain = domain[4:]
+        return domain
+    except Exception:
+        return url
 
 def count_content_items(result: Dict[str, Any]) -> int:
     """Count the number of content items in the result."""
@@ -5761,15 +5785,28 @@ Please provide a comprehensive, well-organized response based on this current we
                 content_count = count_content_items(result)
                 tool_used = result.get('tool_used', 'intelligent_web_system')
 
+                # Check if this is guidance content
+                data = result.get('data', {})
+                is_guidance = data.get('is_guidance', False)
+                guidance_note = data.get('note', '')
+
                 sources_text = "\n\n**🌐 Sources:**\n" + "\n".join([f"• {source}" for source in sources[:5]])
 
-                web_enhanced_response = f"""🌐 **Based on current web sources:**
+                # Customize the message based on whether it's guidance or actual search results
+                if is_guidance:
+                    info_text = f"*{guidance_note if guidance_note else 'Curated guidance resources provided when current web search was unavailable.'}*"
+                    header_text = "🌐 **Based on curated guidance resources:**"
+                else:
+                    info_text = f"*Information retrieved using {tool_used.replace('_', ' ').title()} from {content_count} sources.*"
+                    header_text = "🌐 **Based on current web sources:**"
+
+                web_enhanced_response = f"""{header_text}
 
 {ai_response}
 
 {sources_text}
 
-*Information retrieved using {tool_used.replace('_', ' ').title()} from {content_count} sources.*"""
+{info_text}"""
 
                 return web_enhanced_response
 

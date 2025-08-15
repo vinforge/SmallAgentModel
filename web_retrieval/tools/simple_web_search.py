@@ -27,26 +27,43 @@ class SimpleWebSearchTool:
         
     def search(self, query: str, max_results: int = 5) -> Dict[str, Any]:
         """
-        Perform a simple web search using DuckDuckGo instant answers.
-        
+        Perform a simple web search using DuckDuckGo instant answers and web search.
+
         Args:
             query: Search query
             max_results: Maximum number of results to return
-            
+
         Returns:
             Search results in standard format
         """
         try:
             logger.info(f"🔍 Simple web search for: '{query}'")
-            
+
             # Try DuckDuckGo instant answers first
             instant_results = self._search_duckduckgo_instant(query)
             if instant_results['success'] and instant_results.get('results'):
+                logger.info(f"✅ DuckDuckGo instant answers found {len(instant_results['results'])} results")
                 return instant_results
-            
-            # Fallback to generating helpful search suggestions
-            return self._generate_search_guidance(query, max_results)
-            
+
+            # Try DuckDuckGo web search as primary fallback
+            web_search_results = self._search_duckduckgo_web(query, max_results)
+            if web_search_results['success'] and web_search_results.get('results'):
+                logger.info(f"✅ DuckDuckGo web search found {len(web_search_results['results'])} results")
+                return web_search_results
+
+            # Try alternative search method as secondary fallback
+            alt_search_results = self._search_alternative_method(query, max_results)
+            if alt_search_results['success'] and alt_search_results.get('results'):
+                logger.info(f"✅ Alternative search found {len(alt_search_results['results'])} results")
+                return alt_search_results
+
+            # Only use guidance as last resort and mark it clearly
+            logger.warning(f"⚠️ No web search results found for '{query}', providing guidance resources")
+            guidance_results = self._generate_search_guidance(query, max_results)
+            guidance_results['is_guidance'] = True  # Mark as guidance, not actual search results
+            guidance_results['note'] = 'No current web results found. Showing curated guidance resources.'
+            return guidance_results
+
         except Exception as e:
             logger.error(f"Simple web search failed: {e}")
             return {
@@ -126,6 +143,176 @@ class SimpleWebSearchTool:
         except Exception as e:
             logger.warning(f"DuckDuckGo instant search failed: {e}")
             return {'success': False, 'results': []}
+
+    def _search_duckduckgo_web(self, query: str, max_results: int = 5) -> Dict[str, Any]:
+        """
+        Perform actual web search using DuckDuckGo.
+
+        Args:
+            query: Search query
+            max_results: Maximum number of results to return
+
+        Returns:
+            Search results with actual web sources
+        """
+        try:
+            import requests
+            from urllib.parse import quote_plus
+            import re
+            from bs4 import BeautifulSoup
+
+            # DuckDuckGo web search URL
+            search_url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+
+            response = requests.get(search_url, headers=headers, timeout=10)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.content, 'html.parser')
+            results = []
+
+            # Parse search results
+            result_divs = soup.find_all('div', class_='result')
+
+            for result_div in result_divs[:max_results]:
+                try:
+                    # Extract title and URL
+                    title_link = result_div.find('a', class_='result__a')
+                    if not title_link:
+                        continue
+
+                    title = title_link.get_text(strip=True)
+                    url = title_link.get('href', '')
+
+                    # Extract snippet
+                    snippet_div = result_div.find('div', class_='result__snippet')
+                    snippet = snippet_div.get_text(strip=True) if snippet_div else ''
+
+                    # Clean up URL (DuckDuckGo sometimes wraps URLs)
+                    if url.startswith('/l/?uddg='):
+                        # Extract actual URL from DuckDuckGo redirect
+                        import urllib.parse
+                        parsed = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+                        if 'uddg' in parsed:
+                            url = urllib.parse.unquote(parsed['uddg'][0])
+
+                    if title and url:
+                        results.append({
+                            'title': title,
+                            'url': url,
+                            'snippet': snippet,
+                            'source': self._extract_domain_from_url(url),
+                            'type': 'web_search'
+                        })
+
+                except Exception as e:
+                    logger.warning(f"Error parsing search result: {e}")
+                    continue
+
+            if results:
+                return {
+                    'success': True,
+                    'results': results,
+                    'total_results': len(results),
+                    'source': 'duckduckgo_web_search',
+                    'query': query
+                }
+            else:
+                return {'success': False, 'results': []}
+
+        except Exception as e:
+            logger.warning(f"DuckDuckGo web search failed: {e}")
+            return {'success': False, 'results': []}
+
+    def _search_alternative_method(self, query: str, max_results: int = 5) -> Dict[str, Any]:
+        """
+        Alternative search method using a different approach.
+
+        Args:
+            query: Search query
+            max_results: Maximum number of results to return
+
+        Returns:
+            Search results from alternative method
+        """
+        try:
+            import requests
+            from urllib.parse import quote_plus
+            import json
+
+            # Try using a different search approach
+            # This could be expanded to use other search APIs or methods
+
+            # For now, try a simple search using a different user agent and approach
+            search_url = f"https://duckduckgo.com/lite/?q={quote_plus(query)}"
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+
+            response = requests.get(search_url, headers=headers, timeout=10)
+            response.raise_for_status()
+
+            # Parse the lite version which is simpler
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(response.content, 'html.parser')
+            results = []
+
+            # Find result links in the lite version
+            result_links = soup.find_all('a', href=True)
+
+            for link in result_links[:max_results * 2]:  # Get more to filter
+                href = link.get('href', '')
+                text = link.get_text(strip=True)
+
+                # Filter for actual result links (not navigation)
+                if (href.startswith('http') and
+                    not href.startswith('https://duckduckgo.com') and
+                    len(text) > 10 and
+                    not any(skip in href.lower() for skip in ['javascript:', 'mailto:', '#'])):
+
+                    results.append({
+                        'title': text,
+                        'url': href,
+                        'snippet': f"Search result for: {query}",
+                        'source': self._extract_domain_from_url(href),
+                        'type': 'web_search'
+                    })
+
+                    if len(results) >= max_results:
+                        break
+
+            if results:
+                return {
+                    'success': True,
+                    'results': results,
+                    'total_results': len(results),
+                    'source': 'alternative_web_search',
+                    'query': query
+                }
+            else:
+                return {'success': False, 'results': []}
+
+        except Exception as e:
+            logger.warning(f"Alternative search method failed: {e}")
+            return {'success': False, 'results': []}
+
+    def _extract_domain_from_url(self, url: str) -> str:
+        """Extract domain name from URL for source attribution."""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            # Remove www. prefix if present
+            if domain.startswith('www.'):
+                domain = domain[4:]
+            # Return domain if valid, otherwise return original URL
+            return domain if domain else url
+        except Exception:
+            return url
     
     def _generate_search_guidance(self, query: str, max_results: int) -> Dict[str, Any]:
         """Generate helpful search guidance when direct search fails."""
