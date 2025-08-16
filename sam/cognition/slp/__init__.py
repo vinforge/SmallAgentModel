@@ -23,25 +23,17 @@ from .program_manager import ProgramManager
 from .program_executor import ProgramExecutor
 from .sam_slp_integration import SAMSLPIntegration, get_slp_integration, initialize_slp_integration
 
-# Enhanced Analytics Modules (Phase 1A - preserving 100% of existing functionality)
-try:
-    from .analytics_engine import SLPAnalyticsEngine
-    from .metrics_collector import SLPMetricsCollector
-    ENHANCED_ANALYTICS_AVAILABLE = True
-except ImportError:
-    SLPAnalyticsEngine = None
-    SLPMetricsCollector = None
-    ENHANCED_ANALYTICS_AVAILABLE = False
+# Enhanced Analytics Modules (Phase 1A - DISABLED)
+# SLP Analytics has been removed from the system
+SLPAnalyticsEngine = None
+SLPMetricsCollector = None
+ENHANCED_ANALYTICS_AVAILABLE = False
 
-# Advanced Analysis Modules (Phase 1B - preserving 100% of existing functionality)
-try:
-    from .program_analyzer import ProgramAnalyzer
-    from .cognitive_insights import CognitiveInsightsGenerator
-    ADVANCED_ANALYSIS_AVAILABLE = True
-except ImportError:
-    ProgramAnalyzer = None
-    CognitiveInsightsGenerator = None
-    ADVANCED_ANALYSIS_AVAILABLE = False
+# Advanced Analysis Modules (Phase 1B - DISABLED)
+# SLP Analytics has been removed from the system
+ProgramAnalyzer = None
+CognitiveInsightsGenerator = None
+ADVANCED_ANALYSIS_AVAILABLE = False
 
 __version__ = "1.0.0"
 __author__ = "SAM Development Team"
@@ -93,12 +85,12 @@ __all__ = [
     'get_slp_config',
     'update_slp_config',
     'initialize_slp_system',
-    # Enhanced Analytics (Phase 1A)
-    'SLPAnalyticsEngine',
-    'SLPMetricsCollector',
+    # Enhanced Analytics (Phase 1A) - REMOVED
+    # 'SLPAnalyticsEngine',  # Removed
+    # 'SLPMetricsCollector',  # Removed
     'ENHANCED_ANALYTICS_AVAILABLE',
-    # Advanced Analysis (Phase 1B)
-    'ProgramAnalyzer',
-    'CognitiveInsightsGenerator',
+    # Advanced Analysis (Phase 1B) - REMOVED
+    # 'ProgramAnalyzer',  # Removed
+    # 'CognitiveInsightsGenerator',  # Removed
     'ADVANCED_ANALYSIS_AVAILABLE'
 ]

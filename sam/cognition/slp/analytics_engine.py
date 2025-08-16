@@ -2,10 +2,15 @@
 SLP Analytics Engine
 ===================
 
-Advanced analytics engine for SLP system performance tracking and insights generation.
-Provides comprehensive analytics, trend analysis, and automation opportunity detection.
+DEPRECATED: This module has been disabled and removed from the SAM system.
+SLP Analytics functionality is no longer available.
 
-Phase 1A.3 - Enhanced Performance Tracking (preserving 100% of existing functionality)
+For system monitoring, please use:
+- System Health (in Memory Control Center)
+- System Status (in Memory Control Center)
+- Admin Dashboard (in Memory Control Center)
+
+Phase 1A.3 - Enhanced Performance Tracking (DISABLED)
 """
 
 import logging

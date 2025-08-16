@@ -29,24 +29,11 @@ class SAMSLPIntegration:
     """
     
     def __init__(self, tpv_integration=None):
-        """Initialize the SAM-SLP integration with enhanced analytics."""
-        # Enhanced Analytics Integration (Phase 1A.6 - preserving 100% of existing functionality)
-        try:
-            from .analytics_engine import SLPAnalyticsEngine
-            from .metrics_collector import SLPMetricsCollector
-
-            # Initialize with enhanced analytics
-            analytics_engine = SLPAnalyticsEngine()
-            metrics_collector = SLPMetricsCollector()
-
-            self.program_manager = ProgramManager(
-                analytics_engine=analytics_engine,
-                metrics_collector=metrics_collector
-            )
-
-        except ImportError:
-            logger.warning("Enhanced analytics not available, using basic functionality")
-            self.program_manager = ProgramManager()
+        """Initialize the SAM-SLP integration."""
+        # Enhanced Analytics Integration (Phase 1A.6 - DISABLED)
+        # SLP Analytics has been removed from the system
+        logger.info("SLP Analytics disabled - using basic functionality")
+        self.program_manager = ProgramManager()
 
         self.tpv_integration = tpv_integration
         self.enabled = True
