@@ -58,57 +58,7 @@ except ImportError as e:
     require_unlock = lambda f: f
     optional_security = lambda f: f
     get_secure_memory_store = None
-
-# Simple PDF viewer route (serves original file and accepts page param for front-end to anchor)
-@app.route('/viewer')
-@optional_security
-def viewer():
-    try:
-        doc_id = request.args.get('doc')
-        page = request.args.get('page')  # optional
-        if not doc_id:
-            return jsonify({'error': 'Missing doc parameter'}), 400
-        # Load v2 metadata to locate original file
-        meta_path = Path('uploads') / doc_id / 'metadata.json'
-        if not meta_path.exists():
-            return jsonify({'error': f'metadata not found for {doc_id}'}), 404
-        meta = json.loads(meta_path.read_text())
-        file_path = meta.get('file_path') or ''
-        if not file_path or not os.path.exists(file_path):
-            # Fallback to uploads path if file was moved
-            candidate = Path('uploads') / doc_id / meta.get('filename', '')
-            if candidate.exists():
-                file_path = str(candidate)
-            else:
-                return jsonify({'error': 'Original file not found'}), 404
-        # For now, serve the raw file; a front-end can use the page param to anchor.
-        directory = os.path.dirname(file_path)
-        filename = os.path.basename(file_path)
-        resp = send_from_directory(directory, filename)
-        # Hint header for page param that a client-side PDF viewer could use
-        if page:
-            resp.headers['X-Viewer-Page'] = str(page)
-        return resp
-    except Exception as e:
-        logger.error(f"Viewer error: {e}")
-        return jsonify({'error': str(e)}), 500
-
     create_security_routes = lambda app: None
-
-@app.route('/view')
-@optional_security
-def view_document():
-    try:
-        doc_id = request.args.get('doc')
-        page = request.args.get('page', type=int, default=1)
-        if not doc_id:
-            return jsonify({'error': 'Missing doc parameter'}), 400
-        # Reuse the raw file via /viewer; the template uses PDF.js to render and handle paging
-        return render_template('pdf_viewer.html', doc_id=doc_id, page=page)
-    except Exception as e:
-        logger.error(f"View error: {e}")
-        return jsonify({'error': str(e)}), 500
-
     inject_security_context = lambda: {}
     vetting_bp = None
 
@@ -168,6 +118,55 @@ def initialize_sam():
                 def inject_learned_knowledge(self, knowledge_summary: str, key_concepts: list):
                     """Inject learned knowledge into the model's context for future queries."""
                     from datetime import datetime
+
+# Simple PDF viewer route (serves original file and accepts page param for front-end to anchor)
+@app.route('/viewer')
+@optional_security
+def viewer():
+    try:
+        doc_id = request.args.get('doc')
+        page = request.args.get('page')  # optional
+        if not doc_id:
+            return jsonify({'error': 'Missing doc parameter'}), 400
+        # Load v2 metadata to locate original file
+        meta_path = Path('uploads') / doc_id / 'metadata.json'
+        if not meta_path.exists():
+            return jsonify({'error': f'metadata not found for {doc_id}'}), 404
+        meta = json.loads(meta_path.read_text())
+        file_path = meta.get('file_path') or ''
+        if not file_path or not os.path.exists(file_path):
+            # Fallback to uploads path if file was moved
+            candidate = Path('uploads') / doc_id / meta.get('filename', '')
+            if candidate.exists():
+                file_path = str(candidate)
+            else:
+                return jsonify({'error': 'Original file not found'}), 404
+        # For now, serve the raw file; a front-end can use the page param to anchor.
+        directory = os.path.dirname(file_path)
+        filename = os.path.basename(file_path)
+        resp = send_from_directory(directory, filename)
+        # Hint header for page param that a client-side PDF viewer could use
+        if page:
+            resp.headers['X-Viewer-Page'] = str(page)
+        return resp
+    except Exception as e:
+        logger.error(f"Viewer error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/view')
+@optional_security
+def view_document():
+    try:
+        doc_id = request.args.get('doc')
+        page = request.args.get('page', type=int, default=1)
+        if not doc_id:
+            return jsonify({'error': 'Missing doc parameter'}), 400
+        # Render template that uses PDF.js
+        return render_template('pdf_viewer.html', doc_id=doc_id, page=page)
+    except Exception as e:
+        logger.error(f"View error: {e}")
+        return jsonify({'error': str(e)}), 500
+
                     knowledge_entry = {
                         'summary': knowledge_summary,
                         'concepts': key_concepts,
@@ -924,39 +923,11 @@ def is_document_query(message):
             logger.info(f"🧮 Mathematical pattern detected in '{message}' - NOT treating as document query")
             return False
 
-    # ENHANCED: Check for Deep Analysis patterns first (high priority)
-    deep_analysis_patterns = [
-        r'🔍\s*deep\s*analysis',  # "🔍 Deep Analysis"
-        r'deep\s*analysis.*\.pdf',  # "Deep Analysis: filename.pdf"
-        r'analyze.*\.pdf',  # "analyze filename.pdf"
-        r'comprehensive\s*analysis',  # "comprehensive analysis"
-        r'detailed\s*analysis',  # "detailed analysis"
-    ]
-
-    for pattern in deep_analysis_patterns:
-        if re.search(pattern, message_lower):
-            logger.info(f"🔍 Deep Analysis pattern detected in '{message}' - treating as document query")
-            return True
-
-    # ENHANCED: Check for arXiv and academic paper patterns
-    arxiv_patterns = [
-        r'\b\d{4}\.\d{5}v?\d*\.?pdf?\b',  # arXiv patterns like "2305.18290v3.pdf"
-        r'\b\d{4}\.\d{5}v?\d*\b',        # arXiv without extension
-        r'arxiv:\s*\d{4}\.\d{5}',        # "arxiv:2305.18290"
-    ]
-
-    for pattern in arxiv_patterns:
-        if re.search(pattern, message_lower):
-            logger.info(f"📄 arXiv pattern detected in '{message}' - treating as document query")
-            return True
-
-    # ENHANCED: Document query indicators with better coverage
+    # Document query indicators
     document_indicators = [
         'summary of', 'summarize', 'what is in', 'content of',
         'document', '.pdf', '.docx', '.md', '.txt',
-        'file', 'paper', 'report', 'uploaded', 'upload',
-        'analyze', 'analysis', 'review', 'examine',
-        'explain', 'describe', 'discuss', 'breakdown'
+        'file', 'paper', 'report'
     ]
 
     # Person/entity query indicators that might be in uploaded documents
@@ -968,7 +939,6 @@ def is_document_query(message):
 
     # Check for document indicators first
     if any(indicator in message_lower for indicator in document_indicators):
-        logger.info(f"📄 Document indicator detected in '{message}' - treating as document query")
         return True
 
     # Check for person/entity queries that might be answered from uploaded documents
@@ -1156,38 +1126,14 @@ def generate_enhanced_document_response(message, document_memories):
         # Phase 3.2: Use enhanced search with hybrid ranking
         try:
             if hasattr(memory_store, 'enhanced_search_memories'):
-                # If we have a last uploaded document in this session, prefer filtering to that doc
-                where_filter = None
-                try:
-                    doc_id_hint = session.get('last_uploaded_doc_id')
-                    if doc_id_hint:
-                        where_filter = {'document_id': doc_id_hint}
-                        logger.info(f"Applying session doc filter for enhanced search: {doc_id_hint}")
-                except Exception:
-                    where_filter = None
-
                 relevant_memories = memory_store.enhanced_search_memories(
                     query=message,
                     max_results=10,
-                    initial_candidates=20,
-                    where_filter=where_filter
+                    initial_candidates=20
                 )
                 logger.info(f"Enhanced document search returned {len(relevant_memories)} ranked results")
             else:
-                # Apply doc filter if we have a session-scoped last uploaded doc
-                try:
-                    doc_id_hint = session.get('last_uploaded_doc_id')
-                except Exception:
-                    doc_id_hint = None
-                if doc_id_hint and hasattr(memory_store, 'enhanced_search_memories'):
-                    relevant_memories = memory_store.enhanced_search_memories(
-                        query=message,
-                        max_results=10,
-                        initial_candidates=20,
-                        where_filter={'document_id': doc_id_hint}
-                    )
-                else:
-                    relevant_memories = memory_store.search_memories(message, max_results=10, min_similarity=0.2)
+                relevant_memories = memory_store.search_memories(message, max_results=10, min_similarity=0.2)
                 logger.info(f"Fallback document search returned {len(relevant_memories)} results")
         except Exception as e:
             logger.warning(f"Enhanced document search failed, using fallback: {e}")
@@ -1272,20 +1218,7 @@ def generate_enhanced_document_response(message, document_memories):
             if words:
                 broader_query = ' '.join(words)
                 logger.info(f"Trying broader search with: {broader_query}")
-                # Re-run broader search with session doc filter when available
-                try:
-                    doc_id_hint = session.get('last_uploaded_doc_id')
-                except Exception:
-                    doc_id_hint = None
-                if doc_id_hint and hasattr(memory_store, 'enhanced_search_memories'):
-                    relevant_memories = memory_store.enhanced_search_memories(
-                        query=broader_query,
-                        max_results=10,
-                        initial_candidates=20,
-                        where_filter={'document_id': doc_id_hint}
-                    )
-                else:
-                    relevant_memories = memory_store.search_memories(broader_query, max_results=10, min_similarity=0.15)  # Increased threshold
+                relevant_memories = memory_store.search_memories(broader_query, max_results=10, min_similarity=0.15)  # Increased threshold
 
                 # Apply stricter relevance filtering for broader search
                 document_relevant = []
@@ -1356,12 +1289,6 @@ def generate_enhanced_document_response(message, document_memories):
                     source = getattr(memory, 'source', 'unknown')
                     similarity = getattr(memory, 'similarity_score', 0.0)
 
-                # Extract metadata robustly
-                if hasattr(memory, 'chunk'):
-                    mem_metadata = getattr(memory.chunk, 'metadata', {}) or {}
-                else:
-                    mem_metadata = getattr(memory, 'metadata', {}) or {}
-
                 # Extract clean source name
                 clean_source = extract_clean_source_name(source)
                 sources.add(clean_source)
@@ -1374,10 +1301,13 @@ def generate_enhanced_document_response(message, document_memories):
                 anchor_candidate = None
                 try:
                     from sam.utils.citation_utils import try_format_citation_for_chunk
+                    # Try to build metadata dict depending on result type
+                    if hasattr(memory, 'chunk'):
+                        mem_metadata = getattr(memory.chunk, 'metadata', {}) or {}
+                    else:
+                        mem_metadata = getattr(memory, 'metadata', {}) or {}
                     citation_note = try_format_citation_for_chunk(content, mem_metadata)
                     if citation_note:
-                        # Try to prepare an anchor URL if the UI has a viewer
-                        # Example formats: /viewer?doc={document_id}&page={n} or /view_document/{id}?page={n}
                         doc_id = mem_metadata.get('document_id')
                         if doc_id:
                             import re as _re
@@ -1391,9 +1321,10 @@ def generate_enhanced_document_response(message, document_memories):
                 sd = {
                     'name': clean_source,
                     'similarity': similarity,
-                    'content_preview': content[:100] + "..." if len(content) > 100 else content,
-                    'citation': citation_note
+                    'content_preview': content[:100] + "..." if len(content) > 100 else content
                 }
+                if citation_note:
+                    sd['citation'] = citation_note
                 if anchor_candidate:
                     sd['anchor_candidate'] = anchor_candidate
                 source_details.append(sd)
@@ -1631,20 +1562,8 @@ def generate_general_document_response(message):
                 )
                 logger.info(f"Enhanced search returned {len(memories)} ranked results")
             else:
-                # Fallback to regular search, but prefer session doc filter if available
-                try:
-                    doc_id_hint = session.get('last_uploaded_doc_id')
-                except Exception:
-                    doc_id_hint = None
-                if doc_id_hint and hasattr(memory_store, 'enhanced_search_memories'):
-                    memories = memory_store.enhanced_search_memories(
-                        query=message,
-                        max_results=5,
-                        initial_candidates=20,
-                        where_filter={'document_id': doc_id_hint}
-                    )
-                else:
-                    memories = memory_store.search_memories(message, max_results=5)
+                # Fallback to regular search
+                memories = memory_store.search_memories(message, max_results=5)
                 logger.info(f"Fallback search returned {len(memories)} results")
         except Exception as e:
             logger.warning(f"Enhanced search failed, using fallback: {e}")
@@ -1975,13 +1894,6 @@ def process_uploaded_file(file_path):
 
         if result:
             logger.info(f"Document processed successfully: {result.get('document_id', 'unknown')}")
-
-            # Remember the most recent uploaded document in the session for routing/filtering
-            try:
-                session['last_uploaded_doc_id'] = result.get('document_id')
-                session['last_uploaded_filename'] = Path(file_path).name
-            except Exception:
-                pass
 
             response_data = {
                 'document_id': result['document_id'],

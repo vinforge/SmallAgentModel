@@ -41,30 +41,16 @@ def _load_v2_artifacts(document_id: str) -> Tuple[str, List[Dict]]:
         return "", []
 
 
-def _find_span_index(text: str, snippet: str) -> Optional[int]:
-    """Find snippet in text using normalized comparison. Returns start index or None."""
-    if not text or not snippet:
+def _find_span_index(full_text: str, snippet: str, window: int = 300) -> Optional[int]:
+    """Roughly locate snippet inside full_text; returns starting char index or None."""
+    try:
+        sn = _normalize(snippet)[:window]
+        if not sn:
+            return None
+        ft = _normalize(full_text)
+        return ft.find(sn)
+    except Exception:
         return None
-    ntext = _normalize(text)
-    nsnip = _normalize(snippet)
-    if not nsnip:
-        return None
-    # Try exact normalized match
-    idx_norm = ntext.find(nsnip)
-    if idx_norm == -1:
-        # Try a shorter prefix to be robust
-        nsnip_short = nsnip[: min(120, len(nsnip))]
-        if nsnip_short:
-            idx_norm = ntext.find(nsnip_short)
-    if idx_norm == -1:
-        return None
-    # Map normalized index back to original by scanning
-    # Simple fallback: search raw snippet (non-normalized) in raw text
-    raw_idx = text.find(snippet)
-    if raw_idx == -1:
-        # Try a shorter raw prefix
-        raw_idx = text.find(snippet[: min(120, len(snippet))])
-    return raw_idx if raw_idx != -1 else None
 
 
 def try_format_citation_for_chunk(chunk_content: str, chunk_metadata: Dict) -> Optional[str]:
