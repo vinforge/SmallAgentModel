@@ -85,7 +85,7 @@ class ModelPerformanceMetrics:
 
 class ModelInterface(abc.ABC):
     """Abstract base class for all model implementations."""
-    
+
     def __init__(self, config: ModelConfig):
         self.config = config
         self.status = ModelStatus.LOADING
@@ -97,26 +97,100 @@ class ModelInterface(abc.ABC):
             error_rate=0.0,
             last_request_time=0.0
         )
-        
+
     @abc.abstractmethod
     def initialize(self) -> bool:
         """Initialize the model. Returns True if successful."""
         pass
-    
+
     @abc.abstractmethod
     def generate(self, request: GenerationRequest) -> GenerationResponse:
         """Generate text based on the request."""
         pass
-    
+
     @abc.abstractmethod
     def health_check(self) -> bool:
         """Check if the model is healthy and responsive."""
         pass
-    
+
     @abc.abstractmethod
     def get_model_info(self) -> Dict[str, Any]:
         """Get detailed model information."""
         pass
+
+
+class BaseModelEngine(abc.ABC):
+    """
+    Abstract base class for SAM Engine Upgrade framework.
+
+    This class defines the standard interface for all model engines,
+    enabling seamless switching between different base models while
+    preserving application logic.
+    """
+
+    def __init__(self, engine_id: str, model_name: str, model_path: str):
+        self.engine_id = engine_id
+        self.model_name = model_name
+        self.model_path = model_path
+        self.status = ModelStatus.LOADING
+        self.is_loaded = False
+
+    @abc.abstractmethod
+    def load_model(self) -> bool:
+        """
+        Load the model into memory.
+
+        Returns:
+            True if model loaded successfully, False otherwise
+        """
+        pass
+
+    @abc.abstractmethod
+    def generate(self, prompt: str, **kwargs) -> str:
+        """
+        Generate text using the loaded model.
+
+        Args:
+            prompt: Input text prompt
+            **kwargs: Additional generation parameters
+
+        Returns:
+            Generated text response
+        """
+        pass
+
+    @abc.abstractmethod
+    def embed(self, text: str) -> List[float]:
+        """
+        Generate embeddings for the given text.
+
+        Args:
+            text: Input text to embed
+
+        Returns:
+            List of embedding values
+        """
+        pass
+
+    @abc.abstractmethod
+    def unload_model(self) -> bool:
+        """
+        Unload the model from memory.
+
+        Returns:
+            True if model unloaded successfully, False otherwise
+        """
+        pass
+
+    def get_engine_info(self) -> Dict[str, Any]:
+        """Get engine information."""
+        return {
+            "engine_id": self.engine_id,
+            "model_name": self.model_name,
+            "model_path": self.model_path,
+            "status": self.status.value,
+            "is_loaded": self.is_loaded
+        }
     
     def supports_context_length(self, length: int) -> bool:
         """Check if the model supports the given context length."""
@@ -561,3 +635,115 @@ def get_current_model_info() -> Dict[str, Any]:
         "model_status": status,
         "total_models": len(manager.models)
     }
+
+
+class DeepSeekEngine(BaseModelEngine):
+    """
+    Concrete implementation of BaseModelEngine for DeepSeek models.
+
+    This engine encapsulates the current model-loading and inference logic
+    for DeepSeek models, providing a standardized interface.
+    """
+
+    def __init__(self, engine_id: str = "deepseek", model_name: str = None, model_path: str = None):
+        # Use current SAM default if not specified
+        if model_name is None:
+            model_name = "hf.co/unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF:Q4_K_M"
+        if model_path is None:
+            model_path = "http://localhost:11434"  # Ollama API endpoint
+
+        super().__init__(engine_id, model_name, model_path)
+        self.api_url = model_path
+        self.model_interface = None
+
+    def load_model(self) -> bool:
+        """Load the DeepSeek model via existing ModelInterface."""
+        try:
+            # Create model config for current DeepSeek setup
+            model_config = ModelConfig(
+                model_type=ModelType.TRANSFORMER,
+                model_name=self.model_name,
+                api_url=self.api_url,
+                max_context_length=16000,
+                timeout_seconds=120,
+                temperature=0.7,
+                max_tokens=1000,
+                fallback_enabled=True
+            )
+
+            # Create and initialize the model interface
+            self.model_interface = TransformerModelWrapper(model_config)
+
+            if self.model_interface.initialize():
+                self.status = ModelStatus.READY
+                self.is_loaded = True
+                logger.info(f"✅ DeepSeek engine loaded: {self.model_name}")
+                return True
+            else:
+                self.status = ModelStatus.ERROR
+                logger.error(f"❌ Failed to load DeepSeek engine: {self.model_name}")
+                return False
+
+        except Exception as e:
+            self.status = ModelStatus.ERROR
+            logger.error(f"❌ Error loading DeepSeek engine: {e}")
+            return False
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        """Generate text using the DeepSeek model."""
+        if not self.is_loaded or self.model_interface is None:
+            raise RuntimeError("Model not loaded. Call load_model() first.")
+
+        try:
+            # Create generation request
+            request = GenerationRequest(
+                prompt=prompt,
+                max_tokens=kwargs.get('max_tokens', 1000),
+                temperature=kwargs.get('temperature', 0.7),
+                system_prompt=kwargs.get('system_prompt', ''),
+                context=kwargs.get('context', [])
+            )
+
+            # Generate response
+            response = self.model_interface.generate(request)
+
+            if response.success:
+                return response.text
+            else:
+                raise RuntimeError(f"Generation failed: {response.error}")
+
+        except Exception as e:
+            logger.error(f"❌ DeepSeek generation error: {e}")
+            raise
+
+    def embed(self, text: str) -> List[float]:
+        """Generate embeddings using the current embedding system."""
+        try:
+            # Use existing SAM embedding infrastructure
+            from sam.embedding.embedding_manager import get_embedding_manager
+
+            embedding_manager = get_embedding_manager()
+            embeddings = embedding_manager.embed_text(text)
+
+            return embeddings.tolist() if hasattr(embeddings, 'tolist') else embeddings
+
+        except Exception as e:
+            logger.error(f"❌ DeepSeek embedding error: {e}")
+            raise
+
+    def unload_model(self) -> bool:
+        """Unload the DeepSeek model."""
+        try:
+            if self.model_interface:
+                # The TransformerModelWrapper doesn't have explicit unload,
+                # but we can mark it as unloaded
+                self.model_interface = None
+
+            self.status = ModelStatus.UNAVAILABLE
+            self.is_loaded = False
+            logger.info(f"✅ DeepSeek engine unloaded: {self.model_name}")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Error unloading DeepSeek engine: {e}")
+            return False

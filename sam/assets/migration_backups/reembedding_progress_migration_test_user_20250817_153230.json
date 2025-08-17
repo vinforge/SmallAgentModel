@@ -1,0 +1,11 @@
+{
+  "migration_id": "migration_test_user_20250817_153230",
+  "timestamp": "2025-08-17T15:32:30.430993",
+  "message": "Error: Failed to initialize embedding system",
+  "percentage": 0.0,
+  "total_documents": 0,
+  "processed_documents": 0,
+  "failed_documents": 0,
+  "current_document": "",
+  "elapsed_seconds": 0.118103
+}

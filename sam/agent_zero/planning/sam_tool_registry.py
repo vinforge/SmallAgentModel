@@ -22,6 +22,7 @@ class ToolCategory(Enum):
     CONVERSATION_TOOLS = "conversation_tools"
     SYNTHESIS_TOOLS = "synthesis_tools"
     REASONING_TOOLS = "reasoning_tools"
+    DATA_ANALYSIS = "data_analysis"
 
 
 @dataclass
@@ -252,7 +253,17 @@ class SAMToolRegistry:
             parameters=["conclusions", "evidence"],
             cost_estimate=2
         ))
-        
+
+        # Data Analysis Tools
+        self._register_tool(SAMTool(
+            name="code_interpreter",
+            category=ToolCategory.DATA_ANALYSIS,
+            description="Execute Python code securely for data analysis, calculations, and visualizations",
+            parameters=["code", "data_files", "timeout"],
+            cost_estimate=3,
+            context_requirements=[]
+        ))
+
         logger.info(f"Initialized SAM tool registry with {len(self._tools)} tools")
     
     def _register_tool(self, tool: SAMTool):
@@ -317,7 +328,10 @@ class SAMToolRegistry:
         
         if any(word in task_lower for word in ['reason', 'logic', 'conclude', 'infer']):
             relevant_tools.extend(self.get_tools_by_category(ToolCategory.REASONING_TOOLS))
-        
+
+        if any(word in task_lower for word in ['calculate', 'compute', 'math', 'data', 'plot', 'chart', 'graph', 'statistics', 'analysis', 'code', 'python']):
+            relevant_tools.extend(self.get_tools_by_category(ToolCategory.DATA_ANALYSIS))
+
         # Remove duplicates while preserving order
         seen = set()
         unique_tools = []

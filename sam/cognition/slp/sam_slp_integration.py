@@ -299,7 +299,7 @@ class SAMSLPIntegration:
                 }
             }
 
-            response = create_legacy_ollama_client().generate(prompt)
+            response = create_legacy_ollama_client().generate(ollama_payload)
 
             if response.status_code == 200:
                 result = response.json()

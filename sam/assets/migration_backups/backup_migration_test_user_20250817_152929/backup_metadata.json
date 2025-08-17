@@ -1,0 +1,7 @@
+{
+  "backup_id": "backup_migration_test_user_20250817_152929",
+  "migration_id": "migration_test_user_20250817_152929",
+  "created_at": "2025-08-17T15:29:29.729720",
+  "previous_config": {
+    "model": {
+      "backend": 

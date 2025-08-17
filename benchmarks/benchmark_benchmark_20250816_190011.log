@@ -1,0 +1,21 @@
+2025-08-16 19:00:11,372 - __main__.EngineUpgradeBenchmark - INFO - Benchmark suite initialized: benchmark_20250816_190011
+2025-08-16 19:00:11,372 - __main__.EngineUpgradeBenchmark - INFO - 🚀 Starting Full Engine Upgrade Benchmark Suite
+2025-08-16 19:00:11,373 - __main__ - INFO - Resource monitoring started
+2025-08-16 19:00:11,373 - __main__.EngineUpgradeBenchmark - INFO - 🔄 Benchmarking Migration Controller Performance
+2025-08-16 19:00:12,198 - sam.core.migration_controller.MigrationController - INFO - Loaded migration state: 1 active, 0 in history
+2025-08-16 19:00:12,198 - sam.core.migration_controller.MigrationController - INFO - Migration Controller initialized
+2025-08-16 19:00:12,219 - sam.cognition.dpo.model_manager.DPOModelManager - INFO - DPO Model Manager initialized
+2025-08-16 19:00:12,219 - sam.core.migration_controller.MigrationController - INFO - Found 0 LoRA adapters for user benchmark_user
+2025-08-16 19:00:12,219 - sam.core.migration_controller.MigrationController - WARNING - Could not determine knowledge base size: No module named 'sam.memory.memory_manager'
+2025-08-16 19:00:12,220 - sam.core.migration_controller.MigrationController - INFO - Created migration plan: migration_benchmark_user_20250816_190012
+2025-08-16 19:00:12,220 - sam.core.migration_controller.MigrationController - INFO - ✅ Cancelled migration: migration_benchmark_user_20250816_190012
+2025-08-16 19:00:12,220 - __main__.EngineUpgradeBenchmark - INFO - ✅ Migration Controller benchmarks completed
+2025-08-16 19:00:12,220 - __main__.EngineUpgradeBenchmark - INFO - 📚 Benchmarking Model Library Operations
+2025-08-16 19:00:12,319 - sam.core.model_library_manager.ModelLibraryManager - INFO - Loaded 3 models from catalog
+2025-08-16 19:00:12,319 - sam.core.model_library_manager.ModelLibraryManager - INFO - Model Library Manager initialized
+2025-08-16 19:00:12,319 - __main__.EngineUpgradeBenchmark - INFO - ✅ Model Library benchmarks completed
+2025-08-16 19:00:12,319 - __main__.EngineUpgradeBenchmark - INFO - 🖥️ Benchmarking UI Response Times
+2025-08-16 19:00:12,320 - __main__.EngineUpgradeBenchmark - INFO - ✅ UI Response Time benchmarks completed
+2025-08-16 19:00:12,382 - __main__ - INFO - Resource monitoring stopped
+2025-08-16 19:00:12,383 - __main__.EngineUpgradeBenchmark - INFO - ✅ Benchmark results saved: benchmarks/results_benchmark_20250816_190011.json
+2025-08-16 19:00:12,383 - __main__.EngineUpgradeBenchmark - INFO - ✅ Benchmark summary saved: benchmarks/summary_benchmark_20250816_190011.md

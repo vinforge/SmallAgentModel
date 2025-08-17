@@ -225,7 +225,7 @@ class LegacyOllamaInterface:
 
 def create_legacy_ollama_client():
     """Create legacy Ollama client for existing code compatibility."""
-    return Legacycreate_legacy_ollama_client()
+    return create_ollama_compatible_client()
 
 # Configuration and model switching utilities
 def configure_sam_model(model_type: str = "transformer"):

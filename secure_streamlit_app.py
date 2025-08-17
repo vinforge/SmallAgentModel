@@ -3221,6 +3221,7 @@ def render_integrated_memory_control_center():
             "🧠🎨 Dream Canvas",
             "📚 Archived Insights",  # NEW: Archived Insights page
             "🧠 Personalized Tuner",
+            "🔧 Core Engines",  # NEW: Engine Upgrade Framework
             "🏆 Memory Ranking",
             "📊 Memory Analytics",
             "🧠⚡ SLP Analytics",
@@ -3288,6 +3289,9 @@ def render_integrated_memory_control_center():
         elif memory_page == "🧠 Personalized Tuner":
             # Reuse the standalone tuner UI inside the integrated control center
             render_personalized_tuner_standalone()
+        elif memory_page == "🔧 Core Engines":
+            # Engine Upgrade Framework
+            render_core_engines_integrated()
         elif memory_page == "🏆 Memory Ranking":
             render_memory_ranking_integrated()
         elif memory_page == "📊 Memory Analytics":
@@ -13814,6 +13818,67 @@ def render_dream_canvas_integrated():
     except Exception as e:
         st.error(f"❌ Dream Canvas integration failed: {e}")
         logger.error(f"Dream Canvas integration error: {e}")
+
+def render_core_engines_integrated():
+    """Render Core Engines (Engine Upgrade Framework) integrated into the main SAM interface."""
+    try:
+        st.subheader("🔧 Core Engines")
+        st.markdown("**SAM Engine Upgrade Framework - Model Library Management**")
+
+        # Import the Core Engines functionality from memory_app.py
+        try:
+            # Import the render functions from memory_app.py
+            import sys
+            from pathlib import Path
+
+            # Add ui directory to path if not already there
+            ui_path = Path(__file__).parent / "ui"
+            if str(ui_path) not in sys.path:
+                sys.path.insert(0, str(ui_path))
+
+            # Import the Core Engines functions
+            from memory_app import (
+                render_core_engines,
+                render_model_library_tab,
+                render_downloads_tab,
+                render_engine_settings_tab,
+                render_migration_wizard,
+                render_engine_compatibility_warning
+            )
+
+            # Render the Core Engines interface
+            render_core_engines()
+
+        except ImportError as e:
+            st.error(f"❌ Core Engines framework not available: {e}")
+            st.info("""
+            **Core Engines Framework**
+
+            The Engine Upgrade Framework allows you to:
+            - Switch between different AI model engines
+            - Download and manage model libraries
+            - Migrate between engines safely
+            - Preserve your data and personalization
+
+            **To enable this feature:**
+            1. Ensure the Engine Upgrade Framework is properly installed
+            2. Check that sam/core/model_library_manager.py exists
+            3. Verify model storage directory permissions
+            """)
+
+        except Exception as e:
+            st.error(f"❌ Error loading Core Engines interface: {e}")
+            st.markdown("""
+            **Troubleshooting:**
+            - Check that the Engine Upgrade Framework is properly installed
+            - Verify that sam/core/ directory contains the required modules
+            - Restart the SAM application if issues persist
+            """)
+
+    except Exception as e:
+        st.error(f"❌ Core Engines integration error: {e}")
+        logger.error(f"Core Engines integration error: {e}")
+
 
 def render_archived_insights_integrated():
     """Render Archived Insights integrated into the main SAM interface."""

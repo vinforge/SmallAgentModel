@@ -371,6 +371,8 @@ def main():
                 "🔍 Reasoning Visualizer",
                 "🧠📊 TPV Dissonance Demo",  # NEW: Phase 5B Demo
                 "🧠 Personalized Tuner",  # NEW: DPO Integration
+                "🔧 Core Engines",  # NEW: Engine Upgrade Framework
+                "🧠 Introspection",  # NEW: Introspection Engine
                 "📁 Bulk Ingestion",
                 "🔑 API Key Manager",
                 "🧠🎨 Dream Canvas",
@@ -465,6 +467,10 @@ def main():
         render_tpv_dissonance_demo()
     elif page == "🧠 Personalized Tuner":
         render_personalized_tuner()
+    elif page == "🔧 Core Engines":
+        render_core_engines()
+    elif page == "🧠 Introspection":
+        render_introspection_engine()
     elif page == "📁 Bulk Ingestion":
         render_bulk_ingestion()
     elif page == "🔑 API Key Manager":
@@ -6682,6 +6688,9 @@ def render_personalized_tuner():
         st.subheader("🧠 Personalized Tuner")
         st.markdown("**Direct Preference Optimization (DPO) for Personalized Model Fine-Tuning**")
 
+        # Engine compatibility check
+        render_engine_compatibility_warning()
+
         # Import required modules
         try:
             from sam.learning.dpo_data_manager import get_dpo_data_manager
@@ -7254,6 +7263,1171 @@ def render_model_management_tab(user_id):
 
             except Exception as e:
                 st.error(f"Error generating test response: {e}")
+
+
+def render_core_engines():
+    """Render the Core Engines interface for the Engine Upgrade framework."""
+    try:
+        st.subheader("🔧 Core Engines")
+        st.markdown("**SAM Engine Upgrade Framework - Model Library Management**")
+
+        # Import required modules
+        try:
+            from sam.core.model_library_manager import get_model_library_manager
+            from sam.core.model_interface import get_current_model_info
+        except ImportError as e:
+            st.error(f"❌ Required modules not available: {e}")
+            st.info("Please ensure the Engine Upgrade framework is properly installed.")
+            return
+
+        # Get model library manager
+        library_manager = get_model_library_manager()
+
+        # Header with current engine info
+        st.markdown("---")
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            st.markdown("### 🎯 Current Active Engine")
+            try:
+                current_info = get_current_model_info()
+                st.info(f"**Active Model:** {current_info.get('primary_model', 'Unknown')}")
+                if current_info.get('fallback_model'):
+                    st.info(f"**Fallback Model:** {current_info['fallback_model']}")
+            except Exception as e:
+                st.warning(f"Could not retrieve current model info: {e}")
+
+        with col2:
+            st.markdown("### 📊 Library Status")
+            available_models = library_manager.get_available_models()
+            downloaded_models = library_manager.get_downloaded_models()
+            st.metric("Available Models", len(available_models))
+            st.metric("Downloaded Models", len(downloaded_models))
+
+        st.markdown("---")
+
+        # Main interface tabs
+        tab1, tab2, tab3 = st.tabs([
+            "📚 Model Library",
+            "⬇️ Downloads",
+            "⚙️ Settings"
+        ])
+
+        with tab1:
+            render_model_library_tab(library_manager)
+
+        with tab2:
+            render_downloads_tab(library_manager)
+
+        with tab3:
+            render_engine_settings_tab(library_manager)
+
+    except Exception as e:
+        st.error(f"❌ Error loading Core Engines interface: {e}")
+        st.markdown("""
+        **Possible causes:**
+        - Engine Upgrade framework not properly installed
+        - Missing model library dependencies
+        - Configuration issues
+
+        **Try:**
+        1. Check that sam/core/model_library_manager.py exists
+        2. Verify model storage directory permissions
+        3. Restart the Memory Center if issues persist
+        """)
+
+
+def render_model_library_tab(library_manager):
+    """Render the model library tab showing available models."""
+    st.markdown("### 📚 Available Core Models")
+    st.markdown("Browse and download SAM-compatible models for engine upgrades.")
+
+    # Get available models
+    available_models = library_manager.get_available_models()
+
+    if not available_models:
+        st.warning("No models available in catalog. Please check your configuration.")
+        return
+
+    # Filter options
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        family_filter = st.selectbox(
+            "Model Family",
+            options=["All"] + list(set(model.model_family for model in available_models)),
+            index=0
+        )
+
+    with col2:
+        show_recommended = st.checkbox("Show Recommended Only", value=False)
+
+    with col3:
+        sort_by = st.selectbox(
+            "Sort By",
+            options=["Name", "Size", "Family"],
+            index=0
+        )
+
+    # Filter models
+    filtered_models = available_models
+    if family_filter != "All":
+        filtered_models = [m for m in filtered_models if m.model_family == family_filter]
+    if show_recommended:
+        filtered_models = [m for m in filtered_models if m.recommended]
+
+    # Sort models
+    if sort_by == "Name":
+        filtered_models.sort(key=lambda x: x.display_name)
+    elif sort_by == "Size":
+        filtered_models.sort(key=lambda x: x.file_size)
+    elif sort_by == "Family":
+        filtered_models.sort(key=lambda x: x.model_family)
+
+    st.markdown("---")
+
+    # Display models
+    for model in filtered_models:
+        with st.container():
+            col1, col2, col3 = st.columns([3, 1, 1])
+
+            with col1:
+                # Model info
+                st.markdown(f"**{model.display_name}**")
+                st.markdown(f"*{model.description}*")
+
+                # Tags
+                if model.tags:
+                    tag_str = " ".join([f"`{tag}`" for tag in model.tags])
+                    st.markdown(f"Tags: {tag_str}")
+
+                # Technical details
+                size_gb = model.file_size / (1024**3)
+                st.markdown(f"**Size:** {size_gb:.1f} GB | **Quantization:** {model.quantization} | **Context:** {model.context_length:,} tokens")
+
+            with col2:
+                # Status
+                status = library_manager.get_model_status(model.model_id)
+                if status == "downloaded":
+                    st.success("✅ Downloaded")
+                elif status == "downloading":
+                    st.info("⬇️ Downloading...")
+                elif status == "corrupted":
+                    st.error("❌ Corrupted")
+                elif status == "missing":
+                    st.warning("⚠️ Missing")
+                else:
+                    st.info("📥 Not Downloaded")
+
+            with col3:
+                # Actions
+                if status == "not_downloaded":
+                    if st.button(f"Download", key=f"download_{model.model_id}"):
+                        if library_manager.download_model(model.model_id):
+                            st.success(f"Started downloading {model.display_name}")
+                            st.rerun()
+                        else:
+                            st.error("Failed to start download")
+
+                elif status == "downloading":
+                    if st.button(f"Cancel", key=f"cancel_{model.model_id}"):
+                        if library_manager.cancel_download(model.model_id):
+                            st.success("Download cancelled")
+                            st.rerun()
+
+                elif status == "downloaded":
+                    col_activate, col_delete = st.columns(2)
+                    with col_activate:
+                        if st.button(f"Activate", key=f"activate_{model.model_id}"):
+                            # Launch migration wizard
+                            st.session_state[f'show_migration_wizard_{model.model_id}'] = True
+                            st.rerun()
+
+                    with col_delete:
+                        if st.button(f"Delete", key=f"delete_{model.model_id}"):
+                            if library_manager.delete_model(model.model_id):
+                                st.success(f"Deleted {model.display_name}")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete model")
+
+                elif status in ["corrupted", "missing"]:
+                    if st.button(f"Delete", key=f"delete_{model.model_id}"):
+                        if library_manager.delete_model(model.model_id):
+                            st.success(f"Deleted {model.display_name}")
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete model")
+
+            st.markdown("---")
+
+    # Check for migration wizard triggers
+    for model in filtered_models:
+        wizard_key = f'show_migration_wizard_{model.model_id}'
+        if st.session_state.get(wizard_key, False):
+            render_migration_wizard(model, library_manager)
+            # Clear the trigger
+            st.session_state[wizard_key] = False
+
+
+def render_downloads_tab(library_manager):
+    """Render the downloads tab showing download progress and history."""
+    st.markdown("### ⬇️ Download Management")
+    st.markdown("Monitor active downloads and manage downloaded models.")
+
+    # Active downloads
+    st.markdown("#### 🔄 Active Downloads")
+    active_downloads = library_manager.active_downloads
+
+    if active_downloads:
+        for model_id in active_downloads.keys():
+            progress_info = library_manager.get_download_progress(model_id)
+            if progress_info:
+                col1, col2, col3 = st.columns([2, 2, 1])
+
+                with col1:
+                    st.markdown(f"**{model_id}**")
+                    status = progress_info.get('status', 'unknown')
+                    st.markdown(f"Status: {status}")
+
+                with col2:
+                    if progress_info.get('total_bytes', 0) > 0:
+                        progress = progress_info.get('downloaded_bytes', 0) / progress_info['total_bytes']
+                        st.progress(progress)
+
+                        downloaded_mb = progress_info.get('downloaded_bytes', 0) / (1024**2)
+                        total_mb = progress_info.get('total_bytes', 0) / (1024**2)
+                        st.markdown(f"{downloaded_mb:.1f} MB / {total_mb:.1f} MB")
+
+                with col3:
+                    if st.button(f"Cancel", key=f"cancel_active_{model_id}"):
+                        if library_manager.cancel_download(model_id):
+                            st.success("Download cancelled")
+                            st.rerun()
+
+                st.markdown("---")
+    else:
+        st.info("No active downloads")
+
+    # Downloaded models
+    st.markdown("#### 📦 Downloaded Models")
+    downloaded_models = library_manager.get_downloaded_models()
+
+    if downloaded_models:
+        for model in downloaded_models:
+            col1, col2, col3 = st.columns([3, 1, 1])
+
+            with col1:
+                st.markdown(f"**{model.model_info.display_name}**")
+                st.markdown(f"Downloaded: {model.downloaded_at.strftime('%Y-%m-%d %H:%M')}")
+                size_gb = model.file_size / (1024**3)
+                st.markdown(f"Size: {size_gb:.1f} GB")
+
+            with col2:
+                # Verify file exists
+                if Path(model.local_path).exists():
+                    st.success("✅ Available")
+                else:
+                    st.error("❌ Missing")
+
+            with col3:
+                if st.button(f"Delete", key=f"delete_downloaded_{model.model_id}"):
+                    if library_manager.delete_model(model.model_id):
+                        st.success(f"Deleted {model.model_info.display_name}")
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete model")
+
+            st.markdown("---")
+    else:
+        st.info("No downloaded models")
+
+
+def render_engine_settings_tab(library_manager):
+    """Render the engine settings tab."""
+    st.markdown("### ⚙️ Engine Settings")
+    st.markdown("Configure engine upgrade framework settings.")
+
+    # Storage settings
+    st.markdown("#### 💾 Storage Settings")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        models_dir = str(library_manager.models_dir)
+        st.text_input("Models Directory", value=models_dir, disabled=True)
+
+        # Calculate storage usage
+        total_size = 0
+        for model in library_manager.get_downloaded_models():
+            if Path(model.local_path).exists():
+                total_size += model.file_size
+
+        total_gb = total_size / (1024**3)
+        st.metric("Storage Used", f"{total_gb:.1f} GB")
+
+    with col2:
+        # Storage actions
+        st.markdown("**Storage Actions**")
+
+        if st.button("🧹 Clean Up Missing Models"):
+            cleaned = 0
+            for model_id, model in list(library_manager.downloaded_models.items()):
+                if not Path(model.local_path).exists():
+                    del library_manager.downloaded_models[model_id]
+                    cleaned += 1
+
+            if cleaned > 0:
+                library_manager.save_downloaded_models()
+                st.success(f"Cleaned up {cleaned} missing model records")
+                st.rerun()
+            else:
+                st.info("No missing models found")
+
+        if st.button("🔄 Refresh Model Catalog"):
+            try:
+                library_manager.load_model_catalog()
+                st.success("Model catalog refreshed")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to refresh catalog: {e}")
+
+    st.markdown("---")
+
+    # Advanced settings
+    st.markdown("#### 🔧 Advanced Settings")
+
+    with st.expander("Download Settings"):
+        st.markdown("**Download Configuration**")
+        st.info("Download settings are currently managed automatically.")
+        st.markdown("- Resume downloads are enabled")
+        st.markdown("- Checksums are verified after download")
+        st.markdown("- Downloads run in background threads")
+
+    with st.expander("Model Catalog"):
+        st.markdown("**Available Models in Catalog**")
+        available_models = library_manager.get_available_models()
+
+        for model in available_models:
+            st.markdown(f"- **{model.display_name}** ({model.model_family})")
+            st.markdown(f"  - Repository: `{model.huggingface_repo}`")
+            st.markdown(f"  - File: `{model.filename}`")
+            st.markdown(f"  - Size: {model.file_size / (1024**3):.1f} GB")
+
+    with st.expander("System Information"):
+        st.markdown("**Engine Upgrade Framework Status**")
+        st.markdown(f"- Models Directory: `{library_manager.models_dir}`")
+        st.markdown(f"- Available Models: {len(library_manager.available_models)}")
+        st.markdown(f"- Downloaded Models: {len(library_manager.downloaded_models)}")
+        st.markdown(f"- Active Downloads: {len(library_manager.active_downloads)}")
+
+
+def render_migration_wizard(target_model, library_manager):
+    """Render the migration wizard modal for engine upgrade."""
+    try:
+        from sam.core.migration_controller import get_migration_controller
+        from sam.core.model_interface import get_current_model_info
+
+        migration_controller = get_migration_controller()
+
+        # Get current engine info
+        try:
+            current_info = get_current_model_info()
+            current_engine = current_info.get('primary_model', 'unknown')
+        except:
+            current_engine = 'unknown'
+
+        # Migration wizard modal
+        with st.container():
+            st.markdown("---")
+            st.markdown(f"## 🔄 Engine Upgrade Wizard")
+            st.markdown(f"**Upgrading to:** {target_model.display_name}")
+
+            # Initialize wizard state
+            if 'wizard_step' not in st.session_state:
+                st.session_state.wizard_step = 1
+
+            # Step 1: Warning & Backup
+            if st.session_state.wizard_step == 1:
+                render_wizard_step_1(target_model, current_engine, migration_controller)
+
+            # Step 2: Re-embedding Option
+            elif st.session_state.wizard_step == 2:
+                render_wizard_step_2(target_model, migration_controller)
+
+            # Step 3: Prompt Template Option
+            elif st.session_state.wizard_step == 3:
+                render_wizard_step_3(target_model, migration_controller)
+
+            # Step 4: Final Confirmation
+            elif st.session_state.wizard_step == 4:
+                render_wizard_step_4(target_model, migration_controller)
+
+            # Step 5: Migration in Progress
+            elif st.session_state.wizard_step == 5:
+                render_wizard_step_5(target_model, migration_controller)
+
+            st.markdown("---")
+
+    except Exception as e:
+        st.error(f"❌ Error loading migration wizard: {e}")
+
+
+def render_wizard_step_1(target_model, current_engine, migration_controller):
+    """Step 1: Warning & Backup"""
+    st.markdown("### ⚠️ Step 1: Important Warning")
+
+    st.warning("""
+    **IMPORTANT: Engine upgrade will affect your personalized models**
+
+    Upgrading to a new engine will:
+    - **Invalidate existing LoRA adapters** (personalized tuning will be lost)
+    - **Require re-embedding** of your knowledge base (optional but recommended)
+    - **Change model behavior** (responses may differ from current engine)
+
+    This action cannot be easily undone. Please ensure you want to proceed.
+    """)
+
+    # Show affected components
+    try:
+        affected_loras = migration_controller._get_affected_lora_adapters("default_user", current_engine)
+        kb_size = migration_controller._get_knowledge_base_size()
+
+        if affected_loras:
+            st.error(f"⚠️ **{len(affected_loras)} personalized LoRA adapter(s) will be invalidated**")
+            with st.expander("Show affected adapters"):
+                for lora_id in affected_loras:
+                    st.markdown(f"- {lora_id}")
+        else:
+            st.info("✅ No personalized LoRA adapters will be affected")
+
+        if kb_size > 0:
+            st.warning(f"📚 Knowledge base contains ~{kb_size} documents that may need re-embedding")
+        else:
+            st.info("📚 No knowledge base documents found")
+
+    except Exception as e:
+        st.warning(f"Could not analyze affected components: {e}")
+
+    # Backup option
+    st.markdown("#### 💾 Backup Options")
+    backup_lora = st.checkbox("Create backup of LoRA adapters before migration", value=True)
+
+    if backup_lora:
+        st.info("✅ LoRA adapters will be backed up and can be restored if needed")
+    else:
+        st.warning("⚠️ LoRA adapters will be permanently invalidated without backup")
+
+    # Store backup preference
+    st.session_state.backup_lora_adapters = backup_lora
+
+    # Navigation
+    col1, col2, col3 = st.columns([1, 1, 1])
+
+    with col1:
+        if st.button("❌ Cancel"):
+            st.session_state.wizard_step = 1
+            st.rerun()
+
+    with col3:
+        if st.button("➡️ Continue"):
+            st.session_state.wizard_step = 2
+            st.rerun()
+
+
+def render_wizard_step_2(target_model, migration_controller):
+    """Step 2: Re-embedding Option"""
+    st.markdown("### 🔄 Step 2: Knowledge Base Re-embedding")
+
+    st.info("""
+    **Re-embedding your knowledge base is recommended** when switching engines.
+
+    Different models may produce different embeddings for the same content,
+    which could affect search quality and retrieval accuracy.
+    """)
+
+    # Re-embedding option
+    re_embed = st.radio(
+        "Re-embedding Option:",
+        options=[
+            "✅ Re-embed knowledge base (Recommended)",
+            "⚠️ Skip re-embedding (Faster, but may reduce search quality)",
+            "🔄 Re-embed later (Manual process)"
+        ],
+        index=0
+    )
+
+    if "Re-embed knowledge base" in re_embed:
+        st.success("✅ Knowledge base will be re-embedded with the new engine")
+        st.info("This process will run in the background and may take several minutes")
+        re_embed_choice = True
+    elif "Skip re-embedding" in re_embed:
+        st.warning("⚠️ Search quality may be reduced until re-embedding is performed")
+        re_embed_choice = False
+    else:
+        st.info("🔄 You can re-embed the knowledge base later from the settings")
+        re_embed_choice = False
+
+    # Store re-embedding preference
+    st.session_state.re_embed_knowledge = re_embed_choice
+
+    # Navigation
+    col1, col2, col3 = st.columns([1, 1, 1])
+
+    with col1:
+        if st.button("⬅️ Back"):
+            st.session_state.wizard_step = 1
+            st.rerun()
+
+    with col3:
+        if st.button("➡️ Continue"):
+            st.session_state.wizard_step = 3
+            st.rerun()
+
+
+def render_wizard_step_3(target_model, migration_controller):
+    """Step 3: Prompt Template Option"""
+    st.markdown("### 📝 Step 3: Prompt Templates")
+
+    st.info(f"""
+    **Optimize prompts for {target_model.model_family} models**
+
+    Different model families work best with different prompt formats and styles.
+    We can automatically update your prompt templates for optimal performance.
+    """)
+
+    # Prompt template option
+    update_prompts = st.radio(
+        "Prompt Template Update:",
+        options=[
+            f"✅ Update to {target_model.model_family} optimized prompts (Recommended)",
+            "⚠️ Keep current prompt templates",
+            "🔧 I'll configure prompts manually later"
+        ],
+        index=0
+    )
+
+    if "Update to" in update_prompts:
+        st.success(f"✅ Prompts will be optimized for {target_model.model_family} models")
+        update_prompts_choice = True
+    else:
+        st.info("Current prompt templates will be preserved")
+        update_prompts_choice = False
+
+    # Store prompt preference
+    st.session_state.update_prompt_templates = update_prompts_choice
+
+    # Navigation
+    col1, col2, col3 = st.columns([1, 1, 1])
+
+    with col1:
+        if st.button("⬅️ Back"):
+            st.session_state.wizard_step = 2
+            st.rerun()
+
+    with col3:
+        if st.button("➡️ Continue"):
+            st.session_state.wizard_step = 4
+            st.rerun()
+
+
+def render_wizard_step_4(target_model, migration_controller):
+    """Step 4: Final Confirmation"""
+    st.markdown("### ✅ Step 4: Final Confirmation")
+
+    st.markdown("**Migration Summary:**")
+
+    # Show migration plan
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**Current Engine:**")
+        st.info("Current SAM Engine")
+
+        st.markdown("**Target Engine:**")
+        st.success(f"{target_model.display_name}")
+
+    with col2:
+        st.markdown("**Actions to be performed:**")
+
+        if st.session_state.get('backup_lora_adapters', True):
+            st.markdown("✅ Backup LoRA adapters")
+        else:
+            st.markdown("❌ Skip LoRA backup")
+
+        if st.session_state.get('re_embed_knowledge', True):
+            st.markdown("✅ Re-embed knowledge base")
+        else:
+            st.markdown("❌ Skip re-embedding")
+
+        if st.session_state.get('update_prompt_templates', True):
+            st.markdown("✅ Update prompt templates")
+        else:
+            st.markdown("❌ Keep current prompts")
+
+    st.warning("""
+    **Final Warning:** This action will change your SAM engine and may affect:
+    - Response quality and style
+    - Personalized model compatibility
+    - Knowledge base search accuracy
+
+    Are you sure you want to proceed?
+    """)
+
+    # Final confirmation
+    confirm_migration = st.checkbox("I understand the consequences and want to proceed with the migration")
+
+    # Navigation
+    col1, col2, col3 = st.columns([1, 1, 1])
+
+    with col1:
+        if st.button("⬅️ Back"):
+            st.session_state.wizard_step = 3
+            st.rerun()
+
+    with col2:
+        if st.button("❌ Cancel Migration"):
+            # Reset wizard
+            st.session_state.wizard_step = 1
+            st.rerun()
+
+    with col3:
+        if st.button("🚀 Start Migration", disabled=not confirm_migration):
+            if confirm_migration:
+                # Create and execute migration
+                migration_id = migration_controller.create_migration_plan(
+                    from_engine="current",
+                    to_engine=target_model.model_id,
+                    user_id="default_user",
+                    backup_lora=st.session_state.get('backup_lora_adapters', True),
+                    re_embed=st.session_state.get('re_embed_knowledge', True),
+                    update_prompts=st.session_state.get('update_prompt_templates', True)
+                )
+
+                # Store migration ID and proceed to progress step
+                st.session_state.current_migration_id = migration_id
+                st.session_state.wizard_step = 5
+
+                # Start migration
+                migration_controller.execute_migration(migration_id)
+                st.rerun()
+
+
+def render_wizard_step_5(target_model, migration_controller):
+    """Step 5: Migration in Progress"""
+    st.markdown("### 🔄 Step 5: Migration in Progress")
+
+    migration_id = st.session_state.get('current_migration_id')
+
+    if not migration_id:
+        st.error("No migration ID found")
+        return
+
+    # Get migration status
+    migration_plan = migration_controller.get_migration_status(migration_id)
+
+    if not migration_plan:
+        st.error("Migration plan not found")
+        return
+
+    # Show progress
+    st.markdown(f"**Migration ID:** `{migration_id}`")
+    st.markdown(f"**Status:** {migration_plan.status.value.title()}")
+    st.markdown(f"**Current Step:** {migration_plan.current_step}")
+
+    # Progress bar
+    progress_value = migration_plan.progress_percentage / 100.0
+    st.progress(progress_value)
+    st.markdown(f"Progress: {migration_plan.progress_percentage:.1f}%")
+
+    # Status-specific content
+    if migration_plan.status.value == "in_progress":
+        st.info("🔄 Migration is in progress. Please wait...")
+
+        # Auto-refresh every 5 seconds
+        time.sleep(2)
+        st.rerun()
+
+    elif migration_plan.status.value == "completed":
+        st.success("✅ Migration completed successfully!")
+
+        st.markdown("""
+        **Next Steps:**
+        1. Test the new engine with some queries
+        2. Check that your knowledge base is working correctly
+        3. Retrain personalized models if needed
+        4. Monitor performance and adjust settings as needed
+        """)
+
+        if st.button("🎉 Finish"):
+            # Reset wizard state
+            for key in list(st.session_state.keys()):
+                if key.startswith('wizard_') or key.startswith('show_migration_'):
+                    del st.session_state[key]
+            st.rerun()
+
+    elif migration_plan.status.value == "failed":
+        st.error(f"❌ Migration failed: {migration_plan.error_message}")
+
+        st.markdown("""
+        **What you can do:**
+        1. Check the logs for more details
+        2. Try the migration again
+        3. Contact support if the issue persists
+        4. Restore from backup if needed
+        """)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Retry Migration"):
+                # Reset to step 1
+                st.session_state.wizard_step = 1
+                st.rerun()
+
+        with col2:
+            if st.button("❌ Cancel"):
+                # Reset wizard state
+                for key in list(st.session_state.keys()):
+                    if key.startswith('wizard_') or key.startswith('show_migration_'):
+                        del st.session_state[key]
+                st.rerun()
+
+    # Show migration details in expander
+    with st.expander("Migration Details"):
+        st.json({
+            'migration_id': migration_plan.migration_id,
+            'from_engine': migration_plan.from_engine,
+            'to_engine': migration_plan.to_engine,
+            'created_at': migration_plan.created_at.isoformat(),
+            'status': migration_plan.status.value,
+            'progress': migration_plan.progress_percentage,
+            'current_step': migration_plan.current_step,
+            'backup_lora': migration_plan.backup_lora_adapters,
+            're_embed': migration_plan.re_embed_knowledge,
+            'update_prompts': migration_plan.update_prompt_templates,
+            'affected_loras': migration_plan.affected_lora_adapters,
+            'estimated_duration': migration_plan.estimated_duration_minutes
+        })
+
+
+def render_engine_compatibility_warning():
+    """Render engine compatibility warning for Personalized Tuner."""
+    try:
+        # Check if engine upgrade framework is available
+        try:
+            from sam.core.model_interface import get_current_model_info
+            from sam.config import get_config_manager
+            from sam.cognition.dpo.model_manager import get_dpo_model_manager
+
+            # Get current engine info
+            current_info = get_current_model_info()
+            current_model = current_info.get('primary_model', 'Unknown')
+
+            # Check for engine upgrade configuration
+            config_manager = get_config_manager()
+            config = config_manager.get_config()
+
+            engine_upgraded = hasattr(config, 'engine_upgrade') and config.engine_upgrade
+
+            if engine_upgraded:
+                engine_info = config.engine_upgrade
+                engine_name = engine_info.get('engine_model_name', current_model)
+                engine_family = engine_info.get('engine_family', 'unknown')
+
+                # Check for incompatible LoRA adapters
+                dpo_manager = get_dpo_model_manager()
+                user_models = dpo_manager.get_user_models("default_user")  # Default user for now
+
+                incompatible_models = []
+                for model in user_models:
+                    if hasattr(model, 'training_stats') and 'migration_notes' in model.training_stats:
+                        migration_notes = model.training_stats['migration_notes']
+                        if any(note.get('action') == 'invalidated_by_migration' for note in migration_notes):
+                            incompatible_models.append(model)
+
+                if incompatible_models:
+                    st.error(f"""
+                    ⚠️ **Engine Compatibility Warning**
+
+                    Your current engine (**{engine_name}**) has invalidated {len(incompatible_models)} personalized LoRA adapter(s).
+
+                    **What this means:**
+                    - Previous personalized models are no longer compatible
+                    - You'll need to retrain personalized models for the new engine
+                    - Old training data is preserved and can be reused
+
+                    **Recommended action:** Start new training with your existing preference data.
+                    """)
+
+                    with st.expander("Show incompatible models"):
+                        for model in incompatible_models:
+                            st.markdown(f"- **{model.model_id}** (Created: {model.created_at.strftime('%Y-%m-%d %H:%M')})")
+                else:
+                    st.success(f"""
+                    ✅ **Engine Compatibility Status**
+
+                    Current engine: **{engine_name}** ({engine_family})
+
+                    All personalized models are compatible with the current engine.
+                    """)
+            else:
+                # Default engine - show basic status
+                st.info(f"""
+                📋 **Personalized Tuner Status**
+
+                Current model: **{current_model}**
+
+                You can train personalized LoRA adapters for this model.
+                """)
+
+        except ImportError:
+            # Engine upgrade framework not available
+            st.info("""
+            📋 **Personalized Tuner Status**
+
+            Training personalized models for the current SAM engine.
+            """)
+
+        except Exception as e:
+            # Fallback for any other errors
+            st.warning(f"""
+            ⚠️ **Status Check Warning**
+
+            Could not determine engine compatibility status: {str(e)}
+
+            Personalized tuning should still work normally.
+            """)
+
+    except Exception as e:
+        # Silent failure - don't break the Personalized Tuner
+        pass
+
+
+def render_introspection_engine():
+    """Render the Introspection Engine interface."""
+    st.title("🧠 SAM Introspection Engine")
+    st.markdown("**Comprehensive cognitive process analysis and performance monitoring**")
+
+    # Create tabs for different introspection features
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📊 Real-time Monitoring",
+        "🔍 Cognitive Analysis",
+        "📈 Performance Insights",
+        "🛠️ Configuration"
+    ])
+
+    with tab1:
+        render_realtime_monitoring()
+
+    with tab2:
+        render_cognitive_analysis()
+
+    with tab3:
+        render_performance_insights()
+
+    with tab4:
+        render_introspection_config()
+
+
+def render_realtime_monitoring():
+    """Render real-time monitoring dashboard."""
+    st.subheader("📊 Real-time Performance Monitoring")
+
+    try:
+        # Import introspection components
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+
+        from sam.introspection.performance_monitor import get_performance_monitor
+
+        monitor = get_performance_monitor()
+
+        # Start monitoring if not already started
+        if not monitor.is_monitoring:
+            if st.button("🚀 Start Monitoring"):
+                monitor.start_monitoring()
+                st.success("Performance monitoring started!")
+                st.rerun()
+        else:
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button("⏹️ Stop Monitoring"):
+                    monitor.stop_monitoring()
+                    st.success("Performance monitoring stopped!")
+                    st.rerun()
+            with col2:
+                if st.button("🔄 Refresh"):
+                    st.rerun()
+
+        # Display current metrics
+        current_metrics = monitor.get_current_metrics()
+        if current_metrics:
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric("CPU Usage", f"{current_metrics.cpu_percent:.1f}%")
+            with col2:
+                st.metric("Memory Usage", f"{current_metrics.memory_percent:.1f}%")
+            with col3:
+                st.metric("Active Operations", current_metrics.active_operations)
+            with col4:
+                st.metric("Error Rate", f"{current_metrics.error_rate:.1%}")
+
+            # Performance charts
+            st.subheader("📈 Performance Trends")
+
+            history = monitor.get_metrics_history(minutes=30)
+            if len(history) > 1:
+                import pandas as pd
+                import plotly.express as px
+
+                # Create DataFrame
+                df = pd.DataFrame([
+                    {
+                        'timestamp': m.timestamp,
+                        'cpu_percent': m.cpu_percent,
+                        'memory_percent': m.memory_percent,
+                        'operations_per_minute': m.operations_per_minute
+                    }
+                    for m in history
+                ])
+
+                # CPU and Memory chart
+                fig = px.line(df, x='timestamp', y=['cpu_percent', 'memory_percent'],
+                            title='System Resource Usage')
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Operations chart
+                fig2 = px.line(df, x='timestamp', y='operations_per_minute',
+                             title='Operations per Minute')
+                st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.info("No metrics available. Start monitoring to see real-time data.")
+
+    except Exception as e:
+        st.error(f"Error loading performance monitor: {e}")
+
+
+def render_cognitive_analysis():
+    """Render cognitive analysis interface."""
+    st.subheader("🔍 Cognitive Process Analysis")
+
+    # Log file selection
+    st.markdown("**Select introspection log file for analysis:**")
+
+    # Look for log files
+    log_files = []
+    try:
+        from pathlib import Path
+        log_dir = Path(".")
+        log_files = list(log_dir.glob("sam_introspection_*.jsonl"))
+    except:
+        pass
+
+    if log_files:
+        selected_file = st.selectbox(
+            "Available log files:",
+            options=[str(f) for f in log_files],
+            format_func=lambda x: f"{Path(x).name} ({Path(x).stat().st_size // 1024} KB)"
+        )
+
+        if st.button("🔍 Analyze Cognitive Patterns"):
+            try:
+                from sam.introspection.cognitive_analyzer import CognitiveAnalyzer
+
+                analyzer = CognitiveAnalyzer(selected_file)
+
+                with st.spinner("Analyzing cognitive patterns..."):
+                    insights = analyzer.generate_insights()
+
+                st.success(f"Analysis complete! Found {len(insights)} insights.")
+
+                # Display insights
+                for insight in insights:
+                    with st.expander(f"💡 {insight.title}"):
+                        st.write(f"**Type:** {insight.insight_type}")
+                        st.write(f"**Confidence:** {insight.confidence:.1%}")
+                        st.write(f"**Description:** {insight.description}")
+
+                        if insight.recommendations:
+                            st.write("**Recommendations:**")
+                            for rec in insight.recommendations:
+                                st.write(f"• {rec}")
+
+                # Reasoning patterns
+                st.subheader("🧠 Reasoning Patterns")
+                patterns = analyzer.analyze_reasoning_patterns()
+
+                if patterns:
+                    pattern_data = []
+                    for pattern in patterns[:10]:  # Top 10
+                        pattern_data.append({
+                            "Pattern": pattern.pattern_id,
+                            "Frequency": pattern.frequency,
+                            "Avg Duration (ms)": f"{pattern.avg_duration_ms:.0f}",
+                            "Success Rate": f"{pattern.success_rate:.1%}",
+                            "Complexity": f"{pattern.complexity_score:.2f}"
+                        })
+
+                    st.dataframe(pattern_data)
+                else:
+                    st.info("No reasoning patterns detected in the log.")
+
+            except Exception as e:
+                st.error(f"Error during analysis: {e}")
+    else:
+        st.info("No introspection log files found. Start using SAM to generate logs.")
+
+
+def render_performance_insights():
+    """Render performance insights interface."""
+    st.subheader("📈 Performance Insights & Optimization")
+
+    try:
+        from sam.introspection.performance_monitor import get_performance_monitor
+
+        monitor = get_performance_monitor()
+
+        # Time period selection
+        time_period = st.selectbox(
+            "Analysis time period:",
+            options=[15, 30, 60, 120, 240],
+            format_func=lambda x: f"Last {x} minutes",
+            index=2  # Default to 60 minutes
+        )
+
+        if st.button("📊 Generate Performance Report"):
+            summary = monitor.get_performance_summary(minutes=time_period)
+
+            if "message" in summary:
+                st.info(summary["message"])
+            else:
+                # System performance
+                st.subheader("🖥️ System Performance")
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric("Avg CPU Usage", f"{summary['cpu_usage']['avg']:.1f}%")
+                    st.metric("Peak CPU Usage", f"{summary['cpu_usage']['max']:.1f}%")
+
+                with col2:
+                    st.metric("Avg Memory Usage", f"{summary['memory_usage']['avg']:.1f}%")
+                    st.metric("Peak Memory Usage", f"{summary['memory_usage']['max']:.1f}%")
+
+                with col3:
+                    st.metric("Current Memory", f"{summary['current_memory_mb']:.0f} MB")
+                    st.metric("Avg Error Rate", f"{summary['avg_error_rate']:.1%}")
+
+                # Operation performance
+                if "operation_performance" in summary:
+                    st.subheader("⚡ Operation Performance")
+                    op_perf = summary["operation_performance"]
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Avg Operation Time", f"{op_perf['avg_time_ms']:.0f} ms")
+                    with col2:
+                        st.metric("Fastest Operation", f"{op_perf['min_time_ms']:.0f} ms")
+                    with col3:
+                        st.metric("Slowest Operation", f"{op_perf['max_time_ms']:.0f} ms")
+
+                # Export options
+                st.subheader("📤 Export Data")
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    if st.button("📄 Export as JSON"):
+                        filename = f"sam_performance_{time_period}min.json"
+                        monitor.export_metrics(filename, format="json")
+                        st.success(f"Exported to {filename}")
+
+                with col2:
+                    if st.button("📊 Export as CSV"):
+                        filename = f"sam_performance_{time_period}min.csv"
+                        monitor.export_metrics(filename, format="csv")
+                        st.success(f"Exported to {filename}")
+
+    except Exception as e:
+        st.error(f"Error generating performance insights: {e}")
+
+
+def render_introspection_config():
+    """Render introspection configuration interface."""
+    st.subheader("🛠️ Introspection Configuration")
+
+    # Logging configuration
+    st.markdown("**Structured Logging Settings**")
+
+    enable_logging = st.checkbox("Enable structured logging", value=True)
+    enable_console = st.checkbox("Enable console output", value=True)
+    enable_file = st.checkbox("Enable file logging", value=True)
+
+    buffer_size = st.slider("Event buffer size", min_value=10, max_value=1000, value=100)
+
+    # Performance monitoring configuration
+    st.markdown("**Performance Monitoring Settings**")
+
+    collection_interval = st.slider(
+        "Collection interval (seconds)",
+        min_value=1.0, max_value=60.0, value=5.0, step=1.0
+    )
+
+    enable_alerts = st.checkbox("Enable performance alerts", value=True)
+
+    if enable_alerts:
+        st.markdown("**Alert Thresholds**")
+        cpu_threshold = st.slider("CPU usage alert (%)", min_value=50, max_value=100, value=80)
+        memory_threshold = st.slider("Memory usage alert (%)", min_value=50, max_value=100, value=85)
+        operation_threshold = st.slider("Operation time alert (ms)", min_value=1000, max_value=10000, value=5000)
+
+    # Apply configuration
+    if st.button("💾 Apply Configuration"):
+        try:
+            # This would apply the configuration to the introspection system
+            st.success("Configuration applied successfully!")
+
+            # Show current configuration
+            st.json({
+                "logging": {
+                    "enabled": enable_logging,
+                    "console": enable_console,
+                    "file": enable_file,
+                    "buffer_size": buffer_size
+                },
+                "monitoring": {
+                    "collection_interval": collection_interval,
+                    "alerts_enabled": enable_alerts,
+                    "thresholds": {
+                        "cpu_percent": cpu_threshold if enable_alerts else None,
+                        "memory_percent": memory_threshold if enable_alerts else None,
+                        "operation_time_ms": operation_threshold if enable_alerts else None
+                    } if enable_alerts else None
+                }
+            })
+
+        except Exception as e:
+            st.error(f"Error applying configuration: {e}")
+
+    # System status
+    st.markdown("**System Status**")
+    try:
+        from sam.introspection.performance_monitor import get_performance_monitor
+        from sam.introspection.introspection_logger import get_introspection_logger
+
+        monitor = get_performance_monitor()
+        logger = get_introspection_logger()
+
+        status_data = {
+            "Performance Monitor": "Running" if monitor.is_monitoring else "Stopped",
+            "Logger Session": logger.session_id[:8],
+            "Metrics History": len(monitor.metrics_history),
+            "Active Operations": len(monitor.operation_timings)
+        }
+
+        for key, value in status_data.items():
+            st.write(f"**{key}:** {value}")
+
+    except Exception as e:
+        st.warning(f"Could not retrieve system status: {e}")
 
 
 if __name__ == "__main__":

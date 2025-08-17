@@ -18,6 +18,9 @@ from .program_signature import ProgramSignature, generate_signature
 from .latent_program_store import LatentProgramStore
 from .program_executor import ProgramExecutor
 
+# Initialize logger first
+logger = logging.getLogger(__name__)
+
 # Enhanced Analytics Integration (Phase 1A.2 - preserving 100% of existing functionality)
 try:
     from .analytics_engine import SLPAnalyticsEngine
@@ -33,8 +36,6 @@ try:
 except ImportError:
     logger.warning("ProgramValidator not available, using basic validation")
     ProgramValidator = None
-
-logger = logging.getLogger(__name__)
 
 
 class ProgramManager:

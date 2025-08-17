@@ -16,6 +16,18 @@
     "gradient_checkpointing": false,
     "enable_thinking_tokens": true
   },
+  "engine_upgrade": {
+    "active_engine_id": "deepseek-r1-8b-q4",
+    "downloaded_engines": [
+      "deepseek-r1-8b-q4"
+    ],
+    "migration_in_progress": false,
+    "last_migration_timestamp": null,
+    "backup_enabled": true,
+    "auto_backup_before_migration": true,
+    "rollback_enabled": true,
+    "max_backup_retention_days": 30
+  },
   "app_name": "SAM",
   "version": "2.0.0",
   "debug_mode": false,

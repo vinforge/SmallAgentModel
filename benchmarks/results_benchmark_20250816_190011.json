@@ -1,0 +1,109 @@
+{
+  "benchmark_id": "benchmark_20250816_190011",
+  "timestamp": "2025-08-16T19:00:11.372138",
+  "system_info": {
+    "platform": "darwin",
+    "python_version": "3.11.4 (main, Jul  5 2023, 08:40:20) [Clang 14.0.6 ]",
+    "cpu_count": 10,
+    "memory_total_gb": 64.0,
+    "disk_total_gb": 926.3517189025879,
+    "hostname": "BCLT-VICOF176K5.local"
+  },
+  "tests": {
+    "migration_controller": {
+      "test_name": "migration_controller_performance",
+      "start_time": "2025-08-16T19:00:11.373923",
+      "operations": {
+        "create_migration_plan": {
+          "duration_seconds": 0.021818876266479492,
+          "migration_id": "migration_benchmark_user_20250816_190012"
+        },
+        "get_migration_status": {
+          "duration_seconds": 9.5367431640625e-07,
+          "status_found": true
+        },
+        "cancel_migration": {
+          "duration_seconds": 0.00019311904907226562,
+          "success": true
+        }
+      },
+      "status": "completed",
+      "end_time": "2025-08-16T19:00:12.220289"
+    },
+    "model_library": {
+      "test_name": "model_library_operations",
+      "start_time": "2025-08-16T19:00:12.220317",
+      "operations": {
+        "get_available_models": {
+          "duration_seconds": 9.5367431640625e-07,
+          "model_count": 3
+        },
+        "get_downloaded_models": {
+          "duration_seconds": 1.1920928955078125e-06,
+          "model_count": 0
+        },
+        "model_status_checks": {
+          "average_duration_seconds": 3.178914388020833e-07,
+          "checks_performed": 3
+        }
+      },
+      "status": "completed",
+      "end_time": "2025-08-16T19:00:12.319371"
+    },
+    "ui_response": {
+      "test_name": "ui_response_times",
+      "start_time": "2025-08-16T19:00:12.319401",
+      "operations": {
+        "core_engines_data_load": {
+          "duration_seconds": 3.0994415283203125e-06,
+          "available_models": 3,
+          "downloaded_models": 0
+        },
+        "migration_wizard_init": {
+          "duration_seconds": 1.9073486328125e-06
+        },
+        "engine_status_indicator": {
+          "duration_seconds": 0.0014109611511230469
+        }
+      },
+      "status": "completed",
+      "end_time": "2025-08-16T19:00:12.320868"
+    }
+  },
+  "status": "completed",
+  "end_time": "2025-08-16T19:00:12.320871",
+  "resource_usage": {
+    "duration_seconds": 1.0,
+    "cpu_percent": {
+      "min": 0.0,
+      "max": 64.7,
+      "avg": 32.35
+    },
+    "memory_mb": {
+      "min": 24249.5,
+      "max": 24249.5,
+      "avg": 24249.5
+    },
+    "disk_io_read_mb": {
+      "min": 0.0,
+      "max": 0.390625,
+      "avg": 0.1953125
+    },
+    "disk_io_write_mb": {
+      "min": 0.0,
+      "max": 0.0078125,
+      "avg": 0.00390625
+    },
+    "network_sent_mb": {
+      "min": 0.0,
+      "max": 0.0,
+      "avg": 0.0
+    },
+    "network_recv_mb": {
+      "min": 0.0,
+      "max": 0.005859375,
+      "avg": 0.0029296875
+    },
+    "sample_count": 2
+  }
+}

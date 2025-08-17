@@ -44,15 +44,15 @@ def query_documents_v2(query: str,
         
         # Process result based on pipeline type
         if pipeline_used == "v2_muvera":
-            return _process_v2_result(rag_result, routing_result, session_id)
+            return _process_v2_result(rag_result, routing_result, query, session_id)
         else:
-            return _process_v1_result(rag_result, routing_result, session_id)
+            return _process_v1_result(rag_result, routing_result, query, session_id)
             
     except Exception as e:
         logger.error(f"❌ V2 document query failed: {e}")
         return False, f"Query processing failed: {str(e)}", {'error': str(e)}
 
-def _process_v2_result(rag_result, routing_result, session_id: str = None) -> Tuple[bool, str, Dict[str, Any]]:
+def _process_v2_result(rag_result, routing_result, query: str, session_id: str = None) -> Tuple[bool, str, Dict[str, Any]]:
     """Process v2 RAG pipeline result."""
     try:
         if not rag_result.success:
@@ -83,6 +83,19 @@ def _process_v2_result(rag_result, routing_result, session_id: str = None) -> Tu
                 'session_id': session_id
             }
         
+        # Initialize metadata
+        metadata = {
+            'pipeline': 'v2_muvera',
+            'success': True,
+            'source_documents': rag_result.source_documents,
+            'similarity_scores': rag_result.similarity_scores,
+            'document_count': rag_result.document_count,
+            'context_available': True,
+            'session_id': session_id,
+            'processing_time': rag_result.total_time,
+            'fallback_used': routing_result.fallback_used
+        }
+
         # Generate enhanced natural response
         try:
             from sam.document_rag.enhanced_response_generator import generate_enhanced_document_response
@@ -134,23 +147,14 @@ def _process_v2_result(rag_result, routing_result, session_id: str = None) -> Tu
                 'enhancement_error': str(e)
             })
         
-        # Create metadata
-        metadata = {
-            'pipeline': 'v2_muvera',
-            'success': True,
-            'document_count': rag_result.document_count,
+        # Update metadata with additional details
+        metadata.update({
             'context_length': rag_result.context_length,
-            'context_available': True,
-            'source_documents': rag_result.source_documents,
-            'similarity_scores': rag_result.similarity_scores,
-            'processing_time': rag_result.total_time,
             'retrieval_time': rag_result.retrieval_time,
             'context_assembly_time': rag_result.context_assembly_time,
-            'session_id': session_id,
-            'fallback_used': routing_result.fallback_used,
             'routing_reason': routing_result.routing_reason,
             'citations': citations
-        }
+        })
         
         logger.info(f"✅ v2 query successful: {rag_result.document_count} docs, {rag_result.total_time:.3f}s")
         
@@ -164,7 +168,7 @@ def _process_v2_result(rag_result, routing_result, session_id: str = None) -> Tu
             'session_id': session_id
         }
 
-def _process_v1_result(rag_result, routing_result, session_id: str = None) -> Tuple[bool, str, Dict[str, Any]]:
+def _process_v1_result(rag_result, routing_result, query: str, session_id: str = None) -> Tuple[bool, str, Dict[str, Any]]:
     """Process v1 RAG pipeline result."""
     try:
         # v1 result is a dictionary

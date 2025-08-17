@@ -1,0 +1,7 @@
+{
+  "active_engine_id": "invalid_engine",
+  "engine_model_name": "Test Engine invalid_engine",
+  "engine_family": "test",
+  "last_upgrade": "2025-08-17T15:32:30.272976",
+  "local_model_path": "/mock/path/invalid_engine"
+}

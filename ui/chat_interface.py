@@ -103,8 +103,16 @@ def render_message_with_thoughts(message: Dict[str, Any], message_index: int):
 def render_chat_interface():
     """Render the main chat interface with Sprint 16 enhancements."""
     try:
-        st.title("💬 Chat with SAM")
-        st.markdown("**Enhanced with Sprint 16: Thought Transparency Controls**")
+        # Header with engine status
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            st.title("💬 Chat with SAM")
+            st.markdown("**Enhanced with Sprint 16: Thought Transparency Controls**")
+
+        with col2:
+            # Engine status indicator
+            render_engine_status_indicator()
         
         # Initialize session
         initialize_chat_session()
@@ -461,3 +469,60 @@ def render_thought_settings():
     except Exception as e:
         logger.error(f"Error rendering thought settings: {e}")
         st.error("Error loading thought settings.")
+
+
+def render_engine_status_indicator():
+    """Render the current engine status indicator."""
+    try:
+        # Try to get current engine information
+        try:
+            from sam.core.model_interface import get_current_model_info
+            from sam.config import get_config_manager
+
+            # Get current model info
+            current_info = get_current_model_info()
+            current_model = current_info.get('primary_model', 'Unknown')
+
+            # Try to get engine upgrade info from config
+            try:
+                config_manager = get_config_manager()
+                config = config_manager.get_config()
+
+                if hasattr(config, 'engine_upgrade') and config.engine_upgrade:
+                    engine_info = config.engine_upgrade
+                    engine_name = engine_info.get('engine_model_name', current_model)
+                    engine_family = engine_info.get('engine_family', 'unknown')
+                    last_upgrade = engine_info.get('last_upgrade', 'Never')
+
+                    # Show enhanced engine status
+                    st.markdown("### 🔧 Active Engine")
+                    st.success(f"**{engine_name}**")
+                    st.caption(f"Family: {engine_family.title()}")
+
+                    if last_upgrade != 'Never':
+                        from datetime import datetime
+                        try:
+                            upgrade_date = datetime.fromisoformat(last_upgrade.replace('Z', '+00:00'))
+                            st.caption(f"Upgraded: {upgrade_date.strftime('%Y-%m-%d %H:%M')}")
+                        except:
+                            st.caption(f"Upgraded: {last_upgrade}")
+                else:
+                    # Show basic engine status
+                    st.markdown("### 🤖 Active Model")
+                    st.info(f"**{current_model}**")
+                    st.caption("Default SAM Engine")
+
+            except Exception as e:
+                # Fallback to basic model info
+                st.markdown("### 🤖 Active Model")
+                st.info(f"**{current_model}**")
+
+        except Exception as e:
+            # Ultimate fallback
+            st.markdown("### 🤖 SAM Engine")
+            st.warning("**Status Unknown**")
+            st.caption("Unable to determine engine status")
+
+    except Exception as e:
+        logger.error(f"Error rendering engine status: {e}")
+        # Silent failure - don't break the chat interface
