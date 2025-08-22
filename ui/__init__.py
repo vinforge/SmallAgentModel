@@ -1,46 +1,78 @@
-# ui/__init__.py
-
+#!/usr/bin/env python3
 """
-User interface module for SAM (Small Agent Model).
+SAM UI Module
+=============
 
-This module provides chat interface capabilities and interactive memory control & visualization.
-Sprint 12: Interactive Memory Control & Visualization
+Refactored UI components for the SAM (Small Agent Model) application.
+
+This module provides a modular architecture replacing the monolithic
+secure_streamlit_app.py with organized, maintainable components.
+
+Components:
+- app_controller: Main application orchestration
+- components: Reusable UI components (chat, forms, etc.)
+- handlers: Specialized handlers (document, auth, etc.)
+- security: Authentication and session management
+- utils: Common utilities and helpers
+
+Author: SAM Development Team
+Version: 1.0.0 - Refactored Architecture
 """
 
-from .chat_ui import ChatInterface, launch_chat_interface
-from .memory_browser import MemoryBrowserUI
-from .memory_editor import MemoryEditor
-from .memory_graph import MemoryGraphVisualizer
-from .memory_commands import MemoryCommandProcessor, CommandResult, get_command_processor
-from .role_memory_filter import RoleBasedMemoryFilter, MemoryAccessLevel, MemoryAccessRule, RoleMemoryContext, get_role_filter
-from .memory_app import main as run_memory_app
+from .app_controller import SAMAppController, main
+from .components.chat_interface import ChatInterface, get_chat_interface, render_chat_interface
+from .handlers.document_handler import (
+    render_document_upload_section,
+    render_uploaded_documents_list,
+    generate_enhanced_summary_prompt,
+    generate_enhanced_questions_prompt,
+    generate_enhanced_analysis_prompt
+)
+from .security.session_manager import (
+    SessionManager,
+    get_session_manager,
+    initialize_secure_session,
+    check_authentication
+)
+from .utils.helpers import (
+    extract_result_content,
+    format_file_size,
+    format_duration,
+    format_timestamp,
+    health_check,
+    render_health_status
+)
 
 __all__ = [
-    # Chat Interface
+    # Main application
+    'SAMAppController',
+    'main',
+    
+    # Chat interface
     'ChatInterface',
-    'launch_chat_interface',
-
-    # Memory Browser
-    'MemoryBrowserUI',
-
-    # Memory Editor
-    'MemoryEditor',
-
-    # Memory Graph
-    'MemoryGraphVisualizer',
-
-    # Memory Commands
-    'MemoryCommandProcessor',
-    'CommandResult',
-    'get_command_processor',
-
-    # Role-Based Filtering
-    'RoleBasedMemoryFilter',
-    'MemoryAccessLevel',
-    'MemoryAccessRule',
-    'RoleMemoryContext',
-    'get_role_filter',
-
-    # Main Memory App
-    'run_memory_app'
+    'get_chat_interface',
+    'render_chat_interface',
+    
+    # Document handling
+    'render_document_upload_section',
+    'render_uploaded_documents_list',
+    'generate_enhanced_summary_prompt',
+    'generate_enhanced_questions_prompt',
+    'generate_enhanced_analysis_prompt',
+    
+    # Security and sessions
+    'SessionManager',
+    'get_session_manager',
+    'initialize_secure_session',
+    'check_authentication',
+    
+    # Utilities
+    'extract_result_content',
+    'format_file_size',
+    'format_duration',
+    'format_timestamp',
+    'health_check',
+    'render_health_status'
 ]
+
+__version__ = '1.0.0'
