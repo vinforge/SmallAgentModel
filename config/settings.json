@@ -20,7 +20,8 @@
       ".pdf",
       ".txt",
       ".docx",
-      ".md"
+      ".md",
+      ".csv"
     ],
     "auto_process": true
   }

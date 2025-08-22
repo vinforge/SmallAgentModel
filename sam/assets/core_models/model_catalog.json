@@ -50,6 +50,24 @@
         "long-context",
         "instruct"
       ]
+    },
+    "jamba-v0.1": {
+      "model_id": "jamba-v0.1",
+      "display_name": "Jamba (7B Hybrid)",
+      "description": "A hybrid model combining Transformer and Mamba (SSM) layers, excellent for long-context tasks.",
+      "model_family": "Hybrid (Transformer+SSM)",
+      "huggingface_repo": "ai21labs/Jamba-v0.1",
+      "filename": null,
+      "file_size": 14000000000,
+      "quantization": "fp16",
+      "context_length": 256000,
+      "recommended": true,
+      "tags": [
+        "hybrid",
+        "long-context",
+        "experimental",
+        "ssm"
+      ]
     }
   }
 }

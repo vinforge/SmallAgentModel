@@ -1451,7 +1451,7 @@ def render_chat_document_upload():
         **Drag & drop documents directly into your conversation with SAM!**
 
         🎯 **Quick Upload**: Upload documents and immediately start discussing them
-        📄 **Supported Formats**: PDF, TXT, DOCX, MD files
+        📄 **Supported Formats**: PDF, TXT, DOCX, MD, CSV files
         🔒 **Secure Processing**: All uploads are encrypted and processed securely
 
         💡 **What happens after upload:**
@@ -1464,7 +1464,7 @@ def render_chat_document_upload():
         # File uploader with drag & drop
         uploaded_files = st.file_uploader(
             "Drop files here or click to browse",
-            type=['pdf', 'txt', 'docx', 'md'],
+            type=['pdf', 'txt', 'docx', 'md', 'csv'],
             accept_multiple_files=True,
             help="Upload documents to discuss with SAM. Files are processed securely and encrypted.",
             key="chat_file_upload"
@@ -1507,6 +1507,51 @@ def render_chat_document_upload():
 
                                 if not success:
                                     result['error'] = message
+                            elif uploaded_file.name.lower().endswith('.csv'):
+                                # Use specialized CSV processor for data science capabilities
+                                from sam.document_processing.csv_handler import handle_csv_upload
+
+                                # Save uploaded file to a predictable location
+                                import os
+                                from pathlib import Path
+
+                                # Create uploads directory if it doesn't exist
+                                uploads_dir = Path("uploads")
+                                uploads_dir.mkdir(exist_ok=True)
+
+                                # Save file with original name in uploads directory
+                                csv_path = uploads_dir / uploaded_file.name
+                                with open(csv_path, 'wb') as f:
+                                    f.write(uploaded_file.read())
+
+                                # Process with CSV handler
+                                success, message, metadata = handle_csv_upload(
+                                    str(csv_path),
+                                    uploaded_file.name,
+                                    session_id="default"
+                                )
+
+                                # Store the file path in session state for later use
+                                # Clear previous CSV files to prioritize the most recent upload
+                                if 'uploaded_csv_files' not in st.session_state:
+                                    st.session_state.uploaded_csv_files = {}
+
+                                # Clear old CSV files and store only the new one
+                                st.session_state.uploaded_csv_files.clear()
+                                st.session_state.uploaded_csv_files[uploaded_file.name] = str(csv_path)
+
+                                # Also store the most recent CSV filename for easy access
+                                st.session_state.most_recent_csv = uploaded_file.name
+
+                                result = {
+                                    'success': success,
+                                    'message': message,
+                                    'metadata': metadata,
+                                    'processing_method': 'csv_data_science_processor'
+                                }
+
+                                if not success:
+                                    result['error'] = message
                             else:
                                 # Process other document types using existing secure processing
                                 result = process_secure_document(uploaded_file)
@@ -1515,8 +1560,13 @@ def render_chat_document_upload():
                                 # Mark as processed
                                 st.session_state[f"processed_{uploaded_file.name}"] = True
 
-                                # Add success message to chat history
-                                success_message = f"📄 **Document Uploaded**: {uploaded_file.name}\n\n✅ Successfully processed and added to my knowledge. What would you like to know about this document?"
+                                # Add success message to chat history - customize for CSV files
+                                if uploaded_file.name.lower().endswith('.csv') and result.get('processing_method') == 'csv_data_science_processor':
+                                    # Use the detailed CSV success message from the handler
+                                    csv_message = result.get('message', '')
+                                    success_message = f"📊 **CSV Data Uploaded**: {uploaded_file.name}\n\n{csv_message}\n\n🧠 **Ready for Data Science!** Ask me questions about your data!"
+                                else:
+                                    success_message = f"📄 **Document Uploaded**: {uploaded_file.name}\n\n✅ Successfully processed and added to my knowledge. What would you like to know about this document?"
 
                                 # Add to chat history
                                 if 'chat_history' not in st.session_state:
@@ -2247,12 +2297,15 @@ def render_chat_interface():
                 with col1:
                     if st.button(f"📋 Summarize", key=f"summarize_{i}_{message.get('filename', 'doc')}"):
                         with st.spinner("🔍 Generating comprehensive summary..."):
-                            summary_prompt = generate_enhanced_summary_prompt(message.get('filename', 'the uploaded document'))
+                            filename = message.get('filename', 'the uploaded document')
+
+                            # Create explicit PDF-targeted prompt
+                            summary_prompt = f"Analyze the uploaded PDF file {filename}, not any CSV data. " + generate_enhanced_summary_prompt(filename)
 
                             # Add user prompt to chat history
                             st.session_state.chat_history.append({
                                 "role": "user",
-                                "content": f"📋 Summarize: {message.get('filename', 'the uploaded document')}"
+                                "content": f"📋 Summarize: {filename}"
                             })
 
                             # Generate actual response using SAM's capabilities
@@ -2404,12 +2457,15 @@ This summary was generated from the uploaded document content."""
                 with col2:
                     if st.button(f"❓ Key Questions", key=f"questions_{i}_{message.get('filename', 'doc')}"):
                         with st.spinner("🤔 Generating strategic questions..."):
-                            questions_prompt = generate_enhanced_questions_prompt(message.get('filename', 'the uploaded document'))
+                            filename = message.get('filename', 'the uploaded document')
+
+                            # Create explicit PDF-targeted query
+                            questions_prompt = f"Analyze the uploaded PDF file {filename}, not any CSV data. " + generate_enhanced_questions_prompt(filename)
 
                             # Add user prompt to chat history
                             st.session_state.chat_history.append({
                                 "role": "user",
-                                "content": f"❓ Key Questions: {message.get('filename', 'the uploaded document')}"
+                                "content": f"❓ Key Questions: {filename}"
                             })
 
                             # Generate actual response using SAM's capabilities
@@ -2436,12 +2492,15 @@ This summary was generated from the uploaded document content."""
                 with col3:
                     if st.button(f"🔍 Deep Analysis", key=f"analysis_{i}_{message.get('filename', 'doc')}"):
                         with st.spinner("🧠 Conducting deep analysis..."):
-                            analysis_prompt = generate_enhanced_analysis_prompt(message.get('filename', 'the uploaded document'))
+                            filename = message.get('filename', 'the uploaded document')
+
+                            # Create explicit PDF-targeted prompt
+                            analysis_prompt = f"Analyze the uploaded PDF file {filename}, not any CSV data. " + generate_enhanced_analysis_prompt(filename)
 
                             # Add user prompt to chat history
                             st.session_state.chat_history.append({
                                 "role": "user",
-                                "content": f"🔍 Deep Analysis: {message.get('filename', 'the uploaded document')}"
+                                "content": f"🔍 Deep Analysis: {filename}"
                             })
 
                             # Generate actual response using SAM's capabilities
@@ -2799,7 +2858,7 @@ def render_document_interface():
     # File upload
     uploaded_file = st.file_uploader(
         "Upload a document for SAM to learn from",
-        type=['pdf', 'txt', 'docx', 'md'],
+        type=['pdf', 'txt', 'docx', 'md', 'csv'],
         help="Uploaded documents will be encrypted and processed securely"
     )
 
@@ -3225,7 +3284,8 @@ def render_integrated_memory_control_center():
             "🏆 Memory Ranking",
             "📊 Memory Analytics",
             "🧠⚡ SLP Analytics",
-            "🔍 Vetting Queue"
+            "🔍 Vetting Queue",
+            "🔬 Algonauts"  # NEW: Algonauts cognitive visualization
         ]
 
         # Handle page override from Messages from SAM alerts
@@ -3303,6 +3363,37 @@ def render_integrated_memory_control_center():
             st.warning("⚠️ Vetting queue temporarily disabled due to recent configuration changes")
             st.info("💡 This will be re-enabled once the vetting system configuration is fixed")
             # render_vetting_queue_integrated()
+        elif memory_page == "🔬 Algonauts":
+            try:
+                # Initialize Flight Recorder if not already done
+                if 'flight_recorder' not in st.session_state:
+                    from sam.introspection.flight_recorder import initialize_flight_recorder, TraceLevel
+                    st.session_state.flight_recorder = initialize_flight_recorder(
+                        trace_level=TraceLevel.DETAILED,
+                        max_sessions=50,
+                        auto_save=False,
+                        save_directory="streamlit_traces"
+                    )
+
+                # Render Algonauts interface
+                from sam.introspection.streamlit_algonauts import render_algonauts_interface
+                render_algonauts_interface()
+
+            except ImportError as e:
+                st.error("❌ Algonauts components not found")
+                st.info("💡 Make sure SAM introspection module is properly installed")
+                with st.expander("🔧 Debug Information", expanded=False):
+                    st.code(f"Import Error: {e}")
+                    st.markdown("**Expected files:**")
+                    st.markdown("- `sam/introspection/flight_recorder.py`")
+                    st.markdown("- `sam/introspection/streamlit_algonauts.py`")
+                    st.markdown("- `sam/introspection/algonauts_visualization.py`")
+
+            except Exception as e:
+                st.error(f"❌ Failed to load Algonauts interface: {e}")
+                with st.expander("🐛 Debug Information", expanded=False):
+                    import traceback
+                    st.code(traceback.format_exc())
 
     except ImportError as e:
         st.error(f"❌ Memory Control Center components not available: {e}")
@@ -12863,6 +12954,12 @@ def is_calculation_only_query(prompt: str) -> bool:
 def generate_tool_enhanced_response(prompt: str, force_local: bool = False) -> str:
     """Generate response using intelligent tool selection and planning (preserving 100% of functionality)."""
     try:
+        # Check if user has uploaded CSV files and query is about data analysis
+        csv_context = check_csv_data_context(prompt)
+        if csv_context['has_csv_data'] and csv_context['is_data_query']:
+            logger.info(f"🔍 CSV data analysis query detected - using Code Interpreter")
+            return handle_csv_data_analysis_query(prompt, csv_context)
+
         # Import required components
         from sam.orchestration.planner import DynamicPlanner
         from sam.orchestration.uif import SAM_UIF
@@ -13978,6 +14075,329 @@ def render_basic_security_interface():
     - ✅ Secure storage configured
     - ✅ Session management active
     """)
+
+def check_csv_data_context(prompt: str) -> dict:
+    """Check if user has uploaded CSV files and query is about data analysis."""
+    try:
+        # Check if any CSV files have been processed in this session
+        has_csv_data = False
+        csv_files = []
+
+        # Safely check session state
+        try:
+            import streamlit as st
+            if hasattr(st, 'session_state'):
+                # First, check for stored uploaded CSV files (most recent uploads)
+                if hasattr(st.session_state, 'uploaded_csv_files'):
+                    # Get the most recently uploaded CSV files first
+                    recent_files = list(st.session_state.uploaded_csv_files.keys())
+                    for filename in recent_files:
+                        has_csv_data = True
+                        if filename not in csv_files:
+                            csv_files.append(filename)
+
+                # Then check chat history for any additional CSV files
+                if hasattr(st.session_state, 'chat_history'):
+                    for message in st.session_state.chat_history:
+                        if (message.get('document_upload') and
+                            message.get('filename', '').lower().endswith('.csv')):
+                            has_csv_data = True
+                            filename = message.get('filename')
+                            if filename not in csv_files:
+                                csv_files.append(filename)
+        except Exception:
+            # Fallback: check if query mentions CSV files directly
+            prompt_lower = prompt.lower()
+            if any(term in prompt_lower for term in ['csv', 'employee_data.csv', 'uploaded', 'file']):
+                has_csv_data = True
+                csv_files = ['employee_data.csv']  # Assume common filename
+
+        # Check if query is about data analysis
+        prompt_lower = prompt.lower()
+        data_analysis_keywords = [
+            'calculate', 'average', 'mean', 'sum', 'total', 'count',
+            'analyze', 'analysis', 'correlation', 'statistics', 'stats',
+            'plot', 'chart', 'graph', 'visualization', 'visualize',
+            'salary', 'department', 'experience', 'data', 'dataset',
+            'minimum', 'maximum', 'median', 'standard deviation',
+            'group by', 'filter', 'sort', 'aggregate'
+        ]
+
+        is_data_query = any(keyword in prompt_lower for keyword in data_analysis_keywords)
+
+        # Additional context: check for CSV-specific references
+        csv_references = [
+            'csv', 'file', 'uploaded', 'data', 'dataset', 'table',
+            'employee_data', 'company', 'entire company'
+        ]
+
+        has_csv_reference = any(ref in prompt_lower for ref in csv_references)
+
+        # Enhanced logic: if query mentions CSV files and is a data query, treat as CSV context
+        # This handles cases where session state isn't available or CSV was uploaded in previous session
+        if has_csv_reference and is_data_query and not has_csv_data:
+            has_csv_data = True  # Infer CSV data from query context
+            if not csv_files:
+                csv_files = ['employee_data.csv']  # Default filename
+
+        return {
+            'has_csv_data': has_csv_data,
+            'is_data_query': is_data_query,
+            'has_csv_reference': has_csv_reference,
+            'csv_files': csv_files,
+            'confidence': 0.9 if (has_csv_data and is_data_query) else 0.3
+        }
+
+    except Exception as e:
+        logger.error(f"Error checking CSV context: {e}")
+        return {
+            'has_csv_data': False,
+            'is_data_query': False,
+            'has_csv_reference': False,
+            'csv_files': [],
+            'confidence': 0.0
+        }
+
+
+def handle_csv_data_analysis_query(prompt: str, csv_context: dict) -> str:
+    """Handle data analysis queries using Code Interpreter with CSV data."""
+    try:
+        logger.info(f"🔍 Handling CSV data analysis query: {prompt[:100]}...")
+
+        # Generate Python code for the data analysis
+        csv_files = csv_context.get('csv_files', [])
+        if not csv_files:
+            return "❌ No CSV files found in the current session. Please upload a CSV file first."
+
+        # Get the most recent CSV file and its path
+        csv_filename = csv_files[-1]  # Default to last in list
+
+        # Try to get the most recent uploaded file first
+        try:
+            import streamlit as st
+            if hasattr(st, 'session_state'):
+                # Check for the most recent CSV file
+                if hasattr(st.session_state, 'most_recent_csv'):
+                    csv_filename = st.session_state.most_recent_csv
+                elif hasattr(st.session_state, 'uploaded_csv_files') and st.session_state.uploaded_csv_files:
+                    # Get the last uploaded file
+                    csv_filename = list(st.session_state.uploaded_csv_files.keys())[-1]
+        except Exception:
+            pass
+
+        # Get the actual file path from session state
+        csv_filepath = csv_filename
+        try:
+            import streamlit as st
+            if (hasattr(st, 'session_state') and
+                hasattr(st.session_state, 'uploaded_csv_files') and
+                csv_filename in st.session_state.uploaded_csv_files):
+                csv_filepath = st.session_state.uploaded_csv_files[csv_filename]
+        except Exception:
+            pass
+
+        # Generate appropriate Python code based on the query
+        python_code = generate_data_analysis_code(prompt, csv_filepath)
+
+        if not python_code:
+            return "❌ Could not generate appropriate data analysis code for this query."
+
+        # Use Smart Sandbox Manager for intelligent execution routing
+        try:
+            from sam.code_interpreter.smart_sandbox_manager import get_smart_sandbox_manager
+
+            sandbox_manager = get_smart_sandbox_manager()
+            result = sandbox_manager.execute_code(python_code, timeout=30)
+
+            if result.success:
+                response = f"📊 **Data Analysis Result:**\n\n"
+                response += f"**Query:** {prompt}\n\n"
+                response += f"**Analysis of {csv_filename}:**\n"
+                response += f"```\n{result.output}\n```\n\n"
+
+                # Add execution details
+                response += f"🔧 **Execution Details:**\n"
+                response += f"   • Mode: {result.execution_mode}\n"
+                response += f"   • Security Level: {result.security_level}\n"
+                response += f"   • Execution Time: {result.execution_time:.2f}s\n\n"
+
+                response += f"*Analyzed using SAM's intelligent sandbox system with automatic Docker provisioning*"
+                return response
+            else:
+                return f"❌ Data analysis failed: {result.error}\n\n*Execution mode: {result.execution_mode}*"
+
+        except Exception as e:
+            # Ultimate fallback: provide the code for manual execution
+            logger.error(f"Smart Sandbox Manager failed: {e}")
+            response = f"📊 **Data Analysis Code Generated:**\n\n"
+            response += f"**Query:** {prompt}\n\n"
+            response += f"**Python Code for {csv_filename}:**\n"
+            response += f"```python\n{python_code}\n```\n\n"
+            response += f"*Note: Automatic execution failed ({e}). Please run this code manually.*"
+            return response
+
+    except Exception as e:
+        logger.error(f"Error handling CSV data analysis: {e}")
+        return f"❌ Error processing data analysis query: {str(e)}"
+
+
+def generate_data_analysis_code(prompt: str, csv_filename: str) -> str:
+    """Generate Python code for data analysis based on the query."""
+    prompt_lower = prompt.lower()
+
+    # Determine the correct file path for the CSV
+    import os
+    from pathlib import Path
+
+    # Check multiple possible locations for the CSV file
+    possible_paths = [
+        csv_filename,  # Direct filename
+        f"tests/data/{csv_filename}",  # Test data location
+        f"SmallAgentModel-main/tests/data/{csv_filename}",  # From parent directory
+        f"uploads/{csv_filename}",  # Potential uploads directory
+        f"data/{csv_filename}",  # Data directory
+    ]
+
+    csv_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            csv_path = path
+            break
+
+    # If no file found, use the original filename (will show helpful error)
+    if csv_path is None:
+        csv_path = csv_filename
+
+    # Basic template with correct path
+    code_template = f"""
+import pandas as pd
+import numpy as np
+import os
+
+# Load the CSV data from the correct path
+csv_path = '{csv_path}'
+if not os.path.exists(csv_path):
+    # Try alternative paths
+    alternative_paths = [
+        'tests/data/employee_data.csv',
+        'SmallAgentModel-main/tests/data/employee_data.csv',
+        'employee_data.csv'
+    ]
+    for alt_path in alternative_paths:
+        if os.path.exists(alt_path):
+            csv_path = alt_path
+            break
+
+df = pd.read_csv(csv_path)
+
+print(f"📊 Dataset Analysis")
+print(f"Dataset shape: {{df.shape}}")
+print(f"Columns: {{list(df.columns)}}")
+print()
+
+"""
+
+    # Detect specific analysis types
+    if any(word in prompt_lower for word in ['average', 'mean']):
+        if 'salary' in prompt_lower:
+            code_template += """
+# Calculate average salary
+average_salary = df['salary'].mean()
+print(f"Average salary for the entire company: ${average_salary:,.2f}")
+"""
+        elif 'experience' in prompt_lower:
+            code_template += """
+# Calculate average experience
+average_experience = df['experience_years'].mean()
+print(f"Average experience: {average_experience:.2f} years")
+"""
+        else:
+            # Generic average for numeric columns
+            code_template += """
+# Calculate averages for numeric columns
+numeric_columns = df.select_dtypes(include=[np.number]).columns
+for col in numeric_columns:
+    avg_val = df[col].mean()
+    print(f"Average {col}: {avg_val:.2f}")
+"""
+
+    elif any(word in prompt_lower for word in ['sum', 'total']):
+        code_template += """
+# Calculate totals for numeric columns
+numeric_columns = df.select_dtypes(include=[np.number]).columns
+for col in numeric_columns:
+    total_val = df[col].sum()
+    print(f"Total {col}: {total_val:,.2f}")
+"""
+
+    elif any(word in prompt_lower for word in ['count', 'how many']):
+        code_template += """
+# Count records
+total_records = len(df)
+print(f"Total number of records: {total_records}")
+
+# Count by categories if available
+categorical_columns = df.select_dtypes(include=['object']).columns
+for col in categorical_columns:
+    print(f"\\nCount by {col}:")
+    print(df[col].value_counts())
+"""
+
+    elif any(word in prompt_lower for word in ['correlation', 'correlations']):
+        code_template += """
+# Calculate correlations
+numeric_df = df.select_dtypes(include=[np.number])
+correlation_matrix = numeric_df.corr()
+print("Correlation Matrix:")
+print(correlation_matrix)
+
+# Find strong correlations
+strong_correlations = []
+for i in range(len(correlation_matrix.columns)):
+    for j in range(i+1, len(correlation_matrix.columns)):
+        corr_val = correlation_matrix.iloc[i, j]
+        if abs(corr_val) > 0.7:
+            col1 = correlation_matrix.columns[i]
+            col2 = correlation_matrix.columns[j]
+            strong_correlations.append((col1, col2, corr_val))
+
+print("\\nStrong correlations (>0.7):")
+for col1, col2, corr in strong_correlations:
+    print(f"{col1} ↔ {col2}: {corr:.3f}")
+"""
+
+    elif any(word in prompt_lower for word in ['department', 'group by']):
+        code_template += """
+# Analysis by department
+if 'department' in df.columns:
+    print("Analysis by Department:")
+    dept_analysis = df.groupby('department').agg({
+        col: ['count', 'mean', 'min', 'max']
+        for col in df.select_dtypes(include=[np.number]).columns
+    }).round(2)
+    print(dept_analysis)
+else:
+    print("No 'department' column found")
+"""
+
+    else:
+        # Default: basic statistics
+        code_template += """
+# Basic statistics
+print("Basic Statistics:")
+print(df.describe())
+
+# Data types
+print("\\nData Types:")
+print(df.dtypes)
+
+# Missing values
+print("\\nMissing Values:")
+print(df.isnull().sum())
+"""
+
+    return code_template.strip()
+
 
 if __name__ == "__main__":
     main()

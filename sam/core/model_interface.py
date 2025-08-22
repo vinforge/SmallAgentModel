@@ -637,6 +637,156 @@ def get_current_model_info() -> Dict[str, Any]:
     }
 
 
+class JambaEngine(BaseModelEngine):
+    """
+    Concrete implementation of BaseModelEngine for Jamba hybrid models.
+
+    This engine uses Hugging Face transformers to load and run Jamba models,
+    which combine Transformer and Mamba (SSM) layers for efficient long-context processing.
+    """
+
+    def __init__(self, engine_id: str = "jamba", model_name: str = None, model_path: str = None):
+        # Use Jamba default if not specified
+        if model_name is None:
+            model_name = "ai21labs/Jamba-v0.1"
+        if model_path is None:
+            model_path = model_name  # For HF models, path is the repo name
+
+        super().__init__(engine_id, model_name, model_path)
+        self.model = None
+        self.tokenizer = None
+        self.device = "auto"
+
+    def load_model(self) -> bool:
+        """Load the Jamba model via Hugging Face transformers."""
+        try:
+            logger.info(f"🔄 Loading Jamba model: {self.model_name}")
+
+            # Import required libraries
+            try:
+                from transformers import AutoTokenizer, AutoModelForCausalLM
+                import torch
+            except ImportError as e:
+                logger.error(f"❌ Required libraries not installed: {e}")
+                logger.error("Install with: pip install transformers torch accelerate")
+                return False
+
+            # Load tokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_path,
+                trust_remote_code=True
+            )
+
+            # Add pad token if not present
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+
+            # Load model with appropriate settings for Jamba
+            model_kwargs = {
+                "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
+                "device_map": self.device,
+                "trust_remote_code": True,
+                "attn_implementation": "flash_attention_2" if torch.cuda.is_available() else "eager"
+            }
+
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_path,
+                **model_kwargs
+            )
+
+            self.status = ModelStatus.READY
+            self.is_loaded = True
+            logger.info(f"✅ Jamba engine loaded successfully: {self.model_name}")
+            return True
+
+        except Exception as e:
+            self.status = ModelStatus.ERROR
+            logger.error(f"❌ Failed to load Jamba engine: {e}")
+            return False
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        """Generate text using the loaded Jamba model."""
+        if not self.is_loaded or self.model is None:
+            raise RuntimeError("Jamba model not loaded. Call load_model() first.")
+
+        try:
+            # Set default generation parameters
+            generation_kwargs = {
+                "max_new_tokens": kwargs.get("max_tokens", 1000),
+                "temperature": kwargs.get("temperature", 0.7),
+                "do_sample": kwargs.get("temperature", 0.7) > 0,
+                "pad_token_id": self.tokenizer.pad_token_id,
+                "eos_token_id": self.tokenizer.eos_token_id,
+            }
+
+            # Tokenize input
+            inputs = self.tokenizer(prompt, return_tensors="pt", padding=True)
+            if torch.cuda.is_available():
+                inputs = {k: v.cuda() for k, v in inputs.items()}
+
+            # Generate
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    inputs["input_ids"],
+                    attention_mask=inputs["attention_mask"],
+                    **generation_kwargs
+                )
+
+            # Decode only the new tokens
+            input_length = inputs["input_ids"].shape[1]
+            generated_tokens = outputs[0][input_length:]
+            response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+
+            return response.strip()
+
+        except Exception as e:
+            logger.error(f"❌ Jamba generation error: {e}")
+            raise
+
+    def embed(self, text: str) -> List[float]:
+        """Generate embeddings using the current embedding system."""
+        try:
+            # Use existing SAM embedding infrastructure
+            from sam.embedding.embedding_manager import get_embedding_manager
+
+            embedding_manager = get_embedding_manager()
+            embeddings = embedding_manager.embed_text(text)
+
+            return embeddings.tolist() if hasattr(embeddings, 'tolist') else embeddings
+
+        except Exception as e:
+            logger.error(f"❌ Jamba embedding error: {e}")
+            raise
+
+    def unload_model(self) -> bool:
+        """Unload the Jamba model from memory."""
+        try:
+            if self.model is not None:
+                del self.model
+                self.model = None
+
+            if self.tokenizer is not None:
+                del self.tokenizer
+                self.tokenizer = None
+
+            # Clear CUDA cache if available
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except ImportError:
+                pass
+
+            self.status = ModelStatus.LOADING
+            self.is_loaded = False
+            logger.info(f"✅ Jamba engine unloaded: {self.model_name}")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to unload Jamba engine: {e}")
+            return False
+
+
 class DeepSeekEngine(BaseModelEngine):
     """
     Concrete implementation of BaseModelEngine for DeepSeek models.

@@ -1,0 +1,13 @@
+department,experience_years,projects_completed,salary,satisfaction_score
+Engineering,2,5,60000,0.7
+Engineering,5,12,95000,0.8
+Engineering,8,20,130000,0.9
+Sales,1,10,55000,0.6
+Sales,3,30,75000,0.7
+Sales,6,65,110000,0.8
+HR,2,3,48000,0.9
+HR,4,6,62000,0.8
+HR,7,10,75000,0.7
+Marketing,1,8,52000,0.7
+Marketing,4,25,80000,0.8
+Marketing,10,80,150000,0.9

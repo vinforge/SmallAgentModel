@@ -380,6 +380,8 @@ def render_dream_canvas():
         else:
             # Show inactive state with option to show
             if st.button("📚 Show Insights", type="secondary", help="View emergent insights within cluster details", use_container_width=True):
+                # Try to load synthesis results if not available
+                _load_latest_synthesis_results()
                 st.session_state.show_insight_archive = True
                 st.rerun()
             st.caption("💡 Click to reveal insights")
@@ -390,6 +392,31 @@ def render_dream_canvas():
             st.session_state.navigate_to_archived_insights = True
             st.info("💡 Navigate to 'Archived Insights' in the main menu to view all archived insights")
             st.rerun()
+
+    # Add manual insight loading section if insights are missing
+    if hasattr(st.session_state, 'show_insight_archive') and st.session_state.show_insight_archive:
+        if not hasattr(st.session_state, 'synthesis_results') or not st.session_state.synthesis_results:
+            st.warning("⚠️ No synthesis results found in session. Attempting to load from files...")
+            if st.button("🔄 Reload Insights", help="Try to load insights from synthesis output files"):
+                _load_latest_synthesis_results()
+                if hasattr(st.session_state, 'synthesis_results') and st.session_state.synthesis_results:
+                    insights_count = len(st.session_state.synthesis_results.get('insights', []))
+                    st.success(f"✅ Loaded {insights_count} insights from synthesis files!")
+                    st.rerun()
+                else:
+                    st.error("❌ No synthesis results found. Try running synthesis first.")
+        elif hasattr(st.session_state, 'synthesis_results') and st.session_state.synthesis_results:
+            insights = st.session_state.synthesis_results.get('insights', [])
+            if insights:
+                st.info(f"📊 {len(insights)} insights available from synthesis run: {st.session_state.synthesis_results.get('run_id', 'unknown')}")
+
+                # Debug section (can be removed later)
+                with st.expander("🔍 Debug: Available Insights", expanded=False):
+                    for i, insight in enumerate(insights[:5]):  # Show first 5
+                        st.write(f"**Insight {i+1}:** Cluster {insight.get('cluster_id', 'unknown')}")
+                        st.caption(f"Confidence: {insight.get('confidence_score', 0):.2f}")
+            else:
+                st.warning("⚠️ Synthesis results loaded but no insights found.")
 
         # Auto Research controls
         st.markdown("---")
@@ -2000,17 +2027,33 @@ def render_cognitive_insights(cognitive_map: CognitiveMap):
         # Add insight indicator if this cluster has generated insights
         insight_indicator = ""
         cluster_insights = []
+
+        # Try to load synthesis results if not already available
+        if not hasattr(st.session_state, 'synthesis_results') or not st.session_state.synthesis_results:
+            _load_latest_synthesis_results()
+
         if hasattr(st.session_state, 'synthesis_results') and st.session_state.synthesis_results:
             insights = st.session_state.synthesis_results.get('insights', [])
             # Robust matching between insight cluster IDs and visualization clusters
             cluster_insights = []
             for ins in insights:
                 cid = str(ins.get('cluster_id', ''))
-                if cid == cluster.id or cid == cluster.name or cluster.id.endswith(cid) or cid.endswith(cluster.id):
+                # More flexible matching logic
+                if (cid == cluster.id or
+                    cid == cluster.name or
+                    cluster.id.endswith(cid) or
+                    cid.endswith(cluster.id) or
+                    cid.replace('cluster_', '') == cluster.id.replace('cluster_', '') or
+                    f"cluster_{cluster.id}" == cid or
+                    f"cluster_{cluster.name}" == cid):
                     cluster_insights.append(ins)
 
             if cluster_insights:
                 insight_indicator = f" ✨ ({len(cluster_insights)} insights)"
+
+            # Debug logging to help identify matching issues
+            if not cluster_insights and insights:
+                logger.debug(f"No insights matched for cluster {cluster.id} (name: {cluster.name}). Available cluster IDs: {[ins.get('cluster_id') for ins in insights[:5]]}")
 
         # Create expandable section for each cluster with status badges
         status_badge = ""
@@ -3673,11 +3716,9 @@ def render_deep_research_results():
     except Exception as e:
         st.error(f"❌ Error displaying deep research results: {e}")
 
-def render_synthetic_insights_integration():
-    """Display synthetic insights and emergent patterns alongside the cognitive map."""
-
-    # Check if synthesis results are available
-    if not hasattr(st.session_state, 'synthesis_results') or not st.session_state.synthesis_results:
+def _load_latest_synthesis_results():
+    """Helper function to load the latest synthesis results from file or history."""
+    try:
         # First try to load from synthesis history in session state
         if hasattr(st.session_state, 'synthesis_history') and st.session_state.synthesis_history:
             latest_run = st.session_state.synthesis_history[-1]
@@ -3690,44 +3731,52 @@ def render_synthetic_insights_integration():
                     'timestamp': latest_run.get('timestamp', 'unknown'),
                     'synthesis_log': {'status': 'loaded_from_history'}
                 }
-
-                # Display the loaded results
-                render_synthetic_insights_panel(st.session_state.synthesis_results)
-                render_pattern_discovery_interface(st.session_state.synthesis_results)
                 return
+
         # Try to load the latest synthesis results from file
-        try:
-            from pathlib import Path
-            import json
+        from pathlib import Path
+        import json
 
-            synthesis_dir = Path("synthesis_output")
-            if synthesis_dir.exists():
-                # Find the most recent synthesis file
-                synthesis_files = list(synthesis_dir.glob("synthesis_run_log_*.json"))
-                if synthesis_files:
-                    latest_file = max(synthesis_files, key=lambda f: f.stat().st_mtime)
+        synthesis_dir = Path("synthesis_output")
+        if synthesis_dir.exists():
+            # Find the most recent synthesis file
+            synthesis_files = list(synthesis_dir.glob("synthesis_run_log_*.json"))
+            if synthesis_files:
+                latest_file = max(synthesis_files, key=lambda f: f.stat().st_mtime)
 
-                    with open(latest_file, 'r') as f:
-                        data = json.load(f)
+                with open(latest_file, 'r') as f:
+                    data = json.load(f)
 
-                    # Check if this file has insights
-                    if 'insights' in data and data['insights']:
-                        # Convert to the expected format
-                        st.session_state.synthesis_results = {
-                            'insights': data['insights'],
-                            'clusters_found': data.get('clusters_found', len(data['insights'])),
-                            'insights_generated': len(data['insights']),
-                            'run_id': data.get('run_id', 'loaded'),
-                            'timestamp': data.get('timestamp', 'unknown'),
-                            'synthesis_log': data.get('synthesis_log', latest_file.name)
-                        }
+                # Check if this file has insights
+                if 'insights' in data and data['insights']:
+                    # Convert to the expected format
+                    st.session_state.synthesis_results = {
+                        'insights': data['insights'],
+                        'clusters_found': data.get('clusters_found', len(data['insights'])),
+                        'insights_generated': len(data['insights']),
+                        'run_id': data.get('run_id', 'loaded'),
+                        'timestamp': data.get('timestamp', 'unknown'),
+                        'synthesis_log': data.get('synthesis_log', latest_file.name)
+                    }
+                    logger.info(f"Loaded {len(data['insights'])} insights from {latest_file.name}")
+    except Exception as e:
+        logger.warning(f"Could not load synthesis results: {e}")
 
-                        # Display the loaded results
-                        render_synthetic_insights_panel(st.session_state.synthesis_results)
-                        render_pattern_discovery_interface(st.session_state.synthesis_results)
-                        return
-        except Exception as e:
-            logger.warning(f"Could not load synthesis results: {e}")
+def render_synthetic_insights_integration():
+    """Display synthetic insights and emergent patterns alongside the cognitive map."""
+
+    # Check if synthesis results are available
+    if not hasattr(st.session_state, 'synthesis_results') or not st.session_state.synthesis_results:
+        _load_latest_synthesis_results()
+
+        # If still no results after loading attempt, show message
+        if not hasattr(st.session_state, 'synthesis_results') or not st.session_state.synthesis_results:
+            return
+
+    # Display the loaded results
+    if st.session_state.synthesis_results:
+        render_synthetic_insights_panel(st.session_state.synthesis_results)
+        render_pattern_discovery_interface(st.session_state.synthesis_results)
 
         # No synthesis results available
         st.markdown("---")

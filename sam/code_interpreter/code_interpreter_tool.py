@@ -12,6 +12,7 @@ Version: 1.0.0
 import json
 import logging
 import requests
+from requests.exceptions import Timeout, RequestException
 import base64
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
@@ -55,7 +56,7 @@ class CodeInterpreterTool(SAMTool):
     - Execute complex algorithms
     """
     
-    def __init__(self, sandbox_service_url: str = "http://localhost:5000"):
+    def __init__(self, sandbox_service_url: str = "http://localhost:6821"):
         """
         Initialize the Code Interpreter tool.
         
@@ -175,7 +176,7 @@ class CodeInterpreterTool(SAMTool):
                     error=error_msg
                 )
         
-        except requests.Timeout:
+        except Timeout:
             return CodeInterpreterResult(
                 success=False,
                 output="",

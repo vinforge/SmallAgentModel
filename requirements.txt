@@ -23,14 +23,20 @@ beautifulsoup4>=4.12.0,<5.0.0
 langchain>=0.1.0,<1.0.0
 langchain-community>=0.0.10,<1.0.0  # Fixes LangChain deprecation warnings
 
-# Data Processing
+# Data Processing & CSV Analysis (Enhanced for Lazy Provisioning)
 pandas>=2.0.0,<3.0.0
+matplotlib>=3.5.0,<4.0.0  # For data visualizations
+seaborn>=0.11.0,<1.0.0    # For enhanced statistical plots
 
 # Configuration & Environment
 python-dotenv>=1.0.0,<2.0.0
 
 # System Monitoring
 psutil>=5.9.0,<6.0.0
+
+# Docker Integration (Optional - for enhanced security)
+# Install with: pip install docker
+# docker>=6.0.0,<7.0.0  # Uncomment for Docker auto-provisioning
 
 # Progress Bars & UI
 tqdm>=4.65.0,<5.0.0

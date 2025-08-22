@@ -18,6 +18,17 @@ from .template import (
     create_wrapper_config_template
 )
 
+# Import specific wrappers
+try:
+    from .jamba_wrapper import JambaWrapper
+except ImportError as e:
+    logger.warning(f"Failed to import JambaWrapper: {e}")
+
+try:
+    from .llama31_wrapper import Llama31Wrapper
+except ImportError as e:
+    logger.warning(f"Failed to import Llama31Wrapper: {e}")
+
 # Dynamic wrapper discovery
 import importlib
 import pkgutil

@@ -1,0 +1,22 @@
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_setup.py:_flush():80] Current SDK version is 0.21.1
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_setup.py:_flush():80] Configure stats pid to 22046
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_setup.py:_flush():80] Loading settings from /Users/vinsoncornejo/.config/wandb/settings
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_setup.py:_flush():80] Loading settings from /Users/vinsoncornejo/Downloads/augment-projects/SAM/SmallAgentModel-main/wandb/settings
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_setup.py:_flush():80] Loading settings from environment variables
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_init.py:setup_run_log_directory():703] Logging user logs to /Users/vinsoncornejo/Downloads/augment-projects/SAM/SmallAgentModel-main/wandb/offline-run-20250819_180657-cfh929iv/logs/debug.log
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_init.py:setup_run_log_directory():704] Logging internal logs to /Users/vinsoncornejo/Downloads/augment-projects/SAM/SmallAgentModel-main/wandb/offline-run-20250819_180657-cfh929iv/logs/debug-internal.log
+2025-08-19 18:06:57,738 INFO    MainThread:22046 [wandb_init.py:init():830] calling init triggers
+2025-08-19 18:06:57,739 INFO    MainThread:22046 [wandb_init.py:init():835] wandb.init called with sweep_config: {}
+config: {'model_name': 'microsoft/DialoGPT-medium', 'dataset_path': 'data/ssrl_training', 'output_dir': 'models/ssrl_lora', 'lora_r': 16, 'lora_alpha': 32, 'lora_dropout': 0.1, 'lora_target_modules': ['q_proj', 'v_proj'], 'learning_rate': 1e-05, 'num_train_epochs': 3, 'per_device_train_batch_size': 4, 'gradient_accumulation_steps': 4, 'warmup_steps': 100, 'max_length': 1024, 'ppo_epochs': 4, 'mini_batch_size': 1, 'init_kl_coef': 0.2, 'target_kl': 6.0, 'adap_kl_ctrl': True, 'format_reward_weight': 0.3, 'outcome_reward_weight': 0.7, 'logging_steps': 10, 'save_steps': 500, 'eval_steps': 250, 'save_total_limit': 3, 'run_name': 'ssrl_training', 'use_wandb': True, 'wandb_project': 'sam_ssrl', 'fp16': True, 'dataloader_num_workers': 4, 'max_grad_norm': 1.0, 'seed': 42, '_wandb': {}}
+2025-08-19 18:06:57,739 INFO    MainThread:22046 [wandb_init.py:init():871] starting backend
+2025-08-19 18:06:58,579 INFO    MainThread:22046 [wandb_init.py:init():874] sending inform_init request
+2025-08-19 18:06:58,605 INFO    MainThread:22046 [wandb_init.py:init():882] backend started and connected
+2025-08-19 18:06:58,612 INFO    MainThread:22046 [wandb_init.py:init():953] updated telemetry
+2025-08-19 18:06:58,650 INFO    MainThread:22046 [wandb_init.py:init():977] communicating run to backend with 90.0 second timeout
+2025-08-19 18:06:58,949 INFO    MainThread:22046 [wandb_init.py:init():1029] starting run threads in backend
+2025-08-19 18:06:59,268 INFO    MainThread:22046 [wandb_run.py:_console_start():2494] atexit reg
+2025-08-19 18:06:59,268 INFO    MainThread:22046 [wandb_run.py:_redirect():2342] redirect: wrap_raw
+2025-08-19 18:06:59,268 INFO    MainThread:22046 [wandb_run.py:_redirect():2411] Wrapping output streams.
+2025-08-19 18:06:59,268 INFO    MainThread:22046 [wandb_run.py:_redirect():2434] Redirects installed.
+2025-08-19 18:06:59,269 INFO    MainThread:22046 [wandb_init.py:init():1075] run started, returning control to user process
+2025-08-19 18:06:59,952 INFO    MsgRouterThr:22046 [mailbox.py:close():129] [no run ID] Closing mailbox, abandoning 0 handles.

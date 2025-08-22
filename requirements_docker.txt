@@ -1,0 +1,13 @@
+# SAM Docker Integration Dependencies
+# Optional dependencies for enhanced Docker auto-provisioning capabilities
+# Install with: pip install -r requirements_docker.txt
+
+# Docker Python Client
+docker>=6.0.0,<7.0.0
+
+# Enhanced Container Management
+docker-compose>=1.29.0,<2.0.0
+
+# Note: These dependencies are OPTIONAL
+# SAM works perfectly without Docker using the Lazy Provisioning system
+# Docker provides enhanced security for data analysis but is not required

@@ -20,8 +20,22 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from flask import Flask, request, jsonify
-import docker
-from docker.errors import DockerException, ContainerError, ImageNotFound
+
+# Docker imports are conditional to support environments without Docker
+try:
+    import docker
+    from docker.errors import DockerException, ContainerError, ImageNotFound
+    DOCKER_AVAILABLE = True
+except ImportError:
+    # Define dummy classes for environments without Docker
+    docker = None
+    class DockerException(Exception):
+        pass
+    class ContainerError(Exception):
+        pass
+    class ImageNotFound(Exception):
+        pass
+    DOCKER_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +90,7 @@ class SandboxService:
     
     def __init__(self, 
                  docker_image: str = "python:3.11-slim",
-                 base_port: int = 5000,
+                 base_port: int = 6821,
                  max_concurrent_executions: int = 5):
         """
         Initialize the sandbox service.

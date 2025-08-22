@@ -1,0 +1,31 @@
+{
+  "adapters": {
+    "test_ssrl_adapter": {
+      "adapter_id": "test_ssrl_adapter",
+      "adapter_type": "ssrl_reasoning",
+      "model_path": "/var/folders/j4/3b3nv_z95szdwcmrq91f4g0w0000gn/T/tmpazjv1v5i/test_adapter",
+      "user_id": "test_user",
+      "priority": 1,
+      "is_active": true,
+      "is_validated": true,
+      "created_at": "2025-08-19 18:05:51",
+      "description": "Test SSRL adapter",
+      "performance_metrics": {}
+    }
+  },
+  "user_configs": {
+    "test_user": {
+      "user_id": "test_user",
+      "active_adapters": [
+        "test_ssrl_adapter"
+      ],
+      "adapter_order": [
+        "test_ssrl_adapter"
+      ],
+      "base_model_name": "microsoft/DialoGPT-medium",
+      "max_adapters": 5,
+      "enable_fallback": true,
+      "merge_adapters": false
+    }
+  }
+}

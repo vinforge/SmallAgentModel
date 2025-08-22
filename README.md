@@ -15,10 +15,13 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
 ### **🎯 Key Features**
 
 - **🔐 Enterprise-Grade Security**: All data encrypted with your Master Password
-- **📄 Document Processing**: Upload and analyze PDFs with intelligent content recall
+- **📄 Document Processing**: Upload and analyze PDFs, TXT, DOCX, MD, and **CSV files**
+- **📊 Data Science Capabilities**: Professional CSV analysis with automatic insights
+- **🐳 Smart Docker Integration**: Automatic Docker provisioning when available (optional)
 - **🧠 Advanced Memory**: Persistent conversation history and knowledge storage
 - **💬 Contextual Conversations**: Maintains context across multiple sessions
 - **🔍 Smart Search**: Intelligent routing between local knowledge and web search
+- **⚡ Lazy Provisioning**: Works immediately, enhances automatically
 - **🎨 Modern Interface**: Clean, intuitive web-based interface
 - **🌐 Cross-Platform**: Works on Windows, macOS, and Linux
 
@@ -28,12 +31,19 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
 
 ### **Prerequisites**
 
+#### **Required (Minimum Setup)**
 - **Python 3.10+** (tested with Python 3.12)
-- **4GB+ RAM** recommended
+- **2GB+ RAM** (4GB+ recommended)
 - **Modern web browser**
 - **Internet connection** (for initial model downloads)
 - **git** for cloning the repository
 - **[Ollama](https://ollama.ai)** installed and running for AI responses
+
+#### **Optional (Enhanced Features)**
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** for maximum security
+  - **Auto-detected and managed** - no manual configuration needed
+  - **Provides isolated execution** for CSV data analysis
+  - **SAM works perfectly without Docker** using local execution
 
 ### **Installation**
 
@@ -79,9 +89,21 @@ SAM (Secure Agent Model) is a revolutionary open-source AI assistant that combin
 
 5. **Start SAM:**
 
+   **Option A: Standard Startup**
    ```bash
    python start_sam.py
    ```
+
+   **Option B: Enhanced Startup (Recommended)**
+   ```bash
+   python start_sam_enhanced.py
+   ```
+
+   The enhanced startup provides:
+   - Auto-detection of system capabilities
+   - Intelligent Docker management (optional)
+   - Optimal configuration for your environment
+   - Setup guidance for new users
 
 #### **🐧 Linux (Recommended - Virtual Environment)**
 
@@ -201,7 +223,14 @@ pip install streamlit
 - [📖 Master Password Setup Guide](docs/MASTER_PASSWORD_SETUP_GUIDE.md) - Complete setup instructions
 - [🚀 Quick Start Guide](docs/QUICK_START.md) - Get up and running fast
 - [🔧 Installation Guide](docs/SETUP_GUIDE.md) - Detailed installation instructions
+- [⚡ Lazy Provisioning Guide](docs/INSTALLATION_GUIDE_LAZY_PROVISIONING.md) - **NEW!** Auto-configuring setup
 - [🐳 Docker Deployment](docs/DOCKER_DEPLOYMENT_GUIDE.md) - Run SAM in Docker
+
+### **New Features & Migration**
+
+- [📊 CSV Upload Capabilities](docs/CSV_UPLOAD_CAPABILITIES.md) - **NEW!** Data science features
+- [🔄 Migration Guide](docs/MIGRATION_TO_LAZY_PROVISIONING.md) - **NEW!** Upgrade existing installations
+- [🐳 Docker Strategy](docs/DOCKER_STRATEGY_FOR_NEW_USERS.md) - **NEW!** Docker auto-management
 
 ### **Advanced Features**
 

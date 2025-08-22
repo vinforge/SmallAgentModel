@@ -3,6 +3,7 @@ SAM Web UI - Flask-based web interface for multimodal agent interaction
 """
 
 import os
+import time
 
 from sam.core.sam_model_client import create_legacy_ollama_client
 import json
@@ -71,7 +72,7 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {
     'txt', 'md', 'pdf', 'docx', 'html', 'htm',
-    'py', 'js', 'java', 'cpp', 'c'
+    'py', 'js', 'java', 'cpp', 'c', 'csv'
 }
 
 # Global components
@@ -118,6 +119,59 @@ def initialize_sam():
                 def inject_learned_knowledge(self, knowledge_summary: str, key_concepts: list):
                     """Inject learned knowledge into the model's context for future queries."""
                     from datetime import datetime
+
+                    # Store the learned knowledge for context injection
+                    knowledge_entry = {
+                        'timestamp': datetime.now().isoformat(),
+                        'summary': knowledge_summary,
+                        'concepts': key_concepts
+                    }
+                    self.learned_knowledge.append(knowledge_entry)
+
+                    # Keep only the last 10 entries to avoid context overflow
+                    if len(self.learned_knowledge) > 10:
+                        self.learned_knowledge = self.learned_knowledge[-10:]
+
+                    logger.info(f"📚 Injected knowledge: {len(key_concepts)} concepts from {knowledge_summary[:50]}...")
+
+                def generate(self, prompt, **kwargs):
+                    """Generate response using Ollama."""
+                    try:
+                        # Add learned knowledge to context if available
+                        enhanced_prompt = prompt
+                        if self.learned_knowledge:
+                            context = "\n".join([f"- {entry['summary']}" for entry in self.learned_knowledge[-3:]])
+                            enhanced_prompt = f"Context from previous documents:\n{context}\n\nUser query: {prompt}"
+
+                        response = requests.post(
+                            f"{self.base_url}/api/generate",
+                            json={
+                                "model": self.model_name,
+                                "prompt": enhanced_prompt,
+                                "stream": False
+                            },
+                            timeout=30
+                        )
+
+                        if response.status_code == 200:
+                            return response.json().get('response', 'No response generated')
+                        else:
+                            return f"Error: {response.status_code}"
+                    except Exception as e:
+                        logger.error(f"Ollama generation error: {e}")
+                        return f"Error generating response: {e}"
+
+            # Initialize the model
+            sam_model = OllamaModel()
+            logger.info("✅ SAM model initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize Ollama model: {e}")
+            sam_model = None
+
+    except Exception as e:
+        logger.error(f"Failed to initialize SAM components: {e}")
+        sam_model = None
 
 # Simple PDF viewer route (serves original file and accepts page param for front-end to anchor)
 @app.route('/viewer')
@@ -167,68 +221,7 @@ def view_document():
         logger.error(f"View error: {e}")
         return jsonify({'error': str(e)}), 500
 
-                    knowledge_entry = {
-                        'summary': knowledge_summary,
-                        'concepts': key_concepts,
-                        'timestamp': datetime.now().isoformat(),
-                        'source': 'document_learning'
-                    }
-                    self.learned_knowledge.append(knowledge_entry)
 
-                    # Keep only the most recent 10 knowledge entries to avoid context overflow
-                    if len(self.learned_knowledge) > 10:
-                        self.learned_knowledge = self.learned_knowledge[-10:]
-
-                    logger.info(f"🧠 WEB UI: Injected new knowledge into model context: {len(key_concepts)} concepts")
-
-                def _build_enhanced_context(self, prompt: str) -> str:
-                    """Build enhanced context with learned knowledge for better responses."""
-                    if not self.learned_knowledge:
-                        return prompt
-
-                    # Create knowledge context
-                    knowledge_context = "LEARNED KNOWLEDGE FROM UPLOADED DOCUMENTS:\n"
-                    for i, knowledge in enumerate(self.learned_knowledge[-5:], 1):  # Use last 5 entries
-                        knowledge_context += f"\n{i}. {knowledge['summary'][:200]}...\n"
-                        knowledge_context += f"   Key concepts: {', '.join(knowledge['concepts'][:5])}\n"
-
-                    # Inject knowledge before the actual prompt
-                    enhanced_prompt = f"{knowledge_context}\n\nBased on the above learned knowledge from uploaded documents and your training, respond to:\n\n{prompt}"
-                    return enhanced_prompt
-
-                def generate(self, prompt, temperature=0.7, max_tokens=500, use_learned_knowledge=True):
-                    logger.info(f"🤖 REAL Ollama model generating response for prompt: {prompt[:100]}...")
-                    try:
-                        # Enhance prompt with learned knowledge if requested
-                        if use_learned_knowledge and self.learned_knowledge:
-                            enhanced_prompt = self._build_enhanced_context(prompt)
-                            logger.info(f"🧠 Enhanced prompt with {len(self.learned_knowledge)} learned knowledge entries")
-                        else:
-                            enhanced_prompt = prompt
-
-                        response = create_legacy_ollama_client().generate(prompt)
-                        if response.status_code == 200:
-                            result = response.json().get("response", "No response generated")
-                            logger.info(f"✅ REAL Ollama model generated {len(result)} character response")
-                            return result
-                        else:
-                            raise Exception(f"Ollama API error: {response.status_code}")
-                    except Exception as e:
-                        logger.error(f"Ollama generation error: {e}")
-                        return f"I apologize, but I'm having trouble generating a response right now: {str(e)}"
-
-            # Test Ollama connection
-            test_response = requests.get(f"http://localhost:11434/api/tags", timeout=5)
-            if test_response.status_code == 200:
-                sam_model = OllamaModel()
-                logger.info("✅ Real SAM model initialized with Ollama")
-            else:
-                raise Exception("Ollama not responding")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize Ollama model: {e}")
-            logger.error("CRITICAL: Ollama model is required for SAM to function properly")
-            raise Exception(f"Cannot start SAM without Ollama model: {e}")
 
         # Initialize vector manager (optional)
         if VectorManager:
@@ -1877,9 +1870,44 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 def process_uploaded_file(file_path):
-    """Process uploaded file through multimodal pipeline."""
+    """Process uploaded file through multimodal pipeline or specialized handlers."""
     try:
         logger.info(f"Starting file processing: {file_path}")
+
+        # Check if it's a CSV file and handle specially for data science
+        if str(file_path).lower().endswith('.csv'):
+            logger.info("📊 Detected CSV file - using specialized data science handler")
+            try:
+                from sam.document_processing.csv_handler import handle_csv_upload
+
+                success, message, metadata = handle_csv_upload(
+                    str(file_path),
+                    Path(file_path).name,
+                    session_id=None  # Could be passed from request context
+                )
+
+                if success:
+                    # Format result to match expected structure
+                    return {
+                        'document_id': f"csv_{Path(file_path).stem}_{int(time.time())}",
+                        'content_blocks': 1,
+                        'enrichment_score': 0.9,
+                        'priority_level': 'high',
+                        'content_types': ['data'],
+                        'summary_length': len(message),
+                        'key_concepts': metadata.get('data_analysis', {}).get('columns', []),
+                        'csv_analysis': metadata.get('data_analysis', {}),
+                        'data_science_ready': True,
+                        'success_message': message,
+                        'file_type': 'csv'
+                    }
+                else:
+                    return {'error': message}
+
+            except ImportError as e:
+                logger.warning(f"CSV handler not available: {e}, falling back to standard processing")
+            except Exception as e:
+                logger.error(f"CSV processing failed: {e}, falling back to standard processing")
 
         if not multimodal_pipeline:
             logger.error("Multimodal pipeline not available")
@@ -1905,8 +1933,15 @@ def process_uploaded_file(file_path):
                 'key_concepts': result['key_concepts']
             }
 
+            # Special handling for CSV files
+            if result.get('file_type') == 'csv' and result.get('data_science_ready'):
+                logger.info("📊 CSV file processed with data science capabilities")
+                response_data['data_science_ready'] = True
+                response_data['csv_analysis'] = result.get('csv_analysis', {})
+                response_data['qa_ready_message'] = result.get('success_message',
+                    "✅ CSV file processed and ready for data science analysis!")
             # Add memory storage information if available
-            if 'memory_storage' in result:
+            elif 'memory_storage' in result:
                 memory_info = result['memory_storage']
                 logger.info(f"Memory storage successful: {memory_info.get('total_chunks_stored', 0)} chunks")
                 response_data['memory_storage'] = {
